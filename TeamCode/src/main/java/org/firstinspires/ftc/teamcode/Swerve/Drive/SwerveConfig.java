@@ -68,6 +68,16 @@ public class SwerveConfig {
     };
 
     // ─────────────────────────────────────────────────────────────────────────
+    // Localization (Pinpoint Odometry)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** X offset of the Pinpoint pod in millimeters. */
+    public static double ODO_X_OFFSET_MM = -127.6669;
+
+    /** Y offset of the Pinpoint pod in millimeters. */
+    public static double ODO_Y_OFFSET_MM = -52.23;
+
+    // ─────────────────────────────────────────────────────────────────────────
     // Tuning (PID Gains)
     // ─────────────────────────────────────────────────────────────────────────
 
