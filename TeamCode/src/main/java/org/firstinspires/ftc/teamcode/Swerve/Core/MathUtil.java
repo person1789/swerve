@@ -7,7 +7,7 @@
 package org.firstinspires.ftc.teamcode.Swerve.Core;
 
 /**
- * MathUtil — Phase A
+ * MathUtil
  *
  * Utility class providing angle normalization, clamping, and other math
  * helpers used across the swerve system.

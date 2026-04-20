@@ -9,7 +9,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.core.HWMap;
 
 /**
- * SwerveLocalizer — Phase E
+ * SwerveLocalizer
  * 
  * Specialized wrapper for the GoBILDA Pinpoint odometry computer.
  * Provides the robot's current position and heading on the field

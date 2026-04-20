@@ -10,7 +10,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 
 /**
- * SwerveKinematics — Phase B
+ * SwerveKinematics
  */
 public class SwerveKinematics {
 

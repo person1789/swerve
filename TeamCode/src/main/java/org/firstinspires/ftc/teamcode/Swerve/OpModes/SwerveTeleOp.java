@@ -17,7 +17,7 @@ import org.firstinspires.ftc.teamcode.core.HWMap;
 import org.firstinspires.ftc.teamcode.core.Logger;
 
 /**
- * SwerveTeleOp — Phase E
+ * SwerveTeleOp
  * 
  * High-performance Field-Centric drive OpMode.
  * 
@@ -54,7 +54,7 @@ public class SwerveTeleOp extends LinearOpMode {
         
         snapController = new PIDController(SwerveConfig.SNAP_P, SwerveConfig.SNAP_I, SwerveConfig.SNAP_D);
         
-        telemetry.addData("Status", "Initialized - Phase E (Localization)");
+        telemetry.addData("Status", "Initialized (Localization Active)");
         telemetry.update();
 
         waitForStart();

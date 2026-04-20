@@ -9,7 +9,7 @@ package org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics;
 import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 
 /**
- * SwerveAuditor — Phase B
+ * SwerveAuditor
  */
 public class SwerveAuditor {
 

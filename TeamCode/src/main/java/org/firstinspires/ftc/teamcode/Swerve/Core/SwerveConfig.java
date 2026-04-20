@@ -9,7 +9,7 @@ package org.firstinspires.ftc.teamcode.Swerve.Core;
 import com.acmerobotics.dashboard.config.Config;
 
 /**
- * SwerveConfig — Phase C
+ * SwerveConfig
  * 
  * Central repository for all swerve-related constants. 
  * Using @Config allows adjustments via FTC Dashboard during tuning.

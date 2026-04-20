@@ -5,7 +5,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 
 /**
- * MotionSmoother — Phase D
+ * MotionSmoother
  * 
  * Provides Jerk-limited S-curve smoothing for the robot's velocity commands.
  * Instead of instantly jumping to a new acceleration, this class ramps the 
@@ -56,7 +56,7 @@ public class MotionSmoother {
         double desiredAccel = (targetV - currentV) / dt;
 
         // Step 2: Limit the rate of change of acceleration (Jerk)
-        // Note: For simplicity in Phase D, we use currentVelocity's acceleration tracking
+        // Note: For simplicity, we use currentVelocity's acceleration tracking
         double accelError;
         if (axisIndex == 0) accelError = desiredAccel - currentAcceleration.x;
         else if (axisIndex == 1) accelError = desiredAccel - currentAcceleration.y;

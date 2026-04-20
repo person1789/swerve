@@ -18,7 +18,7 @@ import org.firstinspires.ftc.teamcode.core.HWMap;
 import org.firstinspires.ftc.teamcode.core.Logger;
 
 /**
- * SwerveDrivetrain — Phase C
+ * SwerveDrivetrain
  *
  * Top-level drivetrain coordinator. Wires together the full pipeline:
  * Kinematics → Auditor → SwerveModule.

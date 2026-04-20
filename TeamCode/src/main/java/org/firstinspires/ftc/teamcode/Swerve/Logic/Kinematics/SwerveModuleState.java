@@ -9,7 +9,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.D2Vector;
 
 /**
- * SwerveModuleState — Phase A
+ * SwerveModuleState
  *
  * Immutable (by convention) data-transfer object that describes the desired
  * state of one swerve module at a point in time.

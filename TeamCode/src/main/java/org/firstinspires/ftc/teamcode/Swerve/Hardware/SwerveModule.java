@@ -18,7 +18,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 import org.firstinspires.ftc.teamcode.core.Logger;
 
 /**
- * SwerveModule — Phase C
+ * SwerveModule
  *
  * Controls a single coaxial swerve pod.
  */

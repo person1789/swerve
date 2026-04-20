@@ -9,7 +9,7 @@ package org.firstinspires.ftc.teamcode.Swerve.Core;
 import com.qualcomm.robotcore.util.Range;
 
 /**
- * Custom PID Controller — Phase A
+ * Custom PID Controller
  * 
  * Optimized for FTC swerve control loops. 
  * Provides:
