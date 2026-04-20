@@ -1,14 +1,66 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import SwerveSim from './components/SwerveSim';
 import Sidebar from './components/Sidebar';
+import TelemetryPanel from './components/TelemetryPanel';
+
+interface TelemetryEntry {
+    timestamp: number;
+    posX: number;
+    posY: number;
+    heading: number;
+    velX: number;
+    velY: number;
+    velH: number;
+    accelX: number;
+    accelY: number;
+    accelH: number;
+    jerkX: number;
+    jerkY: number;
+    jerkH: number;
+    [key: string]: number;
+}
 
 function App() {
   const [showModuleVectors, setShowModuleVectors] = useState(true);
   const [showChassisVector, setShowChassisVector] = useState(true);
   const [showRotationVector, setShowRotationVector] = useState(true);
 
+  // Telemetry State
+  const [telemetryData, setTelemetryData] = useState<TelemetryEntry[]>([]);
+  const [isRecording, setIsRecording] = useState(false);
+
+  const handleTelemetryUpdate = useCallback((entry: TelemetryEntry) => {
+    setTelemetryData(prev => {
+      const next = [...prev, entry];
+      // Keep only last 1000 items in memory if not recording to save performance
+      if (!isRecording && next.length > 500) return next.slice(-500);
+      return next;
+    });
+  }, [isRecording]);
+
+  const handleExportCSV = () => {
+    if (telemetryData.length === 0) return;
+
+    const headers = Object.keys(telemetryData[0]);
+    const csvRows = [
+      headers.join(','), // Header row
+      ...telemetryData.map(row => headers.map(header => row[header]).join(','))
+    ];
+
+    const csvContent = csvRows.join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `swerve_telemetry_${new Date().toISOString()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   return (
-    <div className="flex w-full h-screen bg-background text-foreground overflow-hidden">
+    <div className="flex w-full h-screen bg-slate-950 text-slate-100 overflow-hidden">
+      {/* Sidebar Controls */}
       <Sidebar 
         showModuleVectors={showModuleVectors} 
         setShowModuleVectors={setShowModuleVectors}
@@ -18,40 +70,40 @@ function App() {
         setShowRotationVector={setShowRotationVector}
       />
       
-      <main className="flex-1 relative">
-        <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center pointer-events-none z-10">
-          <div>
-            <h2 className="text-sm font-mono text-gray-500 uppercase">Operational Environment</h2>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-              <p className="text-xs font-mono text-green-500/80 tracking-wide">SYSTEM NOMINAL // HIGH-FIDELITY ACTIVE</p>
+      {/* Main Dashboard - Split Screen */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left: Robot Viewport */}
+        <section className="flex-[1.2] relative border-r border-slate-800">
+          <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center pointer-events-none z-10">
+            <div>
+              <h2 className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.2em] mb-1">Observation Environment</h2>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
+                <p className="text-[10px] font-mono text-blue-400 font-bold tracking-wider">FIXED_LOOP // 20MS POLLING</p>
+              </div>
             </div>
-          </div>
-          <div className="text-right">
-            <h2 className="text-sm font-mono text-gray-500 uppercase">Robot Model</h2>
-            <p className="text-xl font-black tracking-tighter text-white">4-POD SWERVE V1</p>
-          </div>
-        </header>
+          </header>
 
-        <SwerveSim 
-          showModuleVectors={showModuleVectors}
-          showChassisVector={showChassisVector}
-          showRotationVector={showRotationVector}
-        />
+          <SwerveSim 
+            showModuleVectors={showModuleVectors}
+            showChassisVector={showChassisVector}
+            showRotationVector={showRotationVector}
+            onTelemetryUpdate={handleTelemetryUpdate}
+          />
+        </section>
 
-        <footer className="absolute bottom-6 left-6 right-6 flex justify-between items-end pointer-events-none z-10">
-          <div className="bg-black/60 backdrop-blur-md p-3 rounded-lg border border-white/5">
-            <p className="text-[10px] font-mono text-gray-500">
-               COORD_SYS: FIELD_CENTRIC <br/>
-               DRV_MD: ASYMMETRIC_BRAKING <br/>
-               SNAPPING: LOGIC_ACTIVE
-            </p>
-          </div>
-          <p className="text-[10px] font-mono text-gray-700">
-            CONNECT GAMEPAD TO INITIALIZE INPUT ENGINE
-          </p>
-        </footer>
-      </main>
+        {/* Right: Telemetry Dashboard */}
+        <section className="flex-1 min-w-[400px]">
+          <TelemetryPanel 
+            data={telemetryData}
+            isRecording={isRecording}
+            onStartRecording={() => setIsRecording(true)}
+            onStopRecording={() => setIsRecording(false)}
+            onClear={() => setTelemetryData([])}
+            onExport={handleExportCSV}
+          />
+        </section>
+      </div>
     </div>
   );
 }

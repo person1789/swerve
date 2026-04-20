@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.Swerve.Core;
+package org.firstinspires.ftc.teamcode.Swerve.Hardware;
 
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.hardware.AnalogInput;

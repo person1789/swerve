@@ -55,6 +55,19 @@ public class PIDController {
     }
 
     /**
+     * Calculate control output based on current state and a new target.
+     * 
+     * @param current current measured value
+     * @param target new target setpoint
+     * @param dt loop period in seconds
+     * @return control effort
+     */
+    public double calculate(double current, double target, double dt) {
+        this.setpoint = target;
+        return calculate(current, dt);
+    }
+
+    /**
      * Calculate control output based on current state.
      * 
      * @param current current measured value

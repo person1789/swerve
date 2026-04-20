@@ -90,10 +90,58 @@ public class SwerveConfig {
     public static double DRIVE_I = 0.0;
     public static double DRIVE_D = 0.0;
 
-    // Heading Snap Tuning
-    public static double SNAP_P = 1.0;
+    // Heading Retention (Drift Correction)
+    public static double HEADING_P = 1.0;
+    public static double HEADING_I = 0.0;
+    public static double HEADING_D = 0.05;
+    public static double HEADING_HOLD_THRESHOLD = 0.02; // rad/s for "not turning"
+
+    // Heading Snap Tuning (Intentional Snap)
+    public static double SNAP_P = 2.0;
     public static double SNAP_I = 0.0;
-    public static double SNAP_D = 0.05;
+    public static double SNAP_D = 0.1;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Hardware Specs (Module Drive)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Gear ratio of the drive motors (typically for GoBilda 4-bar swerve). */
+    public static double DRIVE_GEAR_RATIO = 1.0; // Standard 1:1 for now, note: adjust if using reduction gears
+
+    /** Encoder ticks per revolution for the drive motor internal encoder. */
+    public static double DRIVE_TICKS_PER_REV = 537.7; // Standard for GoBilda 5203 Series (312 RPM)
+
+    /** Radius of the drive wheel in meters. */
+    public static double WHEEL_RADIUS_METERS = 0.048; // Standard 96mm wheel
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Feedforward & Health (Physics Model)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Static friction voltage (Volts). Min voltage to move. */
+    public static double DRIVE_KS = 1.05;
+
+    /** Velocity constant (Volts / (m/s)). Volt per unit speed. */
+    public static double DRIVE_KV = 4.2;
+
+    /** Acceleration constant (Volts / (m/s^2)). Volt per unit accel. */
+    public static double DRIVE_KA = 0.45;
+
+    /** Current draw threshold for stall detection (Amps). */
+    public static double DRIVE_CURRENT_THRESHOLD = 9.5;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Observer & Input Filters
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Low-pass filter gain for the velocity observer (0.0 to 1.0). */
+    public static double OBSERVER_LPF_GAIN = 0.15;
+
+    /** LPF for translation joysticks (0.1 to 0.3 recommended). */
+    public static double TRANSLATION_LPF_GAIN = 0.20;
+
+    /** LPF for rotation joysticks (0.2 to 0.4 recommended). */
+    public static double ROTATION_LPF_GAIN = 0.25;
 
     // ─────────────────────────────────────────────────────────────────────────
     // State machine logic

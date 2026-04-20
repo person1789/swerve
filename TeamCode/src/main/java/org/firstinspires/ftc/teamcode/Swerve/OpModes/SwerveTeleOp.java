@@ -4,28 +4,21 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Core.LowPassFilter;
 import org.firstinspires.ftc.teamcode.Swerve.Core.PIDController;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Point;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Input.JoystickScaling;
-import org.firstinspires.ftc.teamcode.Swerve.Input.MotionSmoother;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Localization.SwerveLocalizer;
-import org.firstinspires.ftc.teamcode.Swerve.Core.HWMap;
+import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
 
 /**
  * SwerveTeleOp
  * 
- * High-performance Field-Centric drive OpMode.
- * 
- * Controls:
- * - Left Stick: Translation (Field-Centric)
- * - Right Stick: Rotation
- * - D-Pad: Heading Snap (Up=0, Left=90, Down=180, Right=270)
- * - Options Button: Reset Field-Forward Orientation
+ * High-performance Field-Centric drive OpMode with input filtering and Heading Retention.
  */
 @TeleOp(name = "Swerve TeleOp", group = "Swerve")
 public class SwerveTeleOp extends LinearOpMode {
@@ -33,16 +26,22 @@ public class SwerveTeleOp extends LinearOpMode {
     private SwerveDrivetrain drivetrain;
     private SwerveLocalizer localizer;
     private JoystickScaling scaling;
-    private PIDController snapController;
     
+    private PIDController snapController;
+    private PIDController maintainPID;
+    
+    private LowPassFilter driveFilter;
+    private LowPassFilter strafeFilter;
+    private LowPassFilter turnFilter;
+
     private double targetHeading = 0.0;
     private boolean isSnapping = false;
+    private boolean isMaintaining = false;
 
     private final ElapsedTime timer = new ElapsedTime();
 
     @Override
     public void runOpMode() throws InterruptedException {
-        // Initialization
         HWMap hwMap = new HWMap(hardwareMap);
         Logger logger = new Logger(telemetry);
         
@@ -50,9 +49,14 @@ public class SwerveTeleOp extends LinearOpMode {
         localizer = new SwerveLocalizer(hwMap);
         scaling = new JoystickScaling();
         
-        snapController = new PIDController(SwerveConfig.SNAP_P, SwerveConfig.SNAP_I, SwerveConfig.SNAP_D);
+        driveFilter  = new LowPassFilter(SwerveConfig.TRANSLATION_LPF_GAIN);
+        strafeFilter = new LowPassFilter(SwerveConfig.TRANSLATION_LPF_GAIN);
+        turnFilter   = new LowPassFilter(SwerveConfig.ROTATION_LPF_GAIN);
         
-        telemetry.addData("Status", "Initialized (Localization Active)");
+        snapController = new PIDController(SwerveConfig.SNAP_P, SwerveConfig.SNAP_I, SwerveConfig.SNAP_D);
+        maintainPID = new PIDController(SwerveConfig.HEADING_P, SwerveConfig.HEADING_I, SwerveConfig.HEADING_D);
+        
+        telemetry.addData("Status", "Initialized (Heading Lock Active)");
         telemetry.update();
 
         waitForStart();
@@ -62,59 +66,73 @@ public class SwerveTeleOp extends LinearOpMode {
             double dt = timer.seconds();
             timer.reset();
 
-            // Update localizer
             localizer.update();
             double currentHeading = localizer.getHeading();
 
-            // 1. Read Inputs
-            double drive = -gamepad1.left_stick_y;
-            double strafe = -gamepad1.left_stick_x;
-            double turn = -gamepad1.right_stick_x;
+            // 1. Read & Filter Inputs
+            double rawDrive  = -gamepad1.left_stick_y;
+            double rawStrafe = -gamepad1.left_stick_x;
+            double rawTurn   = -gamepad1.right_stick_x;
 
-            // 2. Heading Reset (Options Button)
+            double drive  = driveFilter.calculate(rawDrive);
+            double strafe = strafeFilter.calculate(rawStrafe);
+            double turn   = turnFilter.calculate(rawTurn);
+
+            // 2. Control State Transitions
             if (gamepad1.options) {
                 localizer.resetHeading();
                 targetHeading = 0;
                 isSnapping = false;
             }
 
-            // 3. Heading Snap (D-pad)
             if (gamepad1.dpad_up)    { targetHeading = 0; isSnapping = true; }
             if (gamepad1.dpad_left)  { targetHeading = Math.PI/2.0; isSnapping = true; }
             if (gamepad1.dpad_down)  { targetHeading = Math.PI; isSnapping = true; }
             if (gamepad1.dpad_right) { targetHeading = -Math.PI/2.0; isSnapping = true; }
 
-            if (Math.abs(turn) > 0.1) isSnapping = false;
+            if (Math.abs(rawTurn) > 0.1) {
+                isSnapping = false;
+                isMaintaining = false;
+            }
 
-            // 4. Transform Inputs (Scaling + Field Centric)
-            Point rawVector = new Point(drive, strafe);
-            Point scaledVector = scaling.ScaleVector(rawVector);
-            
-            // ROTATE translation for Field-Centric mode
-            // We rotate by -currentHeading to transform from field frame to robot frame
+            // Heading Retention Logic
+            boolean isMoving = Math.hypot(rawDrive, rawStrafe) > 0.1;
+            boolean noTurnInput = Math.abs(rawTurn) < 0.05;
+
+            double turnV;
+            if (isSnapping) {
+                turnV = snapController.calculate(currentHeading, targetHeading, dt);
+            } else if (isMoving && noTurnInput) {
+                if (!isMaintaining) {
+                    targetHeading = currentHeading;
+                    isMaintaining = true;
+                    maintainPID.reset();
+                }
+                turnV = maintainPID.calculate(currentHeading, targetHeading, dt);
+            } else {
+                isMaintaining = false;
+                turnV = turn * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S;
+            }
+
+            // 3. Transformation & Command
+            Point scaledVector = scaling.ScaleVector(new Point(drive, strafe));
             double cos = Math.cos(-currentHeading);
             double sin = Math.sin(-currentHeading);
             double fieldDrive = scaledVector.x * cos - scaledVector.y * sin;
             double fieldStrafe = scaledVector.x * sin + scaledVector.y * cos;
 
-            double driveV = fieldDrive * SwerveConfig.MAX_SPEED_MPS;
-            double strafeV = fieldStrafe * SwerveConfig.MAX_SPEED_MPS;
-            double turnV;
-
-            if (isSnapping) {
-                turnV = snapController.calculate(currentHeading, dt);
-            } else {
-                turnV = turn * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S;
-            }
-
-            // 5. Command Drivetrain (Smoothing is handled internally)
-            Pose target = new Pose(driveV, strafeV, turnV);
+            Pose target = new Pose(
+                fieldDrive * SwerveConfig.MAX_SPEED_MPS, 
+                fieldStrafe * SwerveConfig.MAX_SPEED_MPS, 
+                turnV
+            );
+            
             drivetrain.setPose(target, dt);
 
-            // Logging
+            // 4. Telemetry
             drivetrain.log();
-            telemetry.addData("Field Heading", Math.toDegrees(currentHeading));
-            telemetry.addData("Snapping", isSnapping);
+            telemetry.addData("Heading", Math.toDegrees(currentHeading));
+            telemetry.addData("LockMode", isSnapping ? "SNAP" : (isMaintaining ? "MAINTAIN" : "MANUAL"));
             telemetry.update();
         }
     }

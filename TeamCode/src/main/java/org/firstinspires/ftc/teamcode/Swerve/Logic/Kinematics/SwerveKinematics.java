@@ -1,16 +1,14 @@
-/**
- * SwerveKinematics: The "math engine" of the swerve drive.
- * This file takes the robot's desired movement (like "move forward and turn left") 
- * and calculates the specific speed and angle each of the four wheels needs to 
- * move at to make that robot motion happen.
- */
 package org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics;
 
-import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 
 /**
  * SwerveKinematics
+ * 
+ * Geometrically transforms chassis-space velocities into module-space vectors.
+ * Implements second-order discretization to account for curvilinear paths 
+ * during high-speed maneuvers.
  */
 public class SwerveKinematics {
 
@@ -20,38 +18,51 @@ public class SwerveKinematics {
     private final double[][] moduleOffsets;
 
     /**
-     * Construct kinematics using robot dimensions from SwerveConfig.
+     * Initializes robot dimensions from current configuration.
      */
     public SwerveKinematics() {
         this.halfW = (SwerveConfig.TRACK_WIDTH_IN * 0.0254) / 2.0;
         this.halfL = (SwerveConfig.WHEEL_BASE_IN  * 0.0254) / 2.0;
         this.loopTimeSec = SwerveConfig.LOOP_TIME_SEC;
 
-        // FL, FR, RR, RL  (Standard module order)
+        // Module positions relative to robot center (FL, FR, RR, RL)
         this.moduleOffsets = new double[][] {
-            { halfL,  halfW},   // 0 — Front-Left
-            { halfL, -halfW},   // 1 — Front-Right
-            {-halfL, -halfW},   // 2 — Rear-Right
-            {-halfL,  halfW}    // 3 — Rear-Left
+            { halfL,  halfW}, { halfL, -halfW}, {-halfL, -halfW}, {-halfL,  halfW}
         };
     }
 
     /**
-     * Convert chassis-level velocity into four module states.
+     * Convert chassis-level velocity into four module states using second-order discretization.
+     * 
+     * @param vx    Forward velocity (m/s).
+     * @param vy    Strafe velocity (m/s).
+     * @param omega Angular velocity (rad/s).
+     * @return      Array of four module states containing target speed and angle.
      */
     public SwerveModuleState[] toModuleStates(double vx, double vy, double omega) {
-        // Skew correction
-        double halfAngle = omega * loopTimeSec / 2.0;
-        double cosH = Math.cos(halfAngle);
-        double sinH = Math.sin(halfAngle);
-        double vxCorr = vx * cosH - vy * sinH;
-        double vyCorr = vx * sinH + vy * cosH;
+        // Discretization centers the curved path over the loop window to eliminate rotational skew.
+        double dt = loopTimeSec;
+        double angleRad = omega * dt;
+        double vxCorr, vyCorr;
+        
+        if (Math.abs(angleRad) < 1e-6) {
+            vxCorr = vx;
+            vyCorr = vy;
+        } else {
+            double sin = Math.sin(angleRad);
+            double cos = Math.cos(angleRad);
+            double s = sin / angleRad;
+            double c = (1.0 - cos) / angleRad;
+            vxCorr = vx * s - vy * c;
+            vyCorr = vx * c + vy * s;
+        }
 
         SwerveModuleState[] states = new SwerveModuleState[4];
         for (int i = 0; i < 4; i++) {
             double lx = moduleOffsets[i][0];
             double ly = moduleOffsets[i][1];
 
+            // Module velocity vector = Robot velocity + cross(Rotation, Position)
             double moduleVx = vxCorr - omega * ly;
             double moduleVy = vyCorr + omega * lx;
 
@@ -60,20 +71,26 @@ public class SwerveKinematics {
         return states;
     }
 
-    public static void normalizeModuleSpeeds(SwerveModuleState[] states, double maxSpeed) {
-        double maxFound = 0.0;
-        for (SwerveModuleState s : states) {
-            maxFound = Math.max(maxFound, Math.abs(s.speedMetersPerSecond));
+    /**
+     * Forward Kinematics: Resolves module states back into chassis velocity.
+     * Used by the Velocity Observer for feedback fusion.
+     */
+    public Pose toChassisSpeeds(SwerveModuleState[] states) {
+        double vx = 0, vy = 0, omega = 0;
+
+        for (int i = 0; i < 4; i++) {
+            double lx = moduleOffsets[i][0];
+            double ly = moduleOffsets[i][1];
+            double mvx = states[i].speedMetersPerSecond * Math.cos(states[i].angleRadians);
+            double mvy = states[i].speedMetersPerSecond * Math.sin(states[i].angleRadians);
+
+            vx += mvx;
+            vy += mvy;
+            omega += (lx * mvy - ly * mvx) / (lx * lx + ly * ly);
         }
-        if (maxFound > maxSpeed) {
-            double scale = maxSpeed / maxFound;
-            for (SwerveModuleState s : states) {
-                s.speedMetersPerSecond *= scale;
-            }
-        }
+
+        return new Pose(vx / 4.0, vy / 4.0, omega / 4.0);
     }
 
-    public void setLoopTimeSec(double loopTimeSec) {
-        this.loopTimeSec = loopTimeSec;
-    }
+    public void setLoopTimeSec(double loopTimeSec) { this.loopTimeSec = loopTimeSec; }
 }

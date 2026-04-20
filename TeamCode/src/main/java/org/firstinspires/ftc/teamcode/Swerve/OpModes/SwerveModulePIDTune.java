@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServoImplEx;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.Swerve.Core.HWMap;
+import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 
 import java.util.concurrent.TimeUnit;
 
