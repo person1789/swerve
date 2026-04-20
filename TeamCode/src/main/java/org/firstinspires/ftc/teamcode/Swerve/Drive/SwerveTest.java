@@ -62,13 +62,14 @@ public class SwerveTest extends LinearOpMode {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         logger = new Logger(telemetry);
 
-        odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
+        hwMap = new HWMap(hardwareMap);
+        odo = hwMap.getOdo();
+        
         odo.setOffsets(10.5, 1, DistanceUnit.CM);
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.REVERSED);
         odo.resetPosAndIMU();
 
-        hwMap = new HWMap(hardwareMap);
         swerveDrivetrain = new SwerveDrivetrain(hwMap, logger);
 
         waitForStart();

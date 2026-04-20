@@ -1,32 +1,13 @@
 package org.firstinspires.ftc.teamcode.core;
 
-import com.arcrobotics.ftclib.hardware.motors.CRServo;
-import com.arcrobotics.ftclib.hardware.motors.Motor;
-import com.arcrobotics.ftclib.hardware.motors.MotorEx;
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
-import com.qualcomm.hardware.limelightvision.Limelight3A;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServoImplEx;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
-import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 public class HWMap {
-
-    // shooter
-    private final MotorEx flywheelMotor;
-    private final MotorEx turretMotor;
-    private final CRServo pitchServo;
-    private final AnalogInput pitchEncoder;
-    private final Limelight3A limelight;
-
-    //intake
-    private final MotorEx intakeMotor;
-    private final Servo intakeServo;
-
-    private final Servo transferServo;
-    private final AnalogInput transferEncoder;
 
     // Front Left Module Hardware
     public DcMotorEx FLM;
@@ -53,20 +34,6 @@ public class HWMap {
     private final GoBildaPinpointDriver odo;
 
     public HWMap (HardwareMap hardwareMap) {
-        flywheelMotor = new MotorEx(hardwareMap,"FM", Motor.GoBILDA.BARE);
-        flywheelMotor.setZeroPowerBehavior(Motor.ZeroPowerBehavior.FLOAT);
-        flywheelMotor.setInverted(true);
-        turretMotor = new MotorEx(hardwareMap,"TM", Motor.GoBILDA.RPM_1150); // TODO: get right RPM
-        pitchServo = new CRServo(hardwareMap, "PS");
-        pitchEncoder = hardwareMap.get(AnalogInput.class, "PE");
-        transferEncoder = hardwareMap.get(AnalogInput.class, "TE");
-        limelight = hardwareMap.get(Limelight3A.class, "limelight");
-
-        intakeMotor = new MotorEx(hardwareMap, "IM", Motor.GoBILDA.RPM_1150);
-
-        intakeServo = hardwareMap.get(Servo.class, "IS");
-        transferServo = hardwareMap.get(Servo.class, "TS");
-
         FLM = hardwareMap.get(DcMotorEx.class, "FLM");
         FRM = hardwareMap.get(DcMotorEx.class, "FRM");
         BLM = hardwareMap.get(DcMotorEx.class, "BLM");
@@ -85,53 +52,13 @@ public class HWMap {
         odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
-
     }
-
-
 
     public GoBildaPinpointDriver getOdo() {
         return odo;
     }
-    public Limelight3A getLimelight() {
-        return limelight;
-    }
-
-    public MotorEx getFlywheelMotor() {
-        return flywheelMotor;
-    }
-
-    public MotorEx getTurretMotor() {
-        return turretMotor;
-    }
-
-    public CRServo getPitchServo() {
-        return pitchServo;
-    }
-
-    public AnalogInput getPitchEncoder() {
-        return pitchEncoder;
-    }
-
-    public MotorEx getIntakeMotor() {
-        return intakeMotor;
-    }
-
-
-    public Servo getTransferServo() {
-        return transferServo;
-    }
-
-
-    public AnalogInput getTransferEncoder() {
-        return transferEncoder;
-    }
 
     public VoltageSensor getVoltageSensor() {
         return voltageSensor;
-    }
-
-    public Servo getIntakeServo() {
-        return intakeServo;
     }
 }

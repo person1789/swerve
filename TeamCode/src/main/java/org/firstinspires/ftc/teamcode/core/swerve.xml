@@ -1,13 +1,9 @@
 <?xml version='1.0' encoding='UTF-8' standalone='yes' ?>
 <Robot type="FirstInspires-FTC">
-    <EthernetDevice name="limelight" serialNumber="EthernetOverUsb:eth0:172.29.0.26" port="-1" ipAddress="172.29.0.1" />
     <LynxUsbDevice name="Control Hub Portal" serialNumber="(embedded)" parentModuleAddress="173">
         <LynxModule name="Expansion Hub 2" port="2">
-            <goBILDA5202SeriesMotor name="FM" port="0" />
-            <goBILDA5202SeriesMotor name="TM" port="1" />
             <Matrix12vMotor name="BRM" port="2" />
             <Matrix12vMotor name="FRM" port="3" />
-            <ContinuousRotationServo name="PS" port="0" />
             <AnalogInput name="BLE" port="0" />
             <AnalogInput name="FLE" port="1" />
             <AnalogInput name="FRE" port="2" />
@@ -19,15 +15,10 @@
             <ContinuousRotationServo name="BRS" port="1" />
             <ContinuousRotationServo name="FRS" port="2" />
             <ContinuousRotationServo name="FLS" port="3" />
-            <Servo name="TS" port="4" />
         </ServoHub>
         <LynxModule name="Control Hub" port="173">
-            <goBILDA5202SeriesMotor name="IM" port="0" />
             <Matrix12vMotor name="BLM" port="1" />
             <Matrix12vMotor name="FLM" port="2" />
-            <goBILDA5202SeriesMotor name="TRM" port="3" />
-            <AnalogInput name="PE" port="2" />
-            <AnalogInput name="TE" port="3" />
             <LynxEmbeddedIMU name="imu" port="0" bus="0" />
         </LynxModule>
     </LynxUsbDevice>

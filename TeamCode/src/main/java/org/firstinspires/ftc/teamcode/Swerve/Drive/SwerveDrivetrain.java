@@ -104,21 +104,4 @@ public class SwerveDrivetrain {
     }
 
 
-    public double JoystickScaler(double input, double weight) {
-        return weight * pow(input, 3) + (1 - weight) * input;
-    }
-
-    public double SlewRateLimit(double target, double current, double rate, double minPow, double dt) {
-        if (abs(target) <= abs(current) || signum(target) != signum(current)) {
-            return target;
-        }
-
-        if (current == 0 && target != 0) {
-            current = signum(target) * minPow;
-        }
-
-        double maxStep = rate * dt;
-        double error = target - current;
-        return current + Range.clip(error, -maxStep, maxStep);
-    }
 }

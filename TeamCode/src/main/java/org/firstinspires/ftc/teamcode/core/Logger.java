@@ -14,20 +14,13 @@ public class Logger {
         DRIVER_DATA
     }
 
-    public static enum MechanismLog {
-        INTAKE_TRANSFER,
-        LAUNCHER
-    }
-
     private Telemetry telemetry;
     private LogLevels state;
-    private MechanismLog mechanismState;
 
     public Logger(Telemetry telemetry) {
         this.telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
         state = LogLevels.PRODUCTION;
-        mechanismState = MechanismLog.INTAKE_TRANSFER;
     }
 
     public void log(String caption, Object data, LogLevels logLevel) {
@@ -65,22 +58,6 @@ public class Logger {
         }
     }
 
-    public void updateMechanismLevel(boolean Left_Bumper) {
-        if (Left_Bumper) {
-            if (mechanismState == MechanismLog.LAUNCHER) {
-                mechanismState = MechanismLog.INTAKE_TRANSFER;
-                telemetry.addLine("MECHANISM STATE: INTAKE_TRANSFER");
-            } else if (mechanismState == MechanismLog.INTAKE_TRANSFER) {
-                mechanismState = MechanismLog.LAUNCHER;
-                telemetry.addLine("MECHANISM STATE: LAUNCHER");
-            }
-        }
-
-        telemetry.addData("Current Logger State", state);
-        telemetry.addData("Current Mechanism state", mechanismState);
-    }
-
-
     public void print() {
         telemetry.update();
     }
@@ -90,17 +67,10 @@ public class Logger {
     }
 
     public boolean PRODUCTION() {
-        return state == LogLevels.DEBUG;
+        return state == LogLevels.PRODUCTION;
     }
 
     public boolean DRIVER_DATA() {
-        return state == LogLevels.DEBUG;
-    }
-
-    public boolean INTAKE_TRANSFER() {
-        return mechanismState == MechanismLog.INTAKE_TRANSFER;
-    }
-
-    public boolean LAUNCHER() {return mechanismState == MechanismLog.LAUNCHER;
+        return state == LogLevels.DRIVER_DATA;
     }
 }

@@ -8,7 +8,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 
 @Config
-public class Pinpoint {  // TODO: add junit
+public class Pinpoint {
 
     GoBildaPinpointDriver odo;
     Pose2D pos;
@@ -25,16 +25,6 @@ public class Pinpoint {  // TODO: add junit
         odo.setOffsets(Xoffset, Yoffset, DistanceUnit.MM);
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         odo.setEncoderDirections( GoBildaPinpointDriver.EncoderDirection.FORWARD,  GoBildaPinpointDriver.EncoderDirection.FORWARD);
-
-
-       // odo.resetPosAndIMU();
-
-       // Pose2D pose2D = new Pose2D(DistanceUnit.METER, 0, 0.0, AngleUnit.DEGREES, 0.0);
-       /* if (isAuto) {*/
-        //}
-
-    //  odo.setPosition(robotSettings.startPosState.getPose2D());
-
 
         odo.setPosition(robotSettings.startPosState.getPose2D());
         update();
@@ -76,11 +66,7 @@ public class Pinpoint {  // TODO: add junit
     }
 
     public void resetIMU() {
-   //     if(robotSettings.alliance == RobotSettings.Alliance.RED){
-            odo.setPosition(new Pose2D(DistanceUnit.INCH, 89, 8, AngleUnit.DEGREES, 0));
-     //   } else{
-         //   odo.setPosition(new Pose2D(DistanceUnit.INCH, 64.56693, -17.32283, AngleUnit.DEGREES, 180));
-       // }
+        odo.setPosition(new Pose2D(DistanceUnit.INCH, 89, 8, AngleUnit.DEGREES, 0));
     }
 
 
@@ -92,20 +78,6 @@ public class Pinpoint {  // TODO: add junit
         odo.setPosition(pose2D);
         odo.update();
     }
-
-    /*public double getGoalHeading() {
-        double error;
-        if(MainAuto.ALLIANCE.equals("RED")) {
-            error = RED_GOAL_POS.getHeading(AngleUnit.DEGREES) - heading;
-        }
-        else {
-            error = BLUE_GOAL_POS.getHeading(AngleUnit.DEGREES) - heading;
-        }
-        if (Math.signum(error) != Math.signum(getHeadingErrorTrig())) {
-            error = -error;
-        }
-        return error;
-    }*/
 
 
     public double getHeadingErrorTrig() {
@@ -121,9 +93,6 @@ public class Pinpoint {  // TODO: add junit
             error -= 360;
         }
 
-        /*error = -error;
-        error = 360 - error;
-*/
         return error;
     }
 

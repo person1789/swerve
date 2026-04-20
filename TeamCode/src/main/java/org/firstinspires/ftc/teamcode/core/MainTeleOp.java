@@ -1,6 +1,5 @@
 package org.firstinspires.ftc.teamcode.core;
 
-import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.DEGREES;
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.RADIANS;
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.normalizeRadians;
 
@@ -18,28 +17,17 @@ import com.arcrobotics.ftclib.controller.PIDFController;
 import com.arcrobotics.ftclib.gamepad.GamepadEx;
 import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.arcrobotics.ftclib.util.Timing;
-import com.pedropathing.follower.Follower;
-import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
-import com.qualcomm.hardware.rev.Rev9AxisImuOrientationOnRobot;
-import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
-import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.util.ElapsedTime;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
-import org.firstinspires.ftc.teamcode.Swerve.Drive.SwerveTest;
 import org.firstinspires.ftc.teamcode.Swerve.Geo.Point;
 import org.firstinspires.ftc.teamcode.Swerve.Geo.Pose;
-import org.firstinspires.ftc.teamcode.Swerve.Limiters.JoystickScaling;
-import org.firstinspires.ftc.teamcode.Swerve.Limiters.SlewRateLimiter;
 import org.firstinspires.ftc.teamcode.Swerve.Drive.SwerveDrivetrain;
-import org.firstinspires.ftc.teamcode.shooter.LauncherFSM;
-import org.firstinspires.ftc.teamcode.intake.IntakeFSM;
-import org.firstinspires.ftc.teamcode.intaketransfer.TransferFSM;
 
 import java.util.concurrent.TimeUnit;
 
@@ -53,20 +41,14 @@ public class MainTeleOp extends LinearOpMode {
     private Logger logger;
     private HWMap hwMap;
     private RobotSettings robotSettings;
-    private GamepadEx gamepadE2;
     private GamepadEx gamepadE1;
 
     private Pinpoint pinpoint;
-    private GamepadEx gamepad;
-    private IntakeFSM intakeFSM;
-    private TransferFSM transferFSM;
-    private LauncherFSM launcherFSM;
 
     private Timing.Timer loopTimer;
 
     private ElapsedTime timer = new ElapsedTime();
     public double BotHeading;
-    private GoBildaPinpointDriver odo;
 
     private final PIDFController headingController = new PIDFController(0, 0, 0, 0);
     public static double P = -0.3, I = 0, D = -0.01, F = 0;
@@ -75,7 +57,7 @@ public class MainTeleOp extends LinearOpMode {
 
     public static double TRANSLATION_SLEW = 1.5;
     public static double ROTATION_SLEW = 3.0;
-    public static double PID_SLEW_RATE = 20000000000000.0;
+    public static double PID_SLEW_RATE = 100.0; // Effectively disabled at this high rate
 
     public static double MIN_TRANSLATION_POW = 0.05;
     public static double MIN_ROTATION_POW = 0.08;
@@ -93,7 +75,6 @@ public class MainTeleOp extends LinearOpMode {
 
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
-        gamepadE2 = new GamepadEx(gamepad2);
         gamepadE1 = new GamepadEx(gamepad1);
 
         logger = new Logger(telemetry);
@@ -105,25 +86,12 @@ public class MainTeleOp extends LinearOpMode {
             pinpoint.setPosition(new Pose2D(DistanceUnit.INCH, PoseStorage.currentPose.getX(),PoseStorage.currentPose.getY(), AngleUnit.DEGREES, PoseStorage.currentPose.getHeading()));
         }
 
-        launcherFSM = new LauncherFSM(hwMap,telemetry, pinpoint, robotSettings, logger, false);
-        transferFSM = new TransferFSM(hwMap, telemetry,logger, false);
-        intakeFSM = new IntakeFSM(hwMap, telemetry, logger);
-
-
         loopTimer = new Timing.Timer(300000000, TimeUnit.MILLISECONDS); double botHeading;
-        logger.log("<b><u><i><font color='orange'>distance method</font></b></u></i>", robotSettings.distanceMethod, Logger.LogLevels.PRODUCTION);
         if(robotSettings.alliance == RobotSettings.Alliance.RED) {
             logger.log("<b><u><font color='red'>ALLIANCE</font></u></b>", robotSettings.alliance, Logger.LogLevels.PRODUCTION);
         }else{
             logger.log("<b><u><font color='blue'>ALLIANCE</font></u></b>", robotSettings.alliance, Logger.LogLevels.PRODUCTION);
         }
-        logger.log("<b><u><i><font color='orange'>CHECK THE CHECKLIST</font></i></b></u>","", Logger.LogLevels.PRODUCTION);
-/*
-        odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
-        odo.setOffsets(10.5, 1, DistanceUnit.CM);
-        odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
-        odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.REVERSED);
-        odo.resetPosAndIMU();*/
 
         hwMap = new HWMap(hardwareMap);
         swerveDrivetrain = new SwerveDrivetrain(hwMap, logger);
@@ -135,7 +103,6 @@ public class MainTeleOp extends LinearOpMode {
         waitForStart();
         while (opModeIsActive()) {
             loopTimer.start();
-            gamepadE2.readButtons();
 
             double voltage = hwMap.getVoltageSensor().getVoltage();
 
@@ -143,14 +110,6 @@ public class MainTeleOp extends LinearOpMode {
 
             if (gamepadE1.getButton(GamepadKeys.Button.START)) {
                 pinpoint.resetIMU();
-            }
-
-            if(gamepadE1.getButton(GamepadKeys.Button.BACK) && robotSettings.distanceMethod == RobotSettings.DistanceMethod.PINPOINT_ONLY) {
-                robotSettings.distanceMethod = RobotSettings.DistanceMethod.LIMELIGHT_ONLY;
-            }
-
-            if(gamepadE1.getButton(GamepadKeys.Button.BACK) && robotSettings.distanceMethod == RobotSettings.DistanceMethod.LIMELIGHT_ONLY) {
-                robotSettings.distanceMethod = RobotSettings.DistanceMethod.LIMELIGHT_ONLY;
             }
 
             pinpoint.update();
@@ -209,11 +168,6 @@ public class MainTeleOp extends LinearOpMode {
 
             swerveDrivetrain.setPose(new Pose(new Point(drivevector.x, drivevector.y).rotate(botHeading), totalTurn));
 
-            intakeFSM.updateState(gamepadE1.getButton(GamepadKeys.Button.DPAD_UP), gamepadE1.getButton(GamepadKeys.Button.DPAD_LEFT));
-            transferFSM.updateState(gamepadE1.isDown(GamepadKeys.Button.RIGHT_BUMPER));
-            launcherFSM.updateState(gamepadE1.getButton(GamepadKeys.Button.B),gamepadE1.getButton(GamepadKeys.Button.Y),gamepadE2.wasJustPressed(GamepadKeys.Button.DPAD_UP), gamepadE2.wasJustPressed(GamepadKeys.Button.DPAD_DOWN),gamepadE2.wasJustPressed(GamepadKeys.Button.DPAD_LEFT),gamepadE2.wasJustPressed(GamepadKeys.Button.DPAD_RIGHT),gamepadE2.wasJustPressed(GamepadKeys.Button.Y),gamepadE2.wasJustPressed(GamepadKeys.Button.A),gamepadE2.wasJustPressed(GamepadKeys.Button.B),gamepadE2.wasJustPressed(GamepadKeys.Button.X), gamepadE2.wasJustPressed(GamepadKeys.Button.LEFT_BUMPER), gamepadE2.getButton(GamepadKeys.Button.RIGHT_BUMPER));
-
-            //   logger.log("is blue", robotSettings.alliance.getGoalPos().equals(RobotSettings.Alliance.BLUE.getGoalPos()), Logger.LogLevels.PRODUCTION);
             logUpdate(botHeading, voltage);
 
             telemetry.update();
@@ -221,14 +175,6 @@ public class MainTeleOp extends LinearOpMode {
 
     }
     private void logUpdate(double botHeading, double voltage){
-        launcherFSM.flywheelFSM.log();
-        launcherFSM.positionFSM.logLL();
-        launcherFSM.positionFSM.logPP();
-        launcherFSM.pitchFSM.log();
-        launcherFSM.turretFSM.log();
-        launcherFSM.positionFSM.log();
-        transferFSM.log();
-        intakeFSM.log();
         logger.log("battery voltage", voltage, Logger.LogLevels.DEBUG);
         logger.log("loop time", loopTimer.elapsedTime(), Logger.LogLevels.DEBUG);
         logger.log("Bot Heading", botHeading, Logger.LogLevels.DEBUG);

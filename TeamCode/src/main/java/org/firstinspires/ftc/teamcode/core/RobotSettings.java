@@ -31,11 +31,6 @@ public class RobotSettings {
         }
     }
 
-    public enum DistanceMethod{
-        LIMELIGHT_ONLY,
-        PINPOINT_ONLY,
-        LIMELIGHT_AND_PINPOINT
-    }
     public enum StartPos{
         CLOSE_RED (new Pose2D(DistanceUnit.INCH,120 ,127.87, AngleUnit.DEGREES, 319.6)),
         FAR_RED (new Pose2D(DistanceUnit.INCH, 89, 8, AngleUnit.DEGREES, 0)),
@@ -54,7 +49,6 @@ public class RobotSettings {
     }
 
     public Alliance alliance;
-    public DistanceMethod distanceMethod;
     public StartPos startPosState;
 
     private static final String FILENAME = "RobotSettings.json";
@@ -85,7 +79,6 @@ public class RobotSettings {
 
     public RobotSettings () {
         alliance = Alliance.RED;
-        distanceMethod = DistanceMethod.LIMELIGHT_ONLY;
         startPosState = StartPos.CLOSE_RED;
     }
 
