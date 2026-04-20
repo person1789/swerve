@@ -14,6 +14,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveAuditor;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
+import org.firstinspires.ftc.teamcode.Swerve.Input.MotionSmoother;
 import org.firstinspires.ftc.teamcode.core.HWMap;
 import org.firstinspires.ftc.teamcode.core.Logger;
 
@@ -39,6 +40,7 @@ public class SwerveDrivetrain {
 
     private final SwerveKinematics kinematics;
     private final SwerveAuditor auditor;
+    private final MotionSmoother smoother;
 
     private States state = States.DRIVING;
     private final ElapsedTime lockTimer = new ElapsedTime();
@@ -74,6 +76,7 @@ public class SwerveDrivetrain {
 
         kinematics = new SwerveKinematics();
         auditor = new SwerveAuditor();
+        smoother = new MotionSmoother();
     }
 
     /**
@@ -81,12 +84,26 @@ public class SwerveDrivetrain {
      * 
      * @param pose {x = robot-forward m/s, y = robot-left m/s, heading = rad/s}
      */
-    public void setPose(Pose pose) {
-        boolean hasInput = (Math.hypot(pose.x, pose.y) > 0.01 || Math.abs(pose.heading) > 0.01);
+    public void setPose(Pose driverTarget, double dt) {
+        boolean hasInput = (Math.hypot(driverTarget.x, driverTarget.y) > 0.01 || Math.abs(driverTarget.heading) > 0.01);
+
+        // Step 1: Calculate System Limits (Saturation Scaling)
+        // We look at what the driver WANTS and see if it's physically possible
+        SwerveModuleState[] rawStates = kinematics.toModuleStates(driverTarget.x, driverTarget.y, driverTarget.heading);
+        double maxFound = 0.0;
+        for (SwerveModuleState s : rawStates) {
+            maxFound = Math.max(maxFound, Math.abs(s.speedMetersPerSecond));
+        }
+        
+        double scalingFactor = (maxFound > SwerveConfig.MAX_SPEED_MPS) ? SwerveConfig.MAX_SPEED_MPS / maxFound : 1.0;
+        Pose systemLimit = new Pose(driverTarget.x * scalingFactor, driverTarget.y * scalingFactor, driverTarget.heading * scalingFactor);
+
+        // Step 2: Smooth the command (Intelligent Braking)
+        Pose smoothedPose = smoother.calculate(driverTarget, systemLimit, dt);
 
         switch (state) {
             case DRIVING:
-                driveWithPipeline(pose);
+                driveWithPipeline(smoothedPose);
                 if (!hasInput) {
                     lockTimer.reset();
                     state = States.WAITING_TO_LOCK;
@@ -94,7 +111,9 @@ public class SwerveDrivetrain {
                 break;
 
             case WAITING_TO_LOCK:
-                driveWithPipeline(new Pose(0, 0, 0));
+                // When waiting to lock, we smooth towards zero
+                Pose stopTarget = new Pose(0, 0, 0);
+                driveWithPipeline(smoother.calculate(stopTarget, stopTarget, dt));
                 if (hasInput) {
                     state = States.DRIVING;
                 } else if (lockTimer.milliseconds() > SwerveConfig.LOCK_DELAY_MS) {

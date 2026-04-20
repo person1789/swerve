@@ -166,7 +166,7 @@ public class MainTeleOp extends LinearOpMode {
             double totalTurn = driveTurn + slewedPid;
             Point drivevector = new Point(driveX, driveY);
 
-            swerveDrivetrain.setPose(new Pose(new Point(drivevector.x, drivevector.y).rotate(botHeading), totalTurn));
+            swerveDrivetrain.setPose(new Pose(new Point(drivevector.x, drivevector.y).rotate(botHeading), totalTurn), dt);
 
             logUpdate(botHeading, voltage);
 

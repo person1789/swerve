@@ -32,7 +32,6 @@ public class SwerveTeleOp extends LinearOpMode {
 
     private SwerveDrivetrain drivetrain;
     private SwerveLocalizer localizer;
-    private MotionSmoother smoother;
     private JoystickScaling scaling;
     private PIDController snapController;
     
@@ -49,7 +48,6 @@ public class SwerveTeleOp extends LinearOpMode {
         
         drivetrain = new SwerveDrivetrain(hwMap, logger);
         localizer = new SwerveLocalizer(hwMap);
-        smoother = new MotionSmoother();
         scaling = new JoystickScaling();
         
         snapController = new PIDController(SwerveConfig.SNAP_P, SwerveConfig.SNAP_I, SwerveConfig.SNAP_D);
@@ -109,12 +107,9 @@ public class SwerveTeleOp extends LinearOpMode {
                 turnV = turn * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S;
             }
 
-            // 5. Smoothing
+            // 5. Command Drivetrain (Smoothing is handled internally)
             Pose target = new Pose(driveV, strafeV, turnV);
-            Pose smoothed = smoother.calculate(target, dt);
-
-            // 6. Command Drivetrain
-            drivetrain.setPose(smoothed);
+            drivetrain.setPose(target, dt);
 
             // Logging
             drivetrain.log();

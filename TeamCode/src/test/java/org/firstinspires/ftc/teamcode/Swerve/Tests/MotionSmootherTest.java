@@ -9,7 +9,8 @@ import static org.junit.jupiter.api.Assertions.*;
  * Unit tests for MotionSmoother — Phase D
  * 
  * Verifies that the smoother correctly ramps velocity (Acceleration limit)
- * and ramps acceleration (Jerk limit), preventing instant spikes in motor power.
+ * and ramps acceleration (Jerk limit) when speeding up, while allowing 
+ * instant snappy response when slowing down.
  */
 public class MotionSmootherTest {
 
@@ -25,7 +26,7 @@ public class MotionSmootherTest {
         
         // Over several loops, velocity should increase but NOT reach 1.0 immediately
         for (int i = 0; i < 5; i++) {
-            Pose currentV = smoother.calculate(target, dt);
+            Pose currentV = smoother.calculate(target, target, dt);
             
             // Check that velocity is increasing
             assertTrue(currentV.x >= lastV.x, "Velocity should be non-decreasing");
@@ -44,7 +45,7 @@ public class MotionSmootherTest {
         
         // Demand X velocity, but zero Y and Theta
         Pose target = new Pose(1.0, 0, 0.0);
-        Pose result = smoother.calculate(target, 0.1);
+        Pose result = smoother.calculate(target, target, 0.1);
         
         assertTrue(result.x > 0);
         assertEquals(0.0, result.y, 1e-6);
@@ -58,15 +59,15 @@ public class MotionSmootherTest {
         
         // First get up to speed
         for(int i=0; i<50; i++) {
-            smoother.calculate(new Pose(1.0, 0, 0), 0.02);
+            smoother.calculate(new Pose(1.0, 0, 0), new Pose(1.0, 0, 0), 0.02);
         }
         
-        // Now target zero
+        // Now target zero (Driver pullback)
         Pose stopTarget = new Pose(0, 0, 0);
-        Pose result = smoother.calculate(stopTarget, 0.02);
+        Pose result = smoother.calculate(stopTarget, stopTarget, 0.02);
         
-        // Should still be moving forward due to smoothing
-        assertTrue(result.x > 0.0, "Should have momentum during deceleration");
-        assertTrue(result.x < 1.0, "Should be slowing down");
+        // As per the "Intelligent Asymmetric Braking" requirement, 
+        // driver-initiated slowdowns should be INSTANT.
+        assertEquals(0.0, result.x, 1e-6);
     }
 }
