@@ -1,17 +1,25 @@
 package org.firstinspires.ftc.teamcode.Swerve.Tests;
 
+import org.junit.jupiter.api.Test;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * MasterTestSuite — IDE Console Edition
+ * MasterTestSuite
  * 
- * Specifically designed to run within the Android Studio "Run" tab or 
- * the IDE terminal. It validates pure-logic components without requiring 
- * an Android device/emulator.
+ * Central coordinator for all logic verification.
+ * Discoverable and runnable via Android Studio Unit Test Runner.
  */
 public class MasterTestSuite {
+
+    /**
+     * Entry point for Android Studio "Run Test" context menu.
+     */
+    @Test
+    public void runFullSystemDiagnostics() {
+        main(new String[0]);
+    }
 
     public static void main(String[] args) {
         System.out.println("\n\u001B[34m" + "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━" + "\u001B[0m");

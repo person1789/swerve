@@ -9,6 +9,7 @@ repositories {
 }
 
 dependencies {
+    testImplementation 'junit:junit:4.13.2'
     implementation 'org.firstinspires.ftc:Inspection:11.0.0'
     implementation 'org.firstinspires.ftc:Blocks:11.0.0'
     implementation 'org.firstinspires.ftc:RobotCore:11.0.0'
@@ -25,7 +26,6 @@ dependencies {
     implementation 'com.acmerobotics.dashboard:dashboard:0.4.16'
     implementation 'com.pedropathing:ftc:2.0.4'
     implementation 'com.pedropathing:ftc:2.1.0-alpha.1'
-
     implementation 'com.pedropathing:telemetry:1.0.0'
 }
 
