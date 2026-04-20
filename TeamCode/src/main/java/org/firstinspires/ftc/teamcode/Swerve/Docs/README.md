@@ -23,6 +23,8 @@ Before testing on the real field, always run the **Unit Tests** on your computer
 ## Documentation Index
 - [Architecture & Data Flow](./Architecture.md): How the "brains" of the robot work.
 - [Unit Testing Guide](./UnitTestingGuide.md): How to prevent bugs on your laptop.
+- [Simulator Guide](./Simulator.md): How to run the Next.js "Digital Twin" App.
+- [Movement Logic](./MovementLogic.md): Deep dive into Asymmetric Braking and S-Curves.
 
 ---
 *Created for the FTC Swerve Project.*

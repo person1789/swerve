@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.core;
+package org.firstinspires.ftc.teamcode.Swerve.OpModes;
 
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.RADIANS;
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.normalizeRadians;
@@ -25,6 +25,11 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
+import org.firstinspires.ftc.teamcode.Swerve.Core.HWMap;
+import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
+import org.firstinspires.ftc.teamcode.Swerve.Core.Pinpoint;
+import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
+import org.firstinspires.ftc.teamcode.Swerve.Core.RobotSettings;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Point;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;

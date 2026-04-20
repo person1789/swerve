@@ -13,8 +13,8 @@ import org.firstinspires.ftc.teamcode.Swerve.Input.JoystickScaling;
 import org.firstinspires.ftc.teamcode.Swerve.Input.MotionSmoother;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Localization.SwerveLocalizer;
-import org.firstinspires.ftc.teamcode.core.HWMap;
-import org.firstinspires.ftc.teamcode.core.Logger;
+import org.firstinspires.ftc.teamcode.Swerve.Core.HWMap;
+import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
 
 /**
  * SwerveTeleOp

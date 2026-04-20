@@ -6,7 +6,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
-import org.firstinspires.ftc.teamcode.core.HWMap;
+import org.firstinspires.ftc.teamcode.Swerve.Core.HWMap;
 
 /**
  * SwerveLocalizer

@@ -21,19 +21,35 @@ This library follows a strict **Input -> Logic -> Hardware** abstraction hierarc
 - **Key Components**:
   - `SwerveDrivetrain`: The high-level coordinator that feeds smoothed inputs into the kinematics engine and commands the modules.
   - `SwerveModule`: Controls an individual "pod," managing its specific Drive Motor and Steer Servo via a local PID loop.
+- **Config**: `swerve.xml` (located here) defines the hardware port mapping.
 
-## 4. Core Utilities (`Swerve.Core` & `Swerve.Geometry`)
-- **SwerveConfig**: Centralized tuning for everything from PID gains to wheeloffsets. **This is the ONLY file most users will ever need to edit.**
-- **MathUtil**: Specialized helpers for angle normalization and shortest-path calculation.
-- **Pose/Point**: Basic math types used throughout the library.
+## 4. Operational Entry Points (`Swerve.OpModes`)
+- **Main Driver Logic**:
+  - `SwerveTeleOp`: The primary competitive tele-op mode.
+  - `MainTeleOp`: Alternative/Legacy driver control logic.
+  - `SwerveModulePIDTune`: A specialized utility for calibrating steering response.
+
+## 5. Core Utilities (`Swerve.Core` & `Swerve.Geometry`)
+- **Swerve.Core**:
+  - `SwerveConfig`: Centralized tuning for everything from PID gains to wheel offsets.
+  - `HWMap`: The "Bridge" that connects software variables to physical robot hardware.
+  - `Logger`: A high-performance telemetry system for real-time debugging.
+  - `Pinpoint`: Driver for the GoBILDA Pinpoint computer.
+- **Swerve.Geometry**:
+  - `MathUtil`: Specialized helpers for angle normalization.
+  - `Pose`/`Point`/`D2Vector`: Math types used throughout the library.
+
+## 6. Simulation & Testing (`swerve-sim/`)
+- **Digital Twin**: Located outside the main Java source, this is a separate app that mirrors your robot's exact physics and logic for practice and testing.
 
 ---
 
-## The Loop Flow
-Each control cycle follows this path:
-1. `SwerveTeleOp` reads joysticks and passes them to `SwerveDrivetrain`.
-2. `SwerveDrivetrain` smooths the request using `MotionSmoother`.
-3. `SwerveKinematics` calculates 4 target wheel states.
-4. `SwerveAuditor` optimizes those states to minimize steering time.
-5. `SwerveModule` instances use their internal **PIDControllers** to snap the wheels to the right angle and speed.
-6. `SwerveLocalizer` updates the field position for field-centric driving.
+## The Control Loop
+Each 20ms control cycle follows this path:
+1. `SwerveTeleOp` reads raw joysticks and passes them to `SwerveDrivetrain`.
+2. `SwerveDrivetrain` identifies **Driver Intent** and calculates **System Limits**.
+3. `MotionSmoother` performs **Asymmetric Braking** (Snappy human response, smooth system ramp).
+4. `SwerveKinematics` calculates 4 target wheel states with **Skew Correction**.
+5. `SwerveAuditor` optimizes those states to minimize steering turn-time.
+6. `SwerveModule` instances use PID to command physical motors.
+7. `SwerveLocalizer` updates the field coordinate (X, Y, θ).

@@ -15,8 +15,8 @@ import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveAuditor;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 import org.firstinspires.ftc.teamcode.Swerve.Input.MotionSmoother;
-import org.firstinspires.ftc.teamcode.core.HWMap;
-import org.firstinspires.ftc.teamcode.core.Logger;
+import org.firstinspires.ftc.teamcode.Swerve.Core.HWMap;
+import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
 
 /**
  * SwerveDrivetrain
