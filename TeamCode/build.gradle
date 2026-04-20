@@ -33,6 +33,12 @@ android {
             useJUnitPlatform()
         }
     }
+
+    sourceSets {
+        main.java.srcDirs = ['src/main/java']
+        test.java.srcDirs = ['src/test/java']
+        androidTest.java.srcDirs = ['src/androidTest/java']
+    }
 }
 
 ext.junitVersion = "5.10.3"
@@ -42,6 +48,7 @@ dependencies {
     testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
     testImplementation "org.mockito:mockito-core:5.13.0"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
+    testImplementation 'org.java-websocket:Java-WebSocket:1.6.0'
     implementation 'org.ftclib.ftclib:core:2.1.1' // core
     annotationProcessor files('lib/OpModeAnnotationProcessor.jar')
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.7'
