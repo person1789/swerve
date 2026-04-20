@@ -33,10 +33,9 @@ public class PinpointTest {
 
         double error = targetAngle - robotHeading;
 
-        if(error <= -180) {
+        if (error <= -180) {
             error += 360;
-        }
-        else if (error >= 180) {
+        } else if (error >= 180) {
             error -= 360;
         }
 
