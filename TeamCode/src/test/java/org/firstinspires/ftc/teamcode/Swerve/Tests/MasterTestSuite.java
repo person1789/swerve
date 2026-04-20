@@ -14,6 +14,17 @@ import java.util.List;
 public class MasterTestSuite {
 
     /**
+     * SITL Launcher: Runs the production Java brain for the browser simulator.
+     */
+    @Test
+    public void launchSITL() throws InterruptedException {
+        System.out.println("\n\u001B[32m" + "SITL BRIDGE: Initializing Java Simulation Brain..." + "\u001B[0m");
+        SwerveSimServer.main(new String[0]);
+        // Keep the SITL brain alive forever
+        Thread.sleep(Long.MAX_VALUE);
+    }
+
+    /**
      * Entry point for Android Studio and CLI testing.
      * Right-click and select "Run 'MasterTestSuite'" to execute.
      */

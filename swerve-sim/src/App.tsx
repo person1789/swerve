@@ -1,50 +1,42 @@
-import { useState, useCallback } from 'react';
-import SwerveSim from './components/SwerveSim';
-import Sidebar from './components/Sidebar';
-import TelemetryPanel from './components/TelemetryPanel';
-
-interface TelemetryEntry {
-    timestamp: number;
-    posX: number;
-    posY: number;
-    heading: number;
-    velX: number;
-    velY: number;
-    velH: number;
-    accelX: number;
-    accelY: number;
-    accelH: number;
-    jerkX: number;
-    jerkY: number;
-    jerkH: number;
-    [key: string]: number;
-}
+import { useState, useCallback, useRef } from 'react';
+import MosaicShell from './components/MosaicShell';
+import type { TelemetryEntry } from './types/telemetry';
 
 function App() {
-  const [showModuleVectors, setShowModuleVectors] = useState(true);
-  const [showChassisVector, setShowChassisVector] = useState(true);
-  const [showRotationVector, setShowRotationVector] = useState(true);
+  const showModuleVectors = true;
 
-  // Telemetry State
-  const [telemetryData, setTelemetryData] = useState<TelemetryEntry[]>([]);
+  // Temporal Engine State
+  const historyRef = useRef<TelemetryEntry[]>([]);
+  const [scrubIndex, setScrubIndex] = useState(-1);
+  const [isLive, setIsLive] = useState(true);
   const [isRecording, setIsRecording] = useState(false);
 
+  // Frame to Display
+  const currentFrame = isLive || scrubIndex === -1 
+    ? (historyRef.current[historyRef.current.length - 1] || null)
+    : historyRef.current[scrubIndex];
+
   const handleTelemetryUpdate = useCallback((entry: TelemetryEntry) => {
-    setTelemetryData(prev => {
-      const next = [...prev, entry];
-      // Keep only last 1000 items in memory if not recording to save performance
-      if (!isRecording && next.length > 500) return next.slice(-500);
-      return next;
-    });
-  }, [isRecording]);
+    historyRef.current.push(entry);
+    
+    // Limit history to 30,000 points (~10mins at 50Hz) for custom binary seek
+    if (historyRef.current.length > 30000) {
+      historyRef.current.shift();
+    }
+
+    if (isLive) {
+      setScrubIndex(historyRef.current.length - 1);
+    }
+  }, [isLive]);
 
   const handleExportCSV = () => {
-    if (telemetryData.length === 0) return;
+    const data = historyRef.current;
+    if (data.length === 0) return;
 
-    const headers = Object.keys(telemetryData[0]);
+    const headers = ["timestamp", "x", "y", "heading", "mode"];
     const csvRows = [
-      headers.join(','), // Header row
-      ...telemetryData.map(row => headers.map(header => row[header]).join(','))
+      headers.join(','),
+      ...data.map(row => headers.map(header => row[header]).join(','))
     ];
 
     const csvContent = csvRows.join('\n');
@@ -52,58 +44,70 @@ function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `swerve_telemetry_${new Date().toISOString()}.csv`);
+    link.setAttribute('download', `swerve_scope_${new Date().toISOString()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   return (
-    <div className="flex w-full h-screen bg-slate-950 text-slate-100 overflow-hidden">
-      {/* Sidebar Controls */}
-      <Sidebar 
-        showModuleVectors={showModuleVectors} 
-        setShowModuleVectors={setShowModuleVectors}
-        showChassisVector={showChassisVector}
-        setShowChassisVector={setShowChassisVector}
-        showRotationVector={showRotationVector}
-        setShowRotationVector={setShowRotationVector}
+    <div className="flex flex-col w-full h-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
+      {/* Top Header */}
+      <header className="h-10 border-b border-slate-800 flex items-center justify-between px-6 bg-slate-900/40 backdrop-blur-md shrink-0">
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            <h1 className="text-xs font-black tracking-tighter text-blue-500 uppercase">SwerveScope</h1>
+            <div className="h-4 w-[1px] bg-slate-800 mx-2" />
+            <div className={`w-2 h-2 rounded-full ${isLive ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500 shadow-[0_0_8px_currentColor]'} `} />
+            <span className={`text-[10px] font-mono font-bold tracking-wider ${isLive ? 'text-emerald-400' : 'text-amber-400'}`}>
+              {isLive ? 'LIVE_FEED' : 'HISTORY_SEEK'}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-6">
+          <button 
+            onClick={() => setIsLive(true)}
+            className={`px-3 py-1 text-[9px] font-mono font-bold border rounded transition-all ${isLive ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/40' : 'bg-slate-800 text-slate-400 border-slate-700 hover:border-slate-500'}`}
+          >
+            SNAP_LIVE
+          </button>
+        </div>
+      </header>
+
+      {/* Tiled Dashboard */}
+      <MosaicShell 
+        showModuleVectors={showModuleVectors}
+        onTelemetryUpdate={handleTelemetryUpdate}
+        currentFrame={currentFrame}
+        history={historyRef.current}
+        isLive={isLive}
+        isRecording={isRecording}
+        onStartRecording={() => setIsRecording(true)}
+        onStopRecording={() => setIsRecording(false)}
+        onClear={() => { historyRef.current = []; setScrubIndex(-1); }}
+        onExport={handleExportCSV}
       />
-      
-      {/* Main Dashboard - Split Screen */}
-      <div className="flex-1 flex overflow-hidden">
-        {/* Left: Robot Viewport */}
-        <section className="flex-[1.2] relative border-r border-slate-800">
-          <header className="absolute top-0 left-0 right-0 p-6 flex justify-between items-center pointer-events-none z-10">
-            <div>
-              <h2 className="text-[10px] font-mono text-slate-500 uppercase tracking-[0.2em] mb-1">Observation Environment</h2>
-              <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse shadow-[0_0_8px_rgba(59,130,246,0.8)]" />
-                <p className="text-[10px] font-mono text-blue-400 font-bold tracking-wider">FIXED_LOOP // 20MS POLLING</p>
-              </div>
-            </div>
-          </header>
 
-          <SwerveSim 
-            showModuleVectors={showModuleVectors}
-            showChassisVector={showChassisVector}
-            showRotationVector={showRotationVector}
-            onTelemetryUpdate={handleTelemetryUpdate}
-          />
-        </section>
-
-        {/* Right: Telemetry Dashboard */}
-        <section className="flex-1 min-w-[400px]">
-          <TelemetryPanel 
-            data={telemetryData}
-            isRecording={isRecording}
-            onStartRecording={() => setIsRecording(true)}
-            onStopRecording={() => setIsRecording(false)}
-            onClear={() => setTelemetryData([])}
-            onExport={handleExportCSV}
-          />
-        </section>
-      </div>
+      {/* Global Scrubber Footer */}
+      <footer className="h-12 border-t border-slate-800 bg-slate-900 px-6 flex items-center gap-4 shrink-0">
+         <span className="text-[10px] font-mono text-slate-500 w-12 text-right">0:00</span>
+         <div className="flex-1 relative group h-4 flex items-center">
+           <input 
+             type="range"
+             min="0"
+             max={Math.max(0, historyRef.current.length - 1)}
+             value={scrubIndex === -1 ? historyRef.current.length - 1 : scrubIndex}
+             onChange={(e) => {
+               setIsLive(false);
+               setScrubIndex(parseInt(e.target.value));
+             }}
+             className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500 group-hover:h-1.5 transition-all"
+           />
+         </div>
+         <span className="text-[10px] font-mono text-slate-500 w-12">
+           {((historyRef.current.length * 0.02)).toFixed(1)}s
+         </span>
+      </footer>
     </div>
   );
 }

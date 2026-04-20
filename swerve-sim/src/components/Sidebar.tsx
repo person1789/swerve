@@ -1,145 +1,110 @@
-import React, { useState } from 'react';
-import { Settings2, Zap, Cpu, RotateCcw, Activity, ChevronDown, ChevronRight, Sliders } from 'lucide-react';
-import { SwerveConfig } from '../lib/SwerveLogic';
+import React from 'react';
 
 interface SidebarProps {
     showModuleVectors: boolean;
-    setShowModuleVectors: (v: boolean) => void;
+    setShowModuleVectors: (val: boolean) => void;
     showChassisVector: boolean;
-    setShowChassisVector: (v: boolean) => void;
+    setShowChassisVector: (val: boolean) => void;
     showRotationVector: boolean;
-    setShowRotationVector: (v: boolean) => void;
+    setShowRotationVector: (val: boolean) => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({
+const Sidebar: React.FC<SidebarProps> = ({ 
     showModuleVectors, setShowModuleVectors,
     showChassisVector, setShowChassisVector,
     showRotationVector, setShowRotationVector
 }) => {
-    const [useRealtime, setUseRealtime] = useState(SwerveConfig.USE_REALTIME);
-    const [, forceUpdate] = useState(0);
 
-    const toggleRealtime = () => {
-        SwerveConfig.USE_REALTIME = !SwerveConfig.USE_REALTIME;
-        setUseRealtime(SwerveConfig.USE_REALTIME);
-    };
-
-    const updateConfig = (key: keyof typeof SwerveConfig, val: number) => {
-        (SwerveConfig as any)[key] = val;
-        forceUpdate(s => s + 1);
+    const sendSnap = (direction: string) => {
+        // Find the global socket and send a snap command
+        // This is a quick bridge for SITL manual testing
+        const socket = (window as any).sitlSocket;
+        if (socket && socket.readyState === WebSocket.OPEN) {
+            const cmd: any = { drive: 0, strafe: 0, turn: 0 };
+            cmd[`dpad_${direction}`] = true;
+            socket.send(JSON.stringify(cmd));
+        }
     };
 
     return (
-        <div className="w-80 h-screen bg-slate-900 border-r border-slate-800 p-6 flex flex-col gap-6 shadow-2xl relative z-20 overflow-y-auto custom-scrollbar">
-            <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-blue-600/20 rounded-xl flex items-center justify-center border border-blue-500/30">
-                    <Zap className="w-6 h-6 text-blue-400" />
-                </div>
-                <div>
-                    <h1 className="text-xl font-bold tracking-tight text-white">Swerve Sim</h1>
-                    <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Hardware Twin v2.1</p>
-                </div>
+        <aside className="w-80 h-full border-r border-slate-800 bg-slate-900/50 backdrop-blur-xl p-8 flex flex-col gap-8 z-20">
+            <div>
+                <h1 className="text-xl font-bold tracking-tighter bg-gradient-to-br from-white to-slate-400 bg-clip-text text-transparent">
+                    SWERVE <span className="text-blue-500">SITL</span>
+                </h1>
+                <p className="text-[10px] font-mono text-slate-500 mt-1 uppercase tracking-widest">Digital Twin Environment v2.0</p>
             </div>
 
-            {/* Sim Control */}
-            <div className="p-4 bg-slate-950/50 rounded-xl border border-slate-800 space-y-3">
-                <div className="flex items-center justify-between">
-                    <span className="text-[10px] text-slate-500 uppercase font-bold tracking-tight">Time Step</span>
-                    <button 
-                        onClick={toggleRealtime}
-                        className={`text-[9px] px-2 py-0.5 rounded border font-mono transition-all ${
-                            useRealtime ? 'bg-blue-600/20 border-blue-500/50 text-blue-400' : 'bg-orange-600/20 border-orange-500/50 text-orange-400'
-                        }`}
-                    >
-                        {useRealtime ? "REAL-TIME" : "FIXED STEP"}
-                    </button>
-                </div>
-                <button 
-                    className="w-full py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px] font-bold uppercase rounded-lg flex items-center justify-center gap-2 transition-all border border-slate-700"
-                    onClick={() => window.location.reload()}
-                >
-                    <RotateCcw className="w-3 h-3" /> Reset Sensors
-                </button>
-            </div>
-
-            {/* Tuning Dashboard */}
-            <div className="space-y-2">
-                <CollapsibleSection title="Module Tuning" icon={<Cpu className="w-3.5 h-3.5" />}>
-                    <TuningSlider label="Steer P" value={SwerveConfig.STEER_P} min={0} max={1} step={0.01} onChange={(v: number) => updateConfig('STEER_P', v)} />
-                    <TuningSlider label="Drive P" value={SwerveConfig.DRIVE_P} min={0} max={1} step={0.01} onChange={(v: number) => updateConfig('DRIVE_P', v)} />
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Chassis Stability" icon={<Sliders className="w-3.5 h-3.5" />}>
-                    <TuningSlider label="Heading P" value={SwerveConfig.HEADING_P} min={0} max={3} step={0.1} onChange={(v: number) => updateConfig('HEADING_P', v)} />
-                    <TuningSlider label="Snap P" value={SwerveConfig.SNAP_P} min={0} max={5} step={0.1} onChange={(v: number) => updateConfig('SNAP_P', v)} />
-                </CollapsibleSection>
-
-                <CollapsibleSection title="Power Management" icon={<Zap className="w-3.5 h-3.5" />}>
-                   <TuningSlider label="Battery Voltage" value={SwerveConfig.BATTERY_VOLTAGE} min={9} max={14.5} step={0.1} onChange={(v: number) => updateConfig('BATTERY_VOLTAGE', v)} />
-                </CollapsibleSection>
-            </div>
-
-            {/* Visualization */}
-            <div className="space-y-3">
-                <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                    <Settings2 className="w-3 h-3" /> Visualization
-                </div>
-                <div className="grid grid-cols-1 gap-2">
-                    <MiniToggle active={showModuleVectors} onClick={() => setShowModuleVectors(!showModuleVectors)} label="Module Vectors" color="bg-green-500" />
-                    <MiniToggle active={showChassisVector} onClick={() => setShowChassisVector(!showChassisVector)} label="Chassis Vector" color="bg-blue-500" />
-                    <MiniToggle active={showRotationVector} onClick={() => setShowRotationVector(!showRotationVector)} label="Rotation Vector" color="bg-purple-500" />
-                </div>
-            </div>
-
-            <div className="mt-auto pt-4 border-t border-slate-800">
-                <div className="flex items-center justify-between text-[10px] font-mono text-slate-600 uppercase tracking-widest">
-                    <div className="flex items-center gap-1.5">
-                        <Activity className="w-3 h-3 text-blue-500" />
-                        <span>Core Active</span>
+            <nav className="flex flex-col gap-6">
+                <section>
+                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Diagnostic Views</h3>
+                    <div className="flex flex-col gap-3">
+                        <ToggleButton label="Module Vectors" active={showModuleVectors} onClick={() => setShowModuleVectors(!showModuleVectors)} color="emerald" />
+                        <ToggleButton label="Chassis Vector" active={showChassisVector} onClick={() => setShowChassisVector(!showChassisVector)} color="blue" />
+                        <ToggleButton label="Angular Vector" active={showRotationVector} onClick={() => setShowRotationVector(!showRotationVector)} color="purple" />
                     </div>
+                </section>
+
+                <section>
+                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Cardinal Snapping (SITL)</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                        <ActionButton label="NORTH" onClick={() => sendSnap('up')} />
+                        <ActionButton label="WEST" onClick={() => sendSnap('left')} />
+                        <ActionButton label="EAST" onClick={() => sendSnap('right')} />
+                        <ActionButton label="SOUTH" onClick={() => sendSnap('down')} />
+                    </div>
+                </section>
+
+                <section>
+                    <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">History Management</h3>
+                    <button 
+                        onClick={() => (window as any).clearSwervePath?.()}
+                        className="w-full px-3 py-2 text-[9px] font-mono font-bold bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/30 rounded transition-all uppercase"
+                    >
+                        Clear Odometry Path
+                    </button>
+                </section>
+            </nav>
+
+            <div className="mt-auto pt-6 border-t border-slate-800">
+                <div className="flex items-center gap-2 mb-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
+                    <span className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">Hardware Loop: 20ms</span>
                 </div>
+                <p className="text-[9px] leading-relaxed text-slate-500 italic">
+                    Simulation state is mirrored from production Java code on localhost:8080.
+                </p>
             </div>
-        </div>
+        </aside>
     );
 };
 
-const CollapsibleSection = ({ title, icon, children }: any) => {
-    const [isOpen, setIsOpen] = useState(false);
+const ToggleButton = ({ label, active, onClick, color }: { label: string, active: boolean, onClick: () => void, color: string }) => {
+    const colorClasses: Record<string, string> = {
+        emerald: active ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/50' : 'text-slate-400 border-slate-800 hover:border-slate-700',
+        blue: active ? 'bg-blue-500/10 text-blue-400 border-blue-500/50' : 'text-slate-400 border-slate-800 hover:border-slate-700',
+        purple: active ? 'bg-purple-500/10 text-purple-400 border-purple-500/50' : 'text-slate-400 border-slate-800 hover:border-slate-700'
+    };
+
     return (
-        <div className="border border-slate-800 rounded-xl overflow-hidden bg-slate-900/50">
-            <button 
-                onClick={() => setIsOpen(!isOpen)}
-                className="w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800/50 transition-colors"
-            >
-                <div className="flex items-center gap-3 text-slate-400">
-                    {icon}
-                    <span className="text-xs font-bold uppercase tracking-tight text-slate-300">{title}</span>
-                </div>
-                {isOpen ? <ChevronDown className="w-4 h-4 text-slate-500" /> : <ChevronRight className="w-4 h-4 text-slate-500" />}
-            </button>
-            {isOpen && <div className="p-4 pt-0 space-y-4 border-t border-slate-800/50 bg-slate-950/20">{children}</div>}
-        </div>
+        <button 
+            onClick={onClick}
+            className={`w-full px-4 py-2 text-[10px] font-mono font-bold uppercase text-left border rounded-lg transition-all ${colorClasses[color]}`}
+        >
+            <div className="flex justify-between items-center">
+                {label}
+                <div className={`w-1 h-1 rounded-full ${active ? 'bg-current shadow-[0_0_5px_currentColor]' : 'bg-slate-800'}`} />
+            </div>
+        </button>
     );
 };
 
-const TuningSlider = ({ label, value, min, max, step, onChange }: any) => (
-    <div className="space-y-2">
-        <div className="flex justify-between items-center">
-            <span className="text-[10px] font-mono text-slate-500 uppercase">{label}</span>
-            <span className="text-[10px] font-bold text-blue-400 bg-blue-400/10 px-1.5 py-0.5 rounded">{value.toFixed(2)}</span>
-        </div>
-        <input 
-            type="range" min={min} max={max} step={step} value={value}
-            onChange={(e) => onChange(parseFloat(e.target.value))}
-            className="w-full h-1 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-blue-500"
-        />
-    </div>
-);
-
-const MiniToggle = ({ active, onClick, label, color }: any) => (
-    <button onClick={onClick} className={`flex items-center justify-between p-3 rounded-xl border transition-all ${active ? 'bg-slate-800 border-slate-700' : 'bg-transparent border-slate-800/50 opacity-40'}`}>
-        <span className="text-xs font-medium text-slate-300">{label}</span>
-        <div className={`w-2 h-2 rounded-full ${active ? color : 'bg-slate-700'} ${active ? 'shadow-[0_0_8px_rgba(59,130,246,0.5)]' : ''}`} />
+const ActionButton = ({ label, onClick }: { label: string, onClick: () => void }) => (
+    <button 
+        onClick={onClick}
+        className="px-3 py-2 text-[9px] font-mono font-bold bg-slate-800/50 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded transition-all active:scale-95"
+    >
+        {label}
     </button>
 );
 
