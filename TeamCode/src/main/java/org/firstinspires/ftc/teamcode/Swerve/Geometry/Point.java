@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.Swerve.Geo;
+package org.firstinspires.ftc.teamcode.Swerve.Geometry;
 
 import static java.lang.Math.cos;
 import static java.lang.Math.sin;

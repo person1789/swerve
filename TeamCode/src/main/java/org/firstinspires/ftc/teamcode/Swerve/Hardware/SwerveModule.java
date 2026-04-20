@@ -31,6 +31,7 @@ public class SwerveModule {
 
     private double offset;
     private boolean inverse;
+    private double motorScaling = 1.0;
 
     private double lastTargetAngleRad = 0.0;
     private double lastDrivePower = 0.0;
@@ -93,7 +94,7 @@ public class SwerveModule {
         lastDrivePower = drivePower;
 
         steerServo.setPower(steeringPower);
-        driveMotor.setPower(drivePower);
+        driveMotor.setPower(drivePower * motorScaling);
     }
 
     public double getCurrentRotation() {
@@ -105,6 +106,7 @@ public class SwerveModule {
     public void setMode(DcMotor.RunMode mode) { driveMotor.setMode(mode); }
     public void setOffset(double offset) { this.offset = offset; }
     public void setInverse(boolean inverse) { this.inverse = inverse; }
+    public void setMotorScaling(double scaling) { this.motorScaling = scaling; }
 
     public void log(int index) {
         if (logger == null) return;

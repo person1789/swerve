@@ -3,7 +3,7 @@
  * It coordinates how the robot moves by connecting driver commands to the correct 
  * mathematical calculations and then sending those results to each individual wheel module.
  */
-package org.firstinspires.ftc.teamcode.Swerve.Drive;
+package org.firstinspires.ftc.teamcode.Swerve.Hardware;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
@@ -142,6 +142,14 @@ public class SwerveDrivetrain {
         for (int i = 0; i < 4; i++) {
             modules[i].log(i);
         }
+    }
+
+    public void setOffsets(double[] offsets) {
+        for (int i = 0; i < 4; i++) modules[i].setOffset(offsets[i]);
+    }
+
+    public void setMotorScaling(double[] scalings) {
+        for (int i = 0; i < 4; i++) modules[i].setMotorScaling(scalings[i]);
     }
 
     public States getState() { return state; }

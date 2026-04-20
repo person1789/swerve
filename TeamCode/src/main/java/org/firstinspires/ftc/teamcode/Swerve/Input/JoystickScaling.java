@@ -2,6 +2,9 @@ package org.firstinspires.ftc.teamcode.Swerve.Input;
 
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Point;
 
+import static java.lang.Math.atan2;
+import static java.lang.Math.hypot;
+
 public class JoystickScaling {
     private double input, intercept, splinePoint, slope;
 
