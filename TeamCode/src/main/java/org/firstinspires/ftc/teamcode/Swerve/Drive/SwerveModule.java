@@ -1,3 +1,8 @@
+/**
+ * SwerveModule: Controls a single wheel assembly on the robot.
+ * It manages two main jobs: spinning the wheel at the correct speed and rotating 
+ * the entire wheel assembly to the correct direction using sensors and motors.
+ */
 package org.firstinspires.ftc.teamcode.Swerve.Drive;
 
 import com.qualcomm.robotcore.hardware.AnalogInput;

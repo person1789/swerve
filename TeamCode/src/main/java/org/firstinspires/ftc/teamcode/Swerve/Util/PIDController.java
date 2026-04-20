@@ -1,3 +1,9 @@
+/**
+ * PIDController: A specialized control utility used to smooth motor movements.
+ * It constantly calculates how far a motor is from its target and adjusts 
+ * the power output to help it reach and hold that target accurately without 
+ * overshooting or shaking.
+ */
 package org.firstinspires.ftc.teamcode.Swerve.Util;
 
 import com.qualcomm.robotcore.util.Range;

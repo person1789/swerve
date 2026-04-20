@@ -1,3 +1,8 @@
+/**
+ * SwerveModuleState: A simple data holder for a single wheel's instructions.
+ * It stores two pieces of information: how fast the wheel should spin and 
+ * which direction it should be pointing.
+ */
 package org.firstinspires.ftc.teamcode.Swerve.Drive;
 
 import org.firstinspires.ftc.teamcode.Swerve.Geo.MathUtil;

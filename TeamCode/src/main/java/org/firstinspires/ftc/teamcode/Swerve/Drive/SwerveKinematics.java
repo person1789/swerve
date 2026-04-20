@@ -1,3 +1,9 @@
+/**
+ * SwerveKinematics: The "math engine" of the swerve drive.
+ * This file takes the robot's desired movement (like "move forward and turn left") 
+ * and calculates the specific speed and angle each of the four wheels needs to 
+ * move at to make that robot motion happen.
+ */
 package org.firstinspires.ftc.teamcode.Swerve.Drive;
 
 import org.firstinspires.ftc.teamcode.Swerve.Geo.MathUtil;

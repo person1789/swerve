@@ -1,3 +1,9 @@
+/**
+ * SwerveConfig: The central control panel for the swerve drive.
+ * This file contains all the "magic numbers" — like the robot's size, 
+ * motor speeds, and steering offsets — in one place so they can be 
+ * easily adjusted and tuned for the best performance.
+ */
 package org.firstinspires.ftc.teamcode.Swerve.Drive;
 
 import com.acmerobotics.dashboard.config.Config;

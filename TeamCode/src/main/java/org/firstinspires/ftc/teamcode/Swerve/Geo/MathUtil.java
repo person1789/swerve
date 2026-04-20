@@ -1,3 +1,9 @@
+/**
+ * MathUtil: A collection of specialized math tools for swerve geometry.
+ * This class provides shortcuts for handling "circular" math, such as 
+ * standardizing angles and calculating the shortest way to rotate a wheel 
+ * so it doesn't get tangled or spin unnecessarily.
+ */
 package org.firstinspires.ftc.teamcode.Swerve.Geo;
 
 /**

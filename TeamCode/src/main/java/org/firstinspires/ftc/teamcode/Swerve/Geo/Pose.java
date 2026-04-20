@@ -1,3 +1,8 @@
+/**
+ * Pose: Represents where the robot is and which way it's facing.
+ * This class stores the robot's physical position (X and Y coordinates) 
+ * on the game field along with its rotation, or "heading."
+ */
 package org.firstinspires.ftc.teamcode.Swerve.Geo;
 
 public class Pose extends Point {

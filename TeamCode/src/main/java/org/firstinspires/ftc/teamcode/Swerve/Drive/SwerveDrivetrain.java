@@ -1,3 +1,8 @@
+/**
+ * SwerveDrivetrain: The high-level manager for the entire swerve drive system.
+ * It coordinates how the robot moves by connecting driver commands to the correct 
+ * mathematical calculations and then sending those results to each individual wheel module.
+ */
 package org.firstinspires.ftc.teamcode.Swerve.Drive;
 
 import com.qualcomm.robotcore.hardware.DcMotor;

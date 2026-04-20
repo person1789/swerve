@@ -1,3 +1,8 @@
+/**
+ * SwervePhaseABTest: A verification tool to ensure the swerve "brains" are working.
+ * This file contains digital tests that check if the math and optimizations 
+ * are calculating correctly before we ever try to drive the real physical robot.
+ */
 package org.firstinspires.ftc.teamcode.Swerve;
 
 import org.firstinspires.ftc.teamcode.Swerve.Drive.SwerveAuditor;

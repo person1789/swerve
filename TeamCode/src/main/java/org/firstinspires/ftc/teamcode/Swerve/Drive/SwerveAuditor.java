@@ -1,3 +1,9 @@
+/**
+ * SwerveAuditor: An optimization tool that cleans up wheel commands.
+ * It looks at the calculated wheel directions and makes smart adjustments, 
+ * such as telling a wheel to spin backwards if it can reach the target direction 
+ * faster by doing so, reducing mechanical wear and steering time.
+ */
 package org.firstinspires.ftc.teamcode.Swerve.Drive;
 
 import org.firstinspires.ftc.teamcode.Swerve.Geo.MathUtil;
