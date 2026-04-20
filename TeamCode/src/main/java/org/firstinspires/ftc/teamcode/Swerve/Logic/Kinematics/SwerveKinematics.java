@@ -4,9 +4,10 @@
  * and calculates the specific speed and angle each of the four wheels needs to 
  * move at to make that robot motion happen.
  */
-package org.firstinspires.ftc.teamcode.Swerve.Drive;
+package org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics;
 
-import org.firstinspires.ftc.teamcode.Swerve.Geo.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 
 /**
  * SwerveKinematics — Phase B

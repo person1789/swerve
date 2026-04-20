@@ -1,9 +1,6 @@
-package org.firstinspires.ftc.teamcode.Swerve.Limiters;
+package org.firstinspires.ftc.teamcode.Swerve.Input;
 
-import static java.lang.Math.atan2;
-import static java.lang.Math.hypot;
-
-import org.firstinspires.ftc.teamcode.Swerve.Geo.Point;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Point;
 
 public class JoystickScaling {
     private double input, intercept, splinePoint, slope;

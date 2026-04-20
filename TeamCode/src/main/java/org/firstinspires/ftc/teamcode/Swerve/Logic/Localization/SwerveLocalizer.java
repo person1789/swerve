@@ -1,10 +1,11 @@
-package org.firstinspires.ftc.teamcode.Swerve.Drive;
+package org.firstinspires.ftc.teamcode.Swerve.Logic.Localization;
 
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
-import org.firstinspires.ftc.teamcode.Swerve.Geo.Pose;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.core.HWMap;
 
 /**

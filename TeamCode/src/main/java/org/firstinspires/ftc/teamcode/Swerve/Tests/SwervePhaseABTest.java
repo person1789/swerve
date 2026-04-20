@@ -3,13 +3,13 @@
  * This file contains digital tests that check if the math and optimizations 
  * are calculating correctly before we ever try to drive the real physical robot.
  */
-package org.firstinspires.ftc.teamcode.Swerve;
+package org.firstinspires.ftc.teamcode.Swerve.Tests;
 
-import org.firstinspires.ftc.teamcode.Swerve.Drive.SwerveAuditor;
-import org.firstinspires.ftc.teamcode.Swerve.Drive.SwerveConfig;
-import org.firstinspires.ftc.teamcode.Swerve.Drive.SwerveKinematics;
-import org.firstinspires.ftc.teamcode.Swerve.Drive.SwerveModuleState;
-import org.firstinspires.ftc.teamcode.Swerve.Geo.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveAuditor;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
+import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;

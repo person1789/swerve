@@ -4,7 +4,7 @@
  * motor speeds, and steering offsets — in one place so they can be 
  * easily adjusted and tuned for the best performance.
  */
-package org.firstinspires.ftc.teamcode.Swerve.Drive;
+package org.firstinspires.ftc.teamcode.Swerve.Core;
 
 import com.acmerobotics.dashboard.config.Config;
 

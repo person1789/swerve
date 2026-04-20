@@ -3,7 +3,7 @@
  * This class stores the robot's physical position (X and Y coordinates) 
  * on the game field along with its rotation, or "heading."
  */
-package org.firstinspires.ftc.teamcode.Swerve.Geo;
+package org.firstinspires.ftc.teamcode.Swerve.Geometry;
 
 public class Pose extends Point {
 

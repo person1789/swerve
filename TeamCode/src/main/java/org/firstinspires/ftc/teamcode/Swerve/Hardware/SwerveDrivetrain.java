@@ -8,7 +8,12 @@ package org.firstinspires.ftc.teamcode.Swerve.Drive;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.teamcode.Swerve.Geo.Pose;
+import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveModule;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveAuditor;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 import org.firstinspires.ftc.teamcode.core.HWMap;
 import org.firstinspires.ftc.teamcode.core.Logger;
 

@@ -1,8 +1,8 @@
-package org.firstinspires.ftc.teamcode.Swerve.Limiters;
+package org.firstinspires.ftc.teamcode.Swerve.Input;
 
-import org.firstinspires.ftc.teamcode.Swerve.Drive.SwerveConfig;
-import org.firstinspires.ftc.teamcode.Swerve.Geo.MathUtil;
-import org.firstinspires.ftc.teamcode.Swerve.Geo.Pose;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 
 /**
  * MotionSmoother — Phase D

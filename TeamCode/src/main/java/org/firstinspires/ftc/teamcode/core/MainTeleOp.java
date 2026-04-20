@@ -25,9 +25,9 @@ import com.qualcomm.robotcore.util.Range;
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
-import org.firstinspires.ftc.teamcode.Swerve.Geo.Point;
-import org.firstinspires.ftc.teamcode.Swerve.Geo.Pose;
-import org.firstinspires.ftc.teamcode.Swerve.Drive.SwerveDrivetrain;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Point;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
+import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 
 import java.util.concurrent.TimeUnit;
 

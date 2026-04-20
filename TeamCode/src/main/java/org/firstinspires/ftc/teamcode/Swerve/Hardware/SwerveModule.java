@@ -3,7 +3,7 @@
  * It manages two main jobs: spinning the wheel at the correct speed and rotating 
  * the entire wheel assembly to the correct direction using sensors and motors.
  */
-package org.firstinspires.ftc.teamcode.Swerve.Drive;
+package org.firstinspires.ftc.teamcode.Swerve.Hardware;
 
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
@@ -11,8 +11,10 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.Range;
 
-import org.firstinspires.ftc.teamcode.Swerve.Geo.MathUtil;
-import org.firstinspires.ftc.teamcode.Swerve.Util.PIDController;
+import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Core.PIDController;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 import org.firstinspires.ftc.teamcode.core.Logger;
 
 /**

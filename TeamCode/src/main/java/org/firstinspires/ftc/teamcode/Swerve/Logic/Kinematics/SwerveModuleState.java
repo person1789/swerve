@@ -3,9 +3,10 @@
  * It stores two pieces of information: how fast the wheel should spin and 
  * which direction it should be pointing.
  */
-package org.firstinspires.ftc.teamcode.Swerve.Drive;
+package org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics;
 
-import org.firstinspires.ftc.teamcode.Swerve.Geo.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.D2Vector;
 
 /**
  * SwerveModuleState — Phase A

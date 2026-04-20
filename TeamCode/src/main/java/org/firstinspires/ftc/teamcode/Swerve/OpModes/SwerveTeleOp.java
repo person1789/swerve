@@ -1,16 +1,18 @@
-package org.firstinspires.ftc.teamcode.Swerve.Drive;
+package org.firstinspires.ftc.teamcode.Swerve.OpModes;
 
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
-import org.firstinspires.ftc.teamcode.Swerve.Geo.MathUtil;
-import org.firstinspires.ftc.teamcode.Swerve.Geo.Point;
-import org.firstinspires.ftc.teamcode.Swerve.Geo.Pose;
-import org.firstinspires.ftc.teamcode.Swerve.Limiters.JoystickScaling;
-import org.firstinspires.ftc.teamcode.Swerve.Limiters.MotionSmoother;
-import org.firstinspires.ftc.teamcode.Swerve.Util.PIDController;
-import org.firstinspires.ftc.teamcode.core.HWMap;
+import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Core.PIDController;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Point;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
+import org.firstinspires.ftc.teamcode.Swerve.Input.JoystickScaling;
+import org.firstinspires.ftc.teamcode.Swerve.Input.MotionSmoother;
+import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Localization.SwerveLocalizer;
 import org.firstinspires.ftc.teamcode.core.Logger;
 
 /**

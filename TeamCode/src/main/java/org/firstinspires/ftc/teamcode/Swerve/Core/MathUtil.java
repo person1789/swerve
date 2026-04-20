@@ -4,7 +4,7 @@
  * standardizing angles and calculating the shortest way to rotate a wheel 
  * so it doesn't get tangled or spin unnecessarily.
  */
-package org.firstinspires.ftc.teamcode.Swerve.Geo;
+package org.firstinspires.ftc.teamcode.Swerve.Core;
 
 /**
  * MathUtil — Phase A
