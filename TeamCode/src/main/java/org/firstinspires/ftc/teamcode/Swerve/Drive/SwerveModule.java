@@ -1,94 +1,108 @@
 package org.firstinspires.ftc.teamcode.Swerve.Drive;
 
-import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.normalizeRadians;
-import static java.lang.Math.cos;
-import static java.lang.Math.signum;
-
-import com.acmerobotics.dashboard.config.Config;
-import com.arcrobotics.ftclib.controller.PIDController;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.util.Range;
+
+import org.firstinspires.ftc.teamcode.Swerve.Geo.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Util.PIDController;
 import org.firstinspires.ftc.teamcode.core.Logger;
 
-@Config
+/**
+ * SwerveModule — Phase C
+ *
+ * Controls a single coaxial swerve pod.
+ */
 public class SwerveModule {
-    private final DcMotorEx motor;
-    private final CRServo servo;
+
+    private final DcMotorEx driveMotor;
+    private final CRServo steerServo;
     private final AnalogInput encoder;
     private final Logger logger;
 
     private double offset;
-    private double lastTargetPosition;
     private boolean inverse;
 
-    public static double P = 0.325, I = 0, D = 0.01, Kstatic = 0.0;
-    private final PIDController rotationController = new PIDController(P, I, D);
+    private double lastTargetAngleRad = 0.0;
+    private double lastDrivePower = 0.0;
 
-    public SwerveModule(DcMotorEx motor, CRServo servo, AnalogInput encoder, double offset, boolean inverse, Logger logger) {
-        this.motor = motor;
-        this.servo = servo;
+    // Use our custom PID controller
+    private final PIDController rotationController;
+
+    /**
+     * Create a SwerveModule with hardware references and calibration data.
+     */
+    public SwerveModule(DcMotorEx driveMotor, CRServo steerServo, AnalogInput encoder,
+                        double offset, boolean inverse, Logger logger) {
+        this.driveMotor = driveMotor;
+        this.steerServo = steerServo;
         this.encoder = encoder;
         this.offset = offset;
         this.inverse = inverse;
         this.logger = logger;
-        this.motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        
+        this.rotationController = new PIDController(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
+        
+        this.driveMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
     }
 
-    public void update(double targetAngle, double drivePower) {
+    /**
+     * Command the module using a SwerveModuleState.
+     */
+    public void update(SwerveModuleState state) {
+        update(state.angleRadians, state.speedMetersPerSecond);
+    }
+
+    /**
+     * Command the module with target angle (rad) and drive speed (mps).
+     */
+    public void update(double targetAngle, double driveSpeed) {
         double currentAngle = getCurrentRotation();
-        double error = normalizeRadians(targetAngle - currentAngle);
+        double error = MathUtil.angleError(currentAngle, targetAngle);
 
-        if (Math.abs(error) > Math.PI / 2) {
-            drivePower *= -1;
-            targetAngle = normalizeRadians(targetAngle + Math.PI);
-            error = normalizeRadians(targetAngle - currentAngle);
-        }
+        // Cosine scaler: reduce drive power proportional to steering error
+        double cosScaler = Math.cos(error);
+        
+        // Convert speed m/s to normalized power [-1, 1] using SwerveConfig
+        double drivePower = (driveSpeed / SwerveConfig.MAX_SPEED_MPS) * cosScaler;
 
-        if (Math.abs(error) < 0.04){
-            error = 0;
-        }
+        // Steering PID
+        rotationController.setPID(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
+        rotationController.setSetpoint(targetAngle);
+        
+        double pidOut = rotationController.calculate(currentAngle, SwerveConfig.LOOP_TIME_SEC);
 
-        double cosScaler = cos(error);
-        drivePower *= cosScaler;
-
-        rotationController.setPID(P, I, D);
-        double steeringPower = rotationController.calculate(currentAngle, targetAngle);
-
-        double lastServoPower;
-        if (Math.abs(error) < 0.04) {
-            lastServoPower = 0;
+        double steeringPower;
+        if (Math.abs(error) < 0.02) { // Small deadzone
+            steeringPower = 0.0;
         } else {
-            lastServoPower = Range.clip(steeringPower + (signum(error) * Kstatic), -1, 1);
+            // Apply static friction feedforward in direction of error
+            steeringPower = Range.clip(pidOut + Math.signum(error) * SwerveConfig.STEER_STATIC_FF, -1.0, 1.0);
         }
 
-        double lastMotorPower = drivePower;
-        lastTargetPosition = targetAngle;
+        lastTargetAngleRad = targetAngle;
+        lastDrivePower = drivePower;
 
-        servo.setPower(lastServoPower);
-        motor.setPower(lastMotorPower);
+        steerServo.setPower(steeringPower);
+        driveMotor.setPower(drivePower);
     }
 
     public double getCurrentRotation() {
-        double pos = (encoder.getVoltage() / 3.3) * (2 * Math.PI);
-        if (inverse) pos = (2 * Math.PI) - pos;
-        return normalizeRadians(pos - offset);
+        double rawRad = (encoder.getVoltage() / 3.3) * (2.0 * Math.PI);
+        if (inverse) rawRad = (2.0 * Math.PI) - rawRad;
+        return MathUtil.normalizeAngle(rawRad - offset);
     }
 
-    public void setMode(DcMotor.RunMode mode) { motor.setMode(mode); }
+    public void setMode(DcMotor.RunMode mode) { driveMotor.setMode(mode); }
     public void setOffset(double offset) { this.offset = offset; }
     public void setInverse(boolean inverse) { this.inverse = inverse; }
-    public void setPID (double P, double I, double D) {
-        SwerveModule.P = P; SwerveModule.I = I; SwerveModule.D = D;
-    }
 
     public void log(int index) {
-        if (logger != null) {
-            String prefix = "Mod" + index + " ";
-            logger.log(prefix + "Target", lastTargetPosition, Logger.LogLevels.PRODUCTION);
-            logger.log(prefix + "Current", getCurrentRotation(), Logger.LogLevels.PRODUCTION);
-        }
+        if (logger == null) return;
+        String prefix = "Mod" + index + " ";
+        logger.log(prefix + "TargetDeg", Math.toDegrees(lastTargetAngleRad), Logger.LogLevels.PRODUCTION);
+        logger.log(prefix + "CurrentDeg", Math.toDegrees(getCurrentRotation()), Logger.LogLevels.PRODUCTION);
     }
 }
