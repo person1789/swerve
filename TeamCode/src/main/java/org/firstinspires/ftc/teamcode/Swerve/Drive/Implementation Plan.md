@@ -36,6 +36,34 @@
 
 ---
 
+## Agent Execution Roadmap
+
+This roadmap groups features into logical, sequential phases designed for an agent to implement and verify systematically.
+
+### Phase A: Foundation & Math Utilities
+- [ ] **Step 0: PID Controller** — Create custom `PIDController.java` utility (High Priority).
+- [ ] **Math Utilities** — Implement angle normalization and power clamping in `MathUtil.java`.
+- [ ] **Data Structures** — Scaffold `SwerveModuleState.java` for vector data passing.
+
+### Phase B: Kinematics & Optimization Engine
+- [ ] **Inverse Kinematics** — Implement `SwerveKinematics.java` for robot-to-module translation.
+- [ ] **The Auditor** — Implement `SwerveAuditor.java` for flip-optimization and power normalization.
+
+### Phase C: Hardware Interface & Core Drivetrain
+- [ ] **Hardware Mapping** — Update `HWMap.java` and `swerve.xml` for Axon Max steering and GoBILDA drive.
+- [ ] **Swerve Module** — Implement `SwerveModule.java` combining PID, motors, and CRServos.
+- [ ] **Drivetrain Subsystem** — Create `SwerveDrive.java` to coordinate all four modules.
+
+### Phase D: Driver Control & Smoothing
+- [ ] **Basic TeleOp** — Implement `SwerveTeleOp.java` for initial field testing.
+- [ ] **Motion Profiling** — Implement `MotionSmoother.java` for Jerk-limited S-curve inputs.
+
+### Phase E: Advanced Localization & Sophistications
+- [ ] **The Observer** — Implement `PoseEstimator.java` using GoBILDA Pinpoint odometry.
+- [ ] **Advanced Features** — Add `kS/kV/kA` Feedforward, X-Stance Defense, and Heading Snap.
+
+---
+
 ## Phase 1 — Input Pre-Processor (The Smoother)
 
 **Goal:** Convert raw joystick step-inputs into jerk-limited, S-curve velocity commands.
