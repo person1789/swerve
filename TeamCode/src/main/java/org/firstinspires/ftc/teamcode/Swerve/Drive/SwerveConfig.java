@@ -37,6 +37,12 @@ public class SwerveConfig {
     /** Max angular velocity in rad/s. */
     public static double MAX_ANGULAR_VELOCITY_RAD_S = 4.0;
     
+    /** Max acceleration in m/s^2. */
+    public static double MAX_ACCEL = 3.0; // Moderate for smoothness
+    
+    /** Max jerk in m/s^3. (Controls S-curve) */
+    public static double MAX_JERK = 10.0; // Lower is smoother
+    
     /** Loop period in seconds (target 20ms). */
     public static double LOOP_TIME_SEC = 0.020;
 
@@ -73,6 +79,11 @@ public class SwerveConfig {
     public static double DRIVE_P = 0.1;
     public static double DRIVE_I = 0.0;
     public static double DRIVE_D = 0.0;
+
+    // Heading Snap Tuning
+    public static double SNAP_P = 1.0;
+    public static double SNAP_I = 0.0;
+    public static double SNAP_D = 0.05;
 
     // ─────────────────────────────────────────────────────────────────────────
     // State machine logic
