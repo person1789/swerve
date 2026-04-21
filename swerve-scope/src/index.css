@@ -164,3 +164,56 @@ input[type='range']::-moz-range-track {
 /* ── Splitpane ──────────────────────────────────────────────────────────── */
 .split-h { display: flex; height: 100%; gap: 4px; }
 .split-v { display: flex; flex-direction: column; height: 100%; gap: 4px; }
+
+.workspace-shell {
+  display: flex;
+  gap: 4px;
+  min-height: 0;
+  height: 100%;
+}
+
+.workspace-column,
+.workspace-sidebar {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  gap: 4px;
+}
+
+.workspace-sidebar {
+  flex: 1;
+}
+
+.workspace-resize-x,
+.workspace-resize-y {
+  flex-shrink: 0;
+  background: #1a2535;
+  border-radius: 999px;
+  transition: background 0.15s;
+}
+
+.workspace-resize-x {
+  width: 4px;
+  cursor: col-resize;
+}
+
+.workspace-resize-y {
+  height: 4px;
+  cursor: row-resize;
+}
+
+.workspace-resize-x:hover,
+.workspace-resize-y:hover {
+  background: #0ea5e9;
+}
+
+.workspace-select {
+  background: #060a0f;
+  border: 1px solid #1a2535;
+  color: #8ba4c0;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  padding: 2px 6px;
+}

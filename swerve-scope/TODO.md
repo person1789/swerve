@@ -8,7 +8,7 @@ This document covers everything left to make SwerveScope fully runnable and feat
 
 ### Install dependencies
 ```bash
-cd swerve-sim
+cd swerve-scope
 npm install
 npm run dev
 # Open http://localhost:5173
@@ -234,10 +234,19 @@ These are defined in `swervescope_master_implementation_plan.md` but not yet sta
 
 ---
 
+## Canonical Planning Note
+
+The authoritative implementation direction now lives in:
+
+- `SWERVESCOPE_CANONICAL_IMPLEMENTATION_PLAN.md`
+- `SWERVESCOPE_CHAT_CONTEXT.md`
+
+Treat this file as historical/prototype guidance only when it conflicts with the canonical plan.
+
 ## 5. File Map
 
 ```
-swerve-sim/
+swerve-scope/
 ├── src/
 │   ├── App.tsx                  ← main shell, tab layout, splitters
 │   ├── main.tsx                 ← React 18 entry

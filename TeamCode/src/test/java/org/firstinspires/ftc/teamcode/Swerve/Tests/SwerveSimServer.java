@@ -170,10 +170,17 @@ public class SwerveSimServer extends WebSocketServer {
     private void broadcastState(SwerveModuleState[] targets, SwerveModuleState[] actuals, Pose obsVel, double loopTime) {
         try {
             Map<String, Object> state = new HashMap<>();
+            state.put("schemaVersion", 1);
             state.put("timestamp", (System.nanoTime() - startTimeNanos) / 1_000_000_000.0);
             state.put("x", currentX); state.put("y", currentY); state.put("heading", currentHeading);
             state.put("isMaintaining", controller.isMaintaining());
             state.put("isSnapping", controller.isSnapping());
+            state.put("snapTargetRad", controller.getTargetHeading());
+            state.put("driveX", lastStrafe);
+            state.put("driveY", lastDrive);
+            state.put("turn", lastTurn);
+            state.put("controllerMode", controller.isSnapping() ? "snap" : controller.isMaintaining() ? "maintain" : "manual");
+            state.put("drivetrainState", controller.isSnapping() ? "SNAPPING" : "DRIVING");
             
             double[][] tArr = new double[4][2], aArr = new double[4][2];
             for(int i=0; i<4; i++) {
@@ -188,6 +195,7 @@ public class SwerveSimServer extends WebSocketServer {
             Map<String, Object> gamepad = new HashMap<>();
             gamepad.put("lx", lastStrafe); gamepad.put("ly", lastDrive);
             gamepad.put("rx", lastTurn); gamepad.put("ry", 0.0);
+            gamepad.put("lt", 0.0); gamepad.put("rt", 0.0);
             gamepad.put("dpad_up", dpadUp); gamepad.put("dpad_down", dpadDown);
             gamepad.put("dpad_left", dpadLeft); gamepad.put("dpad_right", dpadRight);
             state.put("gamepad", gamepad);
@@ -195,6 +203,12 @@ public class SwerveSimServer extends WebSocketServer {
             Map<String, Object> oVel = new HashMap<>();
             oVel.put("vx", obsVel.x); oVel.put("vy", obsVel.y); oVel.put("omega", obsVel.heading);
             state.put("observerVel", oVel);
+
+            Map<String, Object> smootherState = new HashMap<>();
+            smootherState.put("vx", obsVel.x);
+            smootherState.put("vy", obsVel.y);
+            smootherState.put("omega", obsVel.heading);
+            state.put("smootherState", smootherState);
 
             broadcast(mapper.writeValueAsString(state));
         } catch (Exception e) {}

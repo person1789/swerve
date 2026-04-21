@@ -1,6 +1,6 @@
 # 🎮 Swerve Simulation Guide
 
-This guide covers everything you need to know to run and use the **Next.js Swerve Simulator**, a high-fidelity "Digital Twin" of your robot.
+This guide covers everything you need to know to run and use **SwerveScope**, a high-fidelity "Digital Twin" style diagnostics workbench for your robot.
 
 ## 🚀 Getting Started
 
@@ -9,7 +9,7 @@ The simulator is located in the `./swerve-scope` directory. It uses the exact sa
 ### 1. Installation
 If this is your first time running the sim on a new machine:
 ```bash
-cd swerve-sim
+cd swerve-scope
 npm install
 ```
 
@@ -48,3 +48,5 @@ To assist with Field-Centric driving practice, the robot chassis features a **vi
 
 ## 🛠️ Modifying the Sim
 If you change your physical robot's `TRACK_WIDTH` or `MAX_SPEED` in `SwerveConfig.java`, you should update the corresponding values in `swerve-scope/src/lib/SwerveLogic.ts` to keep the simulation accurate.
+
+The canonical in-repo implementation direction for SwerveScope now lives in `swerve-scope/SWERVESCOPE_CANONICAL_IMPLEMENTATION_PLAN.md`.
