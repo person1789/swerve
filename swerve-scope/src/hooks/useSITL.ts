@@ -5,6 +5,7 @@ import type { TelemetryFrame, ConnectionStatus } from '../types/telemetry';
 export interface SITLHook {
   status: ConnectionStatus;
   lastFrame: TelemetryFrame | null;
+  schemaMismatch: string | null;
   sendInput: (input: GamepadInput) => void;
 }
 
@@ -24,8 +25,8 @@ export function useSITL(
 ): SITLHook {
   const [status, setStatus] = useState<ConnectionStatus>('disconnected');
   const [lastFrame, setLastFrame] = useState<TelemetryFrame | null>(null);
+  const [schemaMismatch, setSchemaMismatch] = useState<string | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
-  const startTimeRef = useRef<number>(Date.now());
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
@@ -38,14 +39,19 @@ export function useSITL(
 
     ws.onopen = () => {
       setStatus('connected');
-      startTimeRef.current = Date.now();
+      setSchemaMismatch(null);
     };
 
     ws.onmessage = (event) => {
       try {
         const raw = JSON.parse(event.data);
+        const schemaVersion = Number(raw.schemaVersion ?? 1);
+        if (schemaVersion > 1) {
+          setSchemaMismatch(`Renderer expects telemetry schema v1 but received v${schemaVersion}.`);
+        }
         const frame: TelemetryFrame = {
-          timestamp: (Date.now() - startTimeRef.current) / 1000,
+          schemaVersion,
+          timestamp: raw.timestamp ?? 0,
           x: raw.x ?? 0,
           y: raw.y ?? 0,
           heading: raw.heading ?? 0,
@@ -54,11 +60,18 @@ export function useSITL(
           isMaintaining: raw.isMaintaining ?? false,
           isSnapping: raw.isSnapping ?? false,
           snapTargetRad: raw.snapTargetRad ?? 0,
-          driveX: raw.driveX ?? 0,
-          driveY: raw.driveY ?? 0,
-          turn: raw.turn ?? 0,
+          controllerMode: raw.controllerMode,
+          drivetrainState: raw.drivetrainState,
+          driveX: raw.driveX ?? raw.gamepad?.lx ?? 0,
+          driveY: raw.driveY ?? raw.gamepad?.ly ?? 0,
+          turn: raw.turn ?? raw.gamepad?.rx ?? 0,
+          gamepad: raw.gamepad,
           batteryVoltage: raw.batteryVoltage ?? 12.0,
           loopTimeMs: raw.loopTimeMs ?? 20,
+          currentDraw: raw.currentDraw ?? [],
+          observerVel: raw.observerVel,
+          smootherState: raw.smootherState,
+          logs: raw.logs ?? [],
         };
         setLastFrame(frame);
         onFrame(frame);
@@ -89,5 +102,5 @@ export function useSITL(
     }
   }, []);
 
-  return { status, lastFrame, sendInput };
+  return { status, lastFrame, schemaMismatch, sendInput };
 }
