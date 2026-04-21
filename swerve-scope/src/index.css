@@ -128,6 +128,39 @@ body {
 .btn-success { background: #10b98120; border: 1px solid #10b98150; color: #10b981; }
 .btn-success:hover { background: #10b98130; }
 
+/* ── Timeline range input (cross-browser) ──────────────────────────────── */
+input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #0ea5e9;
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+input[type='range']::-webkit-slider-thumb:hover { transform: scale(1.2); }
+input[type='range']::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #0ea5e9;
+  border: none;
+  cursor: pointer;
+}
+input[type='range']::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: #1a2535;
+}
+
 /* ── Splitpane ──────────────────────────────────────────────────────────── */
 .split-h { display: flex; height: 100%; gap: 4px; }
 .split-v { display: flex; flex-direction: column; height: 100%; gap: 4px; }

@@ -4,10 +4,15 @@ import type { ConnectionStatus } from '../types/telemetry';
 interface ControlBarProps {
   status:          ConnectionStatus;
   isLive:          boolean;
+  isPlaying:       boolean;
+  playbackRate:    number;
   historyLength:   number;
   scrubIndex:      number;
   durationSec:     number;
   onSeek:          (idx: number) => void;
+  onTogglePlay:    () => void;
+  onStep:          (delta: number) => void;
+  onRateChange:    (rate: number) => void;
   onSnapToLive:    () => void;
   onClearHistory:  () => void;
   showVectors:     boolean;
@@ -37,8 +42,8 @@ function fmtTime(sec: number) {
 }
 
 export default function ControlBar({
-  status, isLive, historyLength, scrubIndex, durationSec,
-  onSeek, onSnapToLive, onClearHistory,
+  status, isLive, isPlaying, playbackRate, historyLength, scrubIndex, durationSec,
+  onSeek, onTogglePlay, onStep, onRateChange, onSnapToLive, onClearHistory,
   showVectors, showTrail, onToggleVectors, onToggleTrail,
   activeTab, onTabChange, tabs,
 }: ControlBarProps) {
@@ -122,6 +127,20 @@ export default function ControlBar({
 
       {/* ── Scrubber row ─────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 px-3 pb-2">
+        {!isLive && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <button onClick={() => onStep(-1)} className="btn btn-ghost text-[9px] py-0.5 px-2" title="Step back">
+              ◀
+            </button>
+            <button onClick={onTogglePlay} className={`btn text-[9px] py-0.5 px-2 ${isPlaying ? 'btn-accent' : 'btn-ghost'}`}>
+              {isPlaying ? '⏸' : '▶'}
+            </button>
+            <button onClick={() => onStep(1)} className="btn btn-ghost text-[9px] py-0.5 px-2" title="Step forward">
+              ▶
+            </button>
+          </div>
+        )}
+
         <span className="text-[9px] font-mono text-scope-muted w-12 text-right readout flex-shrink-0">
           {fmtTime(currentSec)}
         </span>
@@ -146,6 +165,20 @@ export default function ControlBar({
         <span className="text-[9px] font-mono text-scope-muted w-12 readout flex-shrink-0">
           {fmtTime(durationSec)}
         </span>
+
+        {!isLive && (
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {[0.25, 0.5, 1, 2, 4].map(r => (
+              <button
+                key={r}
+                onClick={() => onRateChange(r)}
+                className={`btn text-[9px] py-0.5 px-1.5 ${playbackRate === r ? 'btn-accent' : 'btn-ghost'}`}
+              >
+                {r}×
+              </button>
+            ))}
+          </div>
+        )}
 
         {/* Playback indicator */}
         <div

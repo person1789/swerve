@@ -16,6 +16,16 @@ const HALF     = FIELD_M * PX_PER_M;
 
 const LABEL = ['FL', 'FR', 'RR', 'RL'];
 const MODULE_COLORS = ['#f43f5e', '#fb923c', '#facc15', '#4ade80'];
+const DECODE_TAGS = [
+  { id: 1, x: -1.5, y:  1.5 },
+  { id: 2, x:  0.0, y:  1.5 },
+  { id: 3, x:  1.5, y:  1.5 },
+  { id: 4, x: -1.5, y:  0.0 },
+  { id: 5, x:  1.5, y:  0.0 },
+  { id: 6, x: -1.5, y: -1.5 },
+  { id: 7, x:  0.0, y: -1.5 },
+  { id: 8, x:  1.5, y: -1.5 },
+];
 
 function arrow(
   ctx: CanvasRenderingContext2D,
@@ -85,6 +95,20 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
     ctx.strokeStyle = '#2a3a52';
     ctx.lineWidth = 2;
     ctx.strokeRect(-HALF, -HALF, HALF * 2, HALF * 2);
+
+    // ── AprilTag overlay (DECODE season) ──────────────────────────────────
+    DECODE_TAGS.forEach(tag => {
+      ctx.save();
+      ctx.translate(tag.x * PX_PER_M, -tag.y * PX_PER_M);
+      ctx.strokeStyle = '#f59e0b40';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(-8, -8, 16, 16);
+      ctx.fillStyle = '#f59e0bcc';
+      ctx.font = '600 7px JetBrains Mono, monospace';
+      ctx.textAlign = 'center';
+      ctx.fillText(`T${tag.id}`, 0, 3);
+      ctx.restore();
+    });
 
     // ── Origin cross ──────────────────────────────────────────────────────
     ctx.strokeStyle = '#2a4a6a';
