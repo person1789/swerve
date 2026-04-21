@@ -31,6 +31,10 @@ Plug in an Xbox/PS4/PS5 controller **before** opening the browser tab, then pres
 
 ## 2. Build Errors to Fix
 
+**✅ Build/Compile Status (2026-04-21):** No compiler errors found during `npm run build`.
+
+
+
 ### 2a. Input range thumb styling (scrubber knob)
 The timeline scrubber in `ControlBar.tsx` uses an inline `background` gradient trick that works in Chrome/Edge but not Firefox/Safari. Add proper cross-browser CSS to `src/index.css`:
 
