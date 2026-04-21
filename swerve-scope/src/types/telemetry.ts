@@ -94,6 +94,7 @@ export interface PanelDef {
 
 // Connection status
 export type ConnectionStatus = 'disconnected' | 'connecting' | 'connected';
+export type RuntimeMode = 'local' | 'sitl';
 
 // Playback state
 export interface PlaybackState {

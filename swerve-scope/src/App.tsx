@@ -86,6 +86,9 @@ export default function App() {
             isLive={state.history.isLive}
             activeFields={state.activeFields}
             customFields={state.customFields}
+            onToggleField={(fieldId) => {
+              state.setActiveFields(prev => prev.includes(fieldId) ? prev.filter(id => id !== fieldId) : [...prev, fieldId]);
+            }}
           />
         );
       case 'inspector':
@@ -95,6 +98,8 @@ export default function App() {
             historyLength={state.history.length}
             currentFrame={state.frame}
             isLive={state.history.isLive}
+            scrubIndex={state.history.scrubIndex}
+            onJumpToIndex={state.history.seek}
           />
         );
       case 'console':
@@ -133,6 +138,7 @@ export default function App() {
     <div className="flex flex-col w-screen h-screen overflow-hidden bg-scope-bg">
       <ControlBar
         status={state.status}
+        runtimeMode={state.runtimeMode}
         schemaMismatch={state.schemaMismatch}
         isLive={state.history.isLive}
         isPlaying={state.isPlaying}

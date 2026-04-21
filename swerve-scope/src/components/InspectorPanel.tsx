@@ -1,4 +1,3 @@
-// InspectorPanel.tsx — telemetry inspection table with recording & export
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { TelemetryFrame } from '../types/telemetry';
 
@@ -7,6 +6,8 @@ interface InspectorProps {
   historyLength: number;
   currentFrame: TelemetryFrame | null;
   isLive: boolean;
+  scrubIndex: number;
+  onJumpToIndex: (index: number) => void;
 }
 
 type ViewMode = 'live' | 'table' | 'raw';
@@ -43,7 +44,6 @@ function Divider({ label }: { label: string }) {
   );
 }
 
-// ── Recording ──────────────────────────────────────────────────────────────
 function useRecorder(history: TelemetryFrame[]) {
   const [recording, setRecording] = useState(false);
   const startIdxRef = useRef(0);
@@ -64,37 +64,50 @@ function useRecorder(history: TelemetryFrame[]) {
       'rr_speed', 'rr_angle', 'rl_speed', 'rl_angle',
       'battery', 'loop_ms', 'is_snapping', 'is_maintaining',
     ];
-    const rows = frames.map(f => [
-      f.timestamp.toFixed(4), f.x.toFixed(4), f.y.toFixed(4), f.heading.toFixed(4),
-      ...[0,1,2,3].flatMap(i => [
-        (f.actuals[i]?.[0] ?? 0).toFixed(4),
-        (f.actuals[i]?.[1] ?? 0).toFixed(4),
+    const rows = frames.map(frame => [
+      frame.timestamp.toFixed(4), frame.x.toFixed(4), frame.y.toFixed(4), frame.heading.toFixed(4),
+      ...[0, 1, 2, 3].flatMap(i => [
+        (frame.actuals[i]?.[0] ?? 0).toFixed(4),
+        (frame.actuals[i]?.[1] ?? 0).toFixed(4),
       ]),
-      f.batteryVoltage.toFixed(3), f.loopTimeMs.toFixed(2),
-      f.isSnapping ? '1' : '0', f.isMaintaining ? '1' : '0',
+      frame.batteryVoltage.toFixed(3), frame.loopTimeMs.toFixed(2),
+      frame.isSnapping ? '1' : '0', frame.isMaintaining ? '1' : '0',
     ].join(','));
 
     const csv = [headers.join(','), ...rows].join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href = url;
-    a.download = `swervescope_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
-    a.click();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `swervescope_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.csv`;
+    link.click();
     URL.revokeObjectURL(url);
   }, [history]);
 
   return { recording, startRecording, stopAndExport };
 }
 
-export default function InspectorPanel({ history, historyLength, currentFrame, isLive }: InspectorProps) {
+export default function InspectorPanel({
+  history,
+  historyLength,
+  currentFrame,
+  isLive,
+  scrubIndex,
+  onJumpToIndex,
+}: InspectorProps) {
   const [view, setView] = useState<ViewMode>('live');
+  const [columns, setColumns] = useState({
+    pose: true,
+    heading: true,
+    modules: true,
+    battery: true,
+  });
   const tableRef = useRef<HTMLDivElement>(null);
   const { recording, startRecording, stopAndExport } = useRecorder(history);
+  const frame = currentFrame;
+  const visibleRows = history.slice(-200);
+  const visibleStartIndex = Math.max(0, history.length - visibleRows.length);
 
-  const f = currentFrame;
-
-  // Auto-scroll raw table to bottom when live
   useEffect(() => {
     if (isLive && view === 'table' && tableRef.current) {
       tableRef.current.scrollTop = tableRef.current.scrollHeight;
@@ -103,33 +116,30 @@ export default function InspectorPanel({ history, historyLength, currentFrame, i
 
   return (
     <div className="flex flex-col h-full bg-scope-bg">
-      {/* Toolbar */}
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-scope-border flex-shrink-0">
-        {/* View toggle */}
         <div className="flex bg-scope-surface border border-scope-border rounded overflow-hidden text-[9px] font-mono">
-          {(['live', 'table', 'raw'] as ViewMode[]).map(v => (
+          {(['live', 'table', 'raw'] as ViewMode[]).map(nextView => (
             <button
-              key={v}
-              onClick={() => setView(v)}
+              key={nextView}
+              onClick={() => setView(nextView)}
               className={`px-2 py-1 uppercase tracking-wide transition-colors ${
-                view === v ? 'bg-scope-accent text-white' : 'text-scope-muted hover:text-scope-text'
+                view === nextView ? 'bg-scope-accent text-white' : 'text-scope-muted hover:text-scope-text'
               }`}
             >
-              {v}
+              {nextView}
             </button>
           ))}
         </div>
 
         <div className="flex-1" />
 
-        {/* Record / export */}
         {recording ? (
           <button onClick={stopAndExport} className="btn btn-danger text-[9px]">
-            ■ stop+export
+            stop+export
           </button>
         ) : (
           <button onClick={startRecording} className="btn btn-success text-[9px]">
-            ● record
+            record
           </button>
         )}
         {recording && (
@@ -139,44 +149,68 @@ export default function InspectorPanel({ history, historyLength, currentFrame, i
         )}
       </div>
 
-      {/* Live key-value view */}
+      {view === 'table' && (
+        <div className="flex items-center gap-3 px-3 py-1 border-b border-scope-border flex-wrap">
+          {([
+            ['pose', 'POSE'],
+            ['heading', 'HDG'],
+            ['modules', 'MODULES'],
+            ['battery', 'BATT'],
+          ] as const).map(([key, label]) => (
+            <label key={key} className="flex items-center gap-1 text-[8px] font-mono text-scope-muted cursor-pointer">
+              <input
+                type="checkbox"
+                checked={columns[key]}
+                onChange={event => setColumns(prev => ({ ...prev, [key]: event.target.checked }))}
+                className="w-3 h-3"
+              />
+              {label}
+            </label>
+          ))}
+          <span className="ml-auto text-[8px] font-mono text-scope-muted">click a row to scrub</span>
+        </div>
+      )}
+
       {view === 'live' && (
         <div className="flex-1 overflow-y-auto">
           <table className="w-full border-collapse">
             <tbody>
               <Divider label="Odometry" />
-              <Row label="Field X"   value={f?.x ?? 0}              unit="m" />
-              <Row label="Field Y"   value={f?.y ?? 0}              unit="m" />
-              <Row label="Heading"   value={(f?.heading ?? 0) * 180 / Math.PI} unit="°" />
+              <Row label="Field X" value={frame?.x ?? 0} unit="m" />
+              <Row label="Field Y" value={frame?.y ?? 0} unit="m" />
+              <Row label="Heading" value={(frame?.heading ?? 0) * 180 / Math.PI} unit="deg" />
 
               <Divider label="Controller" />
-              <Row label="Mode"
-                value={f?.isSnapping ? 'SNAP' : f?.isMaintaining ? 'HOLD' : 'MANUAL'}
-                color={f?.isSnapping ? '#a855f7' : f?.isMaintaining ? '#0ea5e9' : '#4a6a8a'}
+              <Row
+                label="Mode"
+                value={frame?.isSnapping ? 'SNAP' : frame?.isMaintaining ? 'HOLD' : 'MANUAL'}
+                color={frame?.isSnapping ? '#a855f7' : frame?.isMaintaining ? '#0ea5e9' : '#4a6a8a'}
               />
-              <Row label="Snap Target" value={(f?.snapTargetRad ?? 0) * 180 / Math.PI} unit="°" />
+              <Row label="Snap Target" value={(frame?.snapTargetRad ?? 0) * 180 / Math.PI} unit="deg" />
 
               <Divider label="Inputs" />
-              <Row label="Drive X"   value={f?.driveX ?? 0} />
-              <Row label="Drive Y"   value={f?.driveY ?? 0} />
-              <Row label="Turn"      value={f?.turn ?? 0} />
+              <Row label="Drive X" value={frame?.driveX ?? 0} />
+              <Row label="Drive Y" value={frame?.driveY ?? 0} />
+              <Row label="Turn" value={frame?.turn ?? 0} />
 
               <Divider label="System" />
-              <Row label="Battery"   value={f?.batteryVoltage ?? 0} unit="V"  color="#f59e0b" />
-              <Row label="Loop Time" value={f?.loopTimeMs ?? 0}     unit="ms" color={
-                (f?.loopTimeMs ?? 0) > 25 ? '#ef4444' : '#10b981'
-              } />
+              <Row label="Battery" value={frame?.batteryVoltage ?? 0} unit="V" color="#f59e0b" />
+              <Row
+                label="Loop Time"
+                value={frame?.loopTimeMs ?? 0}
+                unit="ms"
+                color={(frame?.loopTimeMs ?? 0) > 25 ? '#ef4444' : '#10b981'}
+              />
 
               <Divider label="Modules (actual speed / angle)" />
-              {[0,1,2,3].map(i => {
-                const a = f?.actuals?.[i] ?? [0,0];
-                const t = f?.targets?.[i] ?? [0,0];
+              {[0, 1, 2, 3].map(i => {
+                const actual = frame?.actuals?.[i] ?? [0, 0];
                 return (
                   <Row
                     key={i}
-                    label={['FL','FR','RR','RL'][i]}
-                    value={`${a[0].toFixed(2)} m/s  ${(a[1]*180/Math.PI).toFixed(1)}°`}
-                    color={['#f43f5e','#fb923c','#facc15','#4ade80'][i]}
+                    label={['FL', 'FR', 'RR', 'RL'][i]}
+                    value={`${actual[0].toFixed(2)} m/s  ${(actual[1] * 180 / Math.PI).toFixed(1)} deg`}
+                    color={['#f43f5e', '#fb923c', '#facc15', '#4ade80'][i]}
                   />
                 );
               })}
@@ -185,42 +219,52 @@ export default function InspectorPanel({ history, historyLength, currentFrame, i
         </div>
       )}
 
-      {/* Rolling table view */}
       {view === 'table' && (
         <div ref={tableRef} className="flex-1 overflow-auto">
           <table className="telem-table text-[9px]">
             <thead>
               <tr>
                 <th>T(s)</th>
-                <th>X</th><th>Y</th><th>H°</th>
-                <th>FL_v</th><th>FR_v</th><th>RR_v</th><th>RL_v</th>
-                <th>Batt</th>
+                {columns.pose && <th>X</th>}
+                {columns.pose && <th>Y</th>}
+                {columns.heading && <th>H deg</th>}
+                {columns.modules && <th>FL_v</th>}
+                {columns.modules && <th>FR_v</th>}
+                {columns.modules && <th>RR_v</th>}
+                {columns.modules && <th>RL_v</th>}
+                {columns.battery && <th>Batt</th>}
               </tr>
             </thead>
             <tbody>
-              {history.slice(-200).map((fr, i) => (
-                <tr key={i}>
-                  <td className="readout">{fr.timestamp.toFixed(2)}</td>
-                  <td className="readout">{fr.x.toFixed(2)}</td>
-                  <td className="readout">{fr.y.toFixed(2)}</td>
-                  <td className="readout">{(fr.heading * 180 / Math.PI).toFixed(1)}</td>
-                  {[0,1,2,3].map(j => (
-                    <td key={j} className="readout">{(fr.actuals[j]?.[0] ?? 0).toFixed(2)}</td>
-                  ))}
-                  <td className="readout">{fr.batteryVoltage.toFixed(1)}</td>
-                </tr>
-              ))}
+              {visibleRows.map((entry, index) => {
+                const absoluteIndex = visibleStartIndex + index;
+                return (
+                  <tr
+                    key={entry.timestamp + index}
+                    onClick={() => onJumpToIndex(absoluteIndex)}
+                    className={absoluteIndex === scrubIndex ? 'bg-scope-surface' : 'cursor-pointer'}
+                  >
+                    <td className="readout">{entry.timestamp.toFixed(2)}</td>
+                    {columns.pose && <td className="readout">{entry.x.toFixed(2)}</td>}
+                    {columns.pose && <td className="readout">{entry.y.toFixed(2)}</td>}
+                    {columns.heading && <td className="readout">{(entry.heading * 180 / Math.PI).toFixed(1)}</td>}
+                    {columns.modules && [0, 1, 2, 3].map(j => (
+                      <td key={j} className="readout">{(entry.actuals[j]?.[0] ?? 0).toFixed(2)}</td>
+                    ))}
+                    {columns.battery && <td className="readout">{entry.batteryVoltage.toFixed(1)}</td>}
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
       )}
 
-      {/* Raw JSON */}
       {view === 'raw' && (
         <div className="flex-1 overflow-auto p-2 font-mono text-[9px] text-scope-text bg-scope-bg">
-          {f ? (
+          {frame ? (
             <pre className="whitespace-pre-wrap break-all">
-              {JSON.stringify(f, null, 2)}
+              {JSON.stringify(frame, null, 2)}
             </pre>
           ) : (
             <span className="text-scope-muted">No frame</span>

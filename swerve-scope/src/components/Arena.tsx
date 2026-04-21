@@ -1,5 +1,5 @@
-// Arena.tsx — 2D field canvas with odometry trail, robot chassis, module vectors
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
+import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react';
 import type { TelemetryFrame } from '../types/telemetry';
 import { SwerveConfig } from '../lib/SwerveLogic';
 
@@ -11,26 +11,27 @@ interface ArenaProps {
 }
 
 const PX_PER_M = 110;
-const FIELD_M  = 3.66; // 12ft in meters
-const HALF     = FIELD_M * PX_PER_M;
-
+const FIELD_M = 3.66;
+const HALF = FIELD_M * PX_PER_M;
 const LABEL = ['FL', 'FR', 'RR', 'RL'];
 const MODULE_COLORS = ['#f43f5e', '#fb923c', '#facc15', '#4ade80'];
 const DECODE_TAGS = [
-  { id: 1, x: -1.5, y:  1.5 },
-  { id: 2, x:  0.0, y:  1.5 },
-  { id: 3, x:  1.5, y:  1.5 },
-  { id: 4, x: -1.5, y:  0.0 },
-  { id: 5, x:  1.5, y:  0.0 },
+  { id: 1, x: -1.5, y: 1.5 },
+  { id: 2, x: 0.0, y: 1.5 },
+  { id: 3, x: 1.5, y: 1.5 },
+  { id: 4, x: -1.5, y: 0.0 },
+  { id: 5, x: 1.5, y: 0.0 },
   { id: 6, x: -1.5, y: -1.5 },
-  { id: 7, x:  0.0, y: -1.5 },
-  { id: 8, x:  1.5, y: -1.5 },
+  { id: 7, x: 0.0, y: -1.5 },
+  { id: 8, x: 1.5, y: -1.5 },
 ];
 
 function arrow(
   ctx: CanvasRenderingContext2D,
-  x: number, y: number,
-  len: number, angle: number,
+  x: number,
+  y: number,
+  len: number,
+  angle: number,
   color: string,
   width = 1.5,
 ) {
@@ -45,11 +46,11 @@ function arrow(
   ctx.moveTo(0, 0);
   ctx.lineTo(len, 0);
   ctx.stroke();
-  const h = Math.min(Math.abs(len) * 0.25, 7);
+  const head = Math.min(Math.abs(len) * 0.25, 7);
   ctx.beginPath();
   ctx.moveTo(len, 0);
-  ctx.lineTo(len - h, h / 2);
-  ctx.lineTo(len - h, -h / 2);
+  ctx.lineTo(len - head, head / 2);
+  ctx.lineTo(len - head, -head / 2);
   ctx.closePath();
   ctx.fill();
   ctx.restore();
@@ -59,84 +60,109 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
+  const draggingRef = useRef(false);
+  const dragOriginRef = useRef({ x: 0, y: 0 });
+  const panStartRef = useRef({ x: 0, y: 0 });
+
+  const [zoom, setZoom] = useState(1);
+  const [pan, setPan] = useState({ x: 0, y: 0 });
+  const [hoverField, setHoverField] = useState<{ x: number; y: number } | null>(null);
+
+  const worldToScreen = useCallback((worldX: number, worldY: number, width: number, height: number) => ({
+    x: width / 2 + pan.x + worldX * PX_PER_M * zoom,
+    y: height / 2 + pan.y - worldY * PX_PER_M * zoom,
+  }), [pan.x, pan.y, zoom]);
+
+  const screenToField = useCallback((screenX: number, screenY: number, width: number, height: number) => ({
+    x: (screenX - width / 2 - pan.x) / (PX_PER_M * zoom),
+    y: -(screenY - height / 2 - pan.y) / (PX_PER_M * zoom),
+  }), [pan.x, pan.y, zoom]);
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
 
-    const W = container.clientWidth;
-    const H = container.clientHeight;
+    const width = container.clientWidth;
+    const height = container.clientHeight;
     const dpr = window.devicePixelRatio || 1;
-    if (canvas.width !== W * dpr || canvas.height !== H * dpr) {
-      canvas.width  = W * dpr;
-      canvas.height = H * dpr;
-      canvas.style.width  = W + 'px';
-      canvas.style.height = H + 'px';
+    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+      canvas.style.width = `${width}px`;
+      canvas.style.height = `${height}px`;
     }
 
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, W, H);
+    ctx.clearRect(0, 0, width, height);
 
     ctx.save();
-    ctx.translate(W / 2, H / 2);
+    ctx.translate(width / 2 + pan.x, height / 2 + pan.y);
+    ctx.scale(zoom, zoom);
 
-    // ── Grid ──────────────────────────────────────────────────────────────
     ctx.strokeStyle = '#1a2535';
-    ctx.lineWidth = 1;
-    const step = 0.6096 * PX_PER_M; // 2ft
+    ctx.lineWidth = 1 / zoom;
+    const step = 0.6096 * PX_PER_M;
     for (let i = -5; i <= 5; i++) {
-      ctx.beginPath(); ctx.moveTo(i * step, -HALF); ctx.lineTo(i * step, HALF); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(-HALF, i * step); ctx.lineTo(HALF, i * step); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(i * step, -HALF);
+      ctx.lineTo(i * step, HALF);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(-HALF, i * step);
+      ctx.lineTo(HALF, i * step);
+      ctx.stroke();
     }
 
-    // ── Field boundary ────────────────────────────────────────────────────
     ctx.strokeStyle = '#2a3a52';
-    ctx.lineWidth = 2;
+    ctx.lineWidth = 2 / zoom;
     ctx.strokeRect(-HALF, -HALF, HALF * 2, HALF * 2);
 
-    // ── AprilTag overlay (DECODE season) ──────────────────────────────────
     DECODE_TAGS.forEach(tag => {
       ctx.save();
       ctx.translate(tag.x * PX_PER_M, -tag.y * PX_PER_M);
       ctx.strokeStyle = '#f59e0b40';
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 1 / zoom;
       ctx.strokeRect(-8, -8, 16, 16);
       ctx.fillStyle = '#f59e0bcc';
-      ctx.font = '600 7px JetBrains Mono, monospace';
+      ctx.font = `${Math.max(7 / zoom, 6)}px JetBrains Mono, monospace`;
       ctx.textAlign = 'center';
-      ctx.fillText(`T${tag.id}`, 0, 3);
+      ctx.fillText(`T${tag.id}`, 0, 3 / zoom);
       ctx.restore();
     });
 
-    // ── Origin cross ──────────────────────────────────────────────────────
     ctx.strokeStyle = '#2a4a6a';
-    ctx.lineWidth = 1;
-    [-8, 8].forEach(d => {
-      ctx.beginPath(); ctx.moveTo(-d, 0); ctx.lineTo(d, 0); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, -d); ctx.lineTo(0, d); ctx.stroke();
+    ctx.lineWidth = 1 / zoom;
+    [-8, 8].forEach(delta => {
+      ctx.beginPath();
+      ctx.moveTo(-delta, 0);
+      ctx.lineTo(delta, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, -delta);
+      ctx.lineTo(0, delta);
+      ctx.stroke();
     });
 
-    // ── Odometry trail ────────────────────────────────────────────────────
     if (showTrail && trail.length > 1) {
-      ctx.strokeStyle = 'rgba(14, 165, 233, 0.25)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(trail[0].x * PX_PER_M, -trail[0].y * PX_PER_M);
       for (let i = 1; i < trail.length; i++) {
+        const alpha = i / trail.length;
+        ctx.strokeStyle = `rgba(14, 165, 233, ${0.08 + alpha * 0.35})`;
+        ctx.lineWidth = (1 + alpha) / zoom;
+        ctx.beginPath();
+        ctx.moveTo(trail[i - 1].x * PX_PER_M, -trail[i - 1].y * PX_PER_M);
         ctx.lineTo(trail[i].x * PX_PER_M, -trail[i].y * PX_PER_M);
+        ctx.stroke();
       }
-      ctx.stroke();
-      // Trail head dot
-      const last = trail[trail.length - 1];
-      ctx.fillStyle = 'rgba(14, 165, 233, 0.5)';
+      const head = trail[trail.length - 1];
+      ctx.fillStyle = 'rgba(14, 165, 233, 0.65)';
       ctx.beginPath();
-      ctx.arc(last.x * PX_PER_M, -last.y * PX_PER_M, 3, 0, Math.PI * 2);
+      ctx.arc(head.x * PX_PER_M, -head.y * PX_PER_M, 3 / zoom, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // ── Robot ─────────────────────────────────────────────────────────────
     if (frame) {
       const { x, y, heading, actuals, targets } = frame;
 
@@ -144,79 +170,73 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
       ctx.translate(x * PX_PER_M, -y * PX_PER_M);
       ctx.rotate(-heading);
 
-      const hw = (SwerveConfig.TRACK_WIDTH_IN * 0.0254 / 2) * PX_PER_M;
-      const hl = (SwerveConfig.WHEEL_BASE_IN  * 0.0254 / 2) * PX_PER_M;
-      const bw = hw * 2 + 8;
+      const halfWidth = (SwerveConfig.TRACK_WIDTH_IN * 0.0254 / 2) * PX_PER_M;
+      const halfLength = (SwerveConfig.WHEEL_BASE_IN * 0.0254 / 2) * PX_PER_M;
+      const bodySize = halfWidth * 2 + 8;
+      const moduleOffsets: [number, number][] = [
+        [halfLength, halfWidth],
+        [halfLength, -halfWidth],
+        [-halfLength, -halfWidth],
+        [-halfLength, halfWidth],
+      ];
 
-      // Shadow
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = 20 / zoom;
       ctx.shadowColor = 'rgba(14,165,233,0.3)';
-
-      // Chassis body
       ctx.strokeStyle = '#0ea5e9';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(-hl - 4, -hw - 4, bw, bw);
+      ctx.lineWidth = 2 / zoom;
+      ctx.strokeRect(-halfLength - 4, -halfWidth - 4, bodySize, bodySize);
       ctx.shadowBlur = 0;
 
-      // Front indicator
       ctx.strokeStyle = '#ef4444';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 3 / zoom;
       ctx.beginPath();
-      ctx.moveTo(hl + 4, -hw - 4);
-      ctx.lineTo(hl + 4, hw + 4);
+      ctx.moveTo(halfLength + 4, -halfWidth - 4);
+      ctx.lineTo(halfLength + 4, halfWidth + 4);
       ctx.stroke();
 
-      // Center cross
       ctx.strokeStyle = '#1a3a5a';
-      ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(-8, 0); ctx.lineTo(8, 0); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(0, -8); ctx.lineTo(0, 8); ctx.stroke();
+      ctx.lineWidth = 1 / zoom;
+      ctx.beginPath();
+      ctx.moveTo(-8, 0);
+      ctx.lineTo(8, 0);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0, -8);
+      ctx.lineTo(0, 8);
+      ctx.stroke();
 
-      // ── Modules ──────────────────────────────────────────────────────────
-      const mOff: [number, number][] = [
-        [ hl,  hw], [ hl, -hw], [-hl, -hw], [-hl,  hw],
-      ];
-      mOff.forEach(([mx, my], i) => {
-        const actual  = actuals?.[i]  ?? [0, 0];
-        const target  = targets?.[i]  ?? [0, 0];
-        const speed   = actual[0];
-        const angle   = actual[1];
-        const color   = MODULE_COLORS[i];
+      moduleOffsets.forEach(([moduleX, moduleY], i) => {
+        const actual = actuals?.[i] ?? [0, 0];
+        const target = targets?.[i] ?? [0, 0];
+        const color = MODULE_COLORS[i];
 
         ctx.save();
-        ctx.translate(mx, -my);
+        ctx.translate(moduleX, -moduleY);
 
-        // Traction circle (dim)
         ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 / zoom;
         ctx.beginPath();
         ctx.arc(0, 0, 18, 0, Math.PI * 2);
         ctx.stroke();
 
-        // Wheel rectangle (oriented)
         ctx.save();
-        ctx.rotate(-angle);
+        ctx.rotate(-actual[1]);
         ctx.fillStyle = '#1a2535';
-        ctx.strokeStyle = color + '80';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = `${color}80`;
+        ctx.lineWidth = 1.5 / zoom;
         ctx.fillRect(-4, -8, 8, 16);
         ctx.strokeRect(-4, -8, 8, 16);
         ctx.restore();
 
-        // Vectors
         if (showVectors) {
-          // Target (dim)
-          arrow(ctx, 0, 0, target[0] * 35, -target[1], color + '40', 2);
-          // Actual
-          arrow(ctx, 0, 0, speed * 35, -angle, color, 1.5);
+          arrow(ctx, 0, 0, target[0] * 35, -target[1], `${color}40`, 2 / zoom);
+          arrow(ctx, 0, 0, actual[0] * 35, -actual[1], color, 1.5 / zoom);
         }
 
-        // Module label
-        ctx.fillStyle = color + 'aa';
-        ctx.font = '600 7px JetBrains Mono, monospace';
+        ctx.fillStyle = `${color}cc`;
+        ctx.font = `${Math.max(7 / zoom, 6)}px JetBrains Mono, monospace`;
         ctx.textAlign = 'center';
-        ctx.fillText(LABEL[i], 0, 26);
-
+        ctx.fillText(LABEL[i], 0, 26 / zoom);
         ctx.restore();
       });
 
@@ -224,24 +244,107 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
     }
 
     ctx.restore();
-  }, [frame, trail, showVectors, showTrail]);
+
+    if (hoverField) {
+      const hoverScreen = worldToScreen(hoverField.x, hoverField.y, width, height);
+      ctx.strokeStyle = '#8ba4c0';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(hoverScreen.x - 6, hoverScreen.y);
+      ctx.lineTo(hoverScreen.x + 6, hoverScreen.y);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(hoverScreen.x, hoverScreen.y - 6);
+      ctx.lineTo(hoverScreen.x, hoverScreen.y + 6);
+      ctx.stroke();
+    }
+  }, [frame, hoverField, pan.x, pan.y, showTrail, showVectors, trail, worldToScreen, zoom]);
 
   useEffect(() => {
-    const loop = () => { draw(); rafRef.current = requestAnimationFrame(loop); };
+    const loop = () => {
+      draw();
+      rafRef.current = requestAnimationFrame(loop);
+    };
     rafRef.current = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(rafRef.current);
   }, [draw]);
 
+  const updateHover = useCallback((clientX: number, clientY: number) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+    setHoverField(screenToField(clientX - rect.left, clientY - rect.top, rect.width, rect.height));
+  }, [screenToField]);
+
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 1) return;
+    event.preventDefault();
+    draggingRef.current = true;
+    dragOriginRef.current = { x: event.clientX, y: event.clientY };
+    panStartRef.current = pan;
+    event.currentTarget.setPointerCapture(event.pointerId);
+  };
+
+  const handlePointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
+    updateHover(event.clientX, event.clientY);
+    if (!draggingRef.current) return;
+    setPan({
+      x: panStartRef.current.x + (event.clientX - dragOriginRef.current.x),
+      y: panStartRef.current.y + (event.clientY - dragOriginRef.current.y),
+    });
+  };
+
+  const handlePointerUp = (event: ReactPointerEvent<HTMLDivElement>) => {
+    draggingRef.current = false;
+    event.currentTarget.releasePointerCapture(event.pointerId);
+  };
+
+  const handleWheel = (event: ReactWheelEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const rect = containerRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const mouseX = event.clientX - rect.left;
+    const mouseY = event.clientY - rect.top;
+    const before = screenToField(mouseX, mouseY, rect.width, rect.height);
+    const nextZoom = Math.max(0.5, Math.min(4, zoom * (event.deltaY < 0 ? 1.08 : 0.92)));
+    const afterScale = PX_PER_M * nextZoom;
+    const nextPan = {
+      x: mouseX - rect.width / 2 - before.x * afterScale,
+      y: mouseY - rect.height / 2 + before.y * afterScale,
+    };
+
+    setZoom(nextZoom);
+    setPan(nextPan);
+  };
+
   return (
-    <div ref={containerRef} className="w-full h-full relative bg-scope-bg">
+    <div
+      ref={containerRef}
+      className="w-full h-full relative bg-scope-bg select-none"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerLeave={() => setHoverField(null)}
+      onWheel={handleWheel}
+      onDoubleClick={() => {
+        setZoom(1);
+        setPan({ x: 0, y: 0 });
+      }}
+    >
       <canvas ref={canvasRef} className="arena-canvas w-full h-full" />
-      {/* Corner labels */}
-      <div className="absolute top-2 left-3 text-[9px] text-scope-muted font-mono">FIELD_VIEW // 12×12ft</div>
-      {frame && (
-        <div className="absolute bottom-2 right-3 text-[9px] font-mono text-scope-text readout">
-          {frame.x.toFixed(2)}m, {frame.y.toFixed(2)}m, {(frame.heading * 180 / Math.PI).toFixed(1)}°
+      <div className="absolute top-2 left-3 text-[9px] text-scope-muted font-mono">FIELD_VIEW // 12x12ft</div>
+      <div className="absolute top-2 right-3 text-[8px] font-mono text-scope-muted">
+        wheel zoom  middle-drag pan  double-click reset
+      </div>
+      {hoverField && (
+        <div className="absolute bottom-7 left-3 text-[9px] font-mono text-scope-text readout">
+          hover {hoverField.x.toFixed(2)}m, {hoverField.y.toFixed(2)}m
         </div>
       )}
+      <div className="absolute bottom-2 right-3 text-[9px] font-mono text-scope-text readout">
+        zoom {zoom.toFixed(2)}x
+        {frame && `  |  robot ${frame.x.toFixed(2)}m, ${frame.y.toFixed(2)}m, ${(frame.heading * 180 / Math.PI).toFixed(1)}deg`}
+      </div>
     </div>
   );
 }

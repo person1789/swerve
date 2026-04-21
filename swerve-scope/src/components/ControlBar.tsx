@@ -1,7 +1,8 @@
-import type { ConnectionStatus } from '../types/telemetry';
+import type { ConnectionStatus, RuntimeMode } from '../types/telemetry';
 
 interface ControlBarProps {
   status: ConnectionStatus;
+  runtimeMode: RuntimeMode;
   schemaMismatch: string | null;
   isLive: boolean;
   isPlaying: boolean;
@@ -42,6 +43,7 @@ function fmtTime(sec: number) {
 
 export default function ControlBar({
   status,
+  runtimeMode,
   schemaMismatch,
   isLive,
   isPlaying,
@@ -81,6 +83,15 @@ export default function ControlBar({
             'text-scope-muted'
           }`}>
             {STATUS_TEXT[status]}
+          </span>
+        </div>
+
+        <div className={`flex items-center gap-1.5 border rounded px-2 py-1 ${
+          runtimeMode === 'sitl' ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-scope-border bg-scope-bg'
+        }`}>
+          <span className="text-[8px] font-mono uppercase tracking-wide text-scope-muted">mode</span>
+          <span className={`text-[9px] font-mono font-bold ${runtimeMode === 'sitl' ? 'text-emerald-300' : 'text-scope-accent'}`}>
+            {runtimeMode === 'sitl' ? 'JAVA // SITL' : 'LOCAL // TS'}
           </span>
         </div>
 
@@ -125,6 +136,12 @@ export default function ControlBar({
       {schemaMismatch && (
         <div className="px-3 pb-2 text-[9px] font-mono text-amber-300">
           {schemaMismatch}
+        </div>
+      )}
+
+      {runtimeMode === 'local' && (
+        <div className="px-3 pb-2 text-[9px] font-mono text-scope-muted">
+          Local sim ready: use a gamepad or `WASD` for translation, `Q/E` for turn, arrows for snap headings.
         </div>
       )}
 

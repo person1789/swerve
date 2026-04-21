@@ -5,6 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:open": "vite --open",
+    "dev:host": "vite --host",
+    "sitl:java": "..\\gradlew.bat :TeamCode:testDebugUnitTest --tests \"org.firstinspires.ftc.teamcode.Swerve.Tests.MasterTestSuite.launchSITL\" --no-daemon",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"

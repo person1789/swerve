@@ -70,8 +70,8 @@ export function useSwerveScopeState() {
     history.push(frame);
   }, [history]);
 
-  const { status, sendInput, schemaMismatch } = useSITL(handleFrame);
-  useGamepad(sendInput, status === 'connected');
+  const { status, runtimeMode, sendInput, schemaMismatch } = useSITL(handleFrame);
+  useGamepad(sendInput, true);
 
   const frame = history.currentFrame;
   if (frame) {
@@ -138,6 +138,7 @@ export function useSwerveScopeState() {
 
   return {
     status,
+    runtimeMode,
     schemaMismatch,
     history,
     frame,
