@@ -4,7 +4,7 @@ This guide covers everything you need to know to run and use the **Next.js Swerv
 
 ## 🚀 Getting Started
 
-The simulator is located in the `./swerve-sim` directory. It uses the exact same `SwerveKinematics` and `MotionSmoother` logic as your actual robot.
+The simulator is located in the `./swerve-scope` directory. It uses the exact same `SwerveKinematics` and `MotionSmoother` logic as your actual robot.
 
 ### 1. Installation
 If this is your first time running the sim on a new machine:
@@ -47,4 +47,4 @@ The top-left corner displays real-time telemetry calculated by the JS engine:
 To assist with Field-Centric driving practice, the robot chassis features a **vibrant red edge** indicating the "Front" of the robot. The other three sides are blue.
 
 ## 🛠️ Modifying the Sim
-If you change your physical robot's `TRACK_WIDTH` or `MAX_SPEED` in `SwerveConfig.java`, you should update the corresponding values in `swerve-sim/src/lib/SwerveLogic.ts` to keep the simulation accurate.
+If you change your physical robot's `TRACK_WIDTH` or `MAX_SPEED` in `SwerveConfig.java`, you should update the corresponding values in `swerve-scope/src/lib/SwerveLogic.ts` to keep the simulation accurate.

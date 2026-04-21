@@ -39,7 +39,7 @@ This library follows a strict **Input -> Logic -> Hardware** abstraction hierarc
   - `MathUtil`: Specialized helpers for angle normalization.
   - `Pose`/`Point`/`D2Vector`: Math types used throughout the library.
 
-## 6. Simulation & Testing (`swerve-sim/`)
+## 6. Simulation & Testing (`swerve-scope/`)
 - **Digital Twin**: Located outside the main Java source, this is a separate app that mirrors your robot's exact physics and logic for practice and testing.
 
 ---

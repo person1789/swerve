@@ -79,3 +79,7 @@ lint/generated/
 lint/outputs/
 lint/tmp/
 # lint/reports/
+
+# Web dependencies
+**/node_modules/
+**/dist/

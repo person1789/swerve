@@ -1,0 +1,133 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Custom scrollbar ───────────────────────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #1a2535 transparent;
+}
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #1a2535; border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: #2a3a52; }
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+body {
+  margin: 0;
+  background: #060a0f;
+  color: #c8dff0;
+  font-family: 'JetBrains Mono', monospace;
+  -webkit-font-smoothing: antialiased;
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+}
+
+#root { width: 100%; height: 100vh; display: flex; flex-direction: column; }
+
+/* ── Panel border glow ──────────────────────────────────────────────────── */
+.panel {
+  background: #0d1520;
+  border: 1px solid #1a2535;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.panel-header {
+  background: #060a0f;
+  border-bottom: 1px solid #1a2535;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #4a6a8a;
+  flex-shrink: 0;
+}
+
+.panel-header .title { color: #6a9abf; }
+.panel-body { flex: 1; overflow: hidden; }
+
+/* ── Status dot ─────────────────────────────────────────────────────────── */
+.dot-live  { background: #10b981; box-shadow: 0 0 6px #10b981; }
+.dot-conn  { background: #f59e0b; box-shadow: 0 0 6px #f59e0b; }
+.dot-dead  { background: #374151; }
+
+/* ── Grid layout ────────────────────────────────────────────────────────── */
+.scope-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 4px;
+  height: 100%;
+}
+
+/* ── uPlot theming ──────────────────────────────────────────────────────── */
+.uplot canvas { cursor: crosshair !important; }
+
+/* ── Resize handle ──────────────────────────────────────────────────────── */
+.resize-handle {
+  background: #1a2535;
+  transition: background 0.2s;
+  cursor: col-resize;
+}
+.resize-handle:hover { background: #0ea5e9; }
+
+/* ── Tile drag & drop ───────────────────────────────────────────────────── */
+.tile-drag-over { outline: 1px dashed #0ea5e9; }
+
+/* ── Telemetry table ────────────────────────────────────────────────────── */
+.telem-table { border-collapse: collapse; width: 100%; font-size: 10px; }
+.telem-table th { color: #2a4a6a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; padding: 3px 8px; border-bottom: 1px solid #1a2535; }
+.telem-table td { padding: 3px 8px; border-bottom: 1px solid #0d1520; }
+.telem-table tr:hover td { background: #1a2535; }
+
+/* ── Number readout ─────────────────────────────────────────────────────── */
+.readout { font-variant-numeric: tabular-nums; font-feature-settings: 'tnum'; }
+
+/* ── Canvas ─────────────────────────────────────────────────────────────── */
+.arena-canvas { display: block; }
+
+/* ── Console log ────────────────────────────────────────────────────────── */
+.log-line { font-size: 9px; line-height: 1.5; padding: 1px 8px; border-bottom: 1px solid #0d1520; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.log-line:hover { background: #1a2535; }
+.log-warn { color: #f59e0b; }
+.log-error { color: #ef4444; }
+.log-info  { color: #4a6a8a; }
+
+/* ── Joystick ───────────────────────────────────────────────────────────── */
+.joy-dot { transition: cx 0.05s, cy 0.05s; }
+
+/* ── Expression editor ──────────────────────────────────────────────────── */
+.expr-input {
+  background: #060a0f;
+  border: 1px solid #1a2535;
+  color: #c8dff0;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  width: 100%;
+  outline: none;
+}
+.expr-input:focus { border-color: #0ea5e9; }
+.expr-error { border-color: #ef4444 !important; }
+
+/* ── Button variants ────────────────────────────────────────────────────── */
+.btn { padding: 3px 10px; border-radius: 4px; font-size: 10px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer; transition: all 0.15s; border: none; outline: none; }
+.btn-ghost { background: transparent; border: 1px solid #1a2535; color: #4a6a8a; }
+.btn-ghost:hover { border-color: #2a4a6a; color: #8ba4c0; }
+.btn-accent { background: #0ea5e920; border: 1px solid #0ea5e960; color: #0ea5e9; }
+.btn-accent:hover { background: #0ea5e930; }
+.btn-danger { background: #ef444420; border: 1px solid #ef444450; color: #ef4444; }
+.btn-danger:hover { background: #ef444430; }
+.btn-success { background: #10b98120; border: 1px solid #10b98150; color: #10b981; }
+.btn-success:hover { background: #10b98130; }
+
+/* ── Splitpane ──────────────────────────────────────────────────────────── */
+.split-h { display: flex; height: 100%; gap: 4px; }
+.split-v { display: flex; flex-direction: column; height: 100%; gap: 4px; }
