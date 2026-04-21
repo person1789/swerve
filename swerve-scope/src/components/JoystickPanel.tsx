@@ -77,7 +77,12 @@ export default function JoystickPanel({ frame }: JoystickPanelProps) {
   const [lt, setLt] = useState(0);
   const [rt, setRt] = useState(0);
   const [buttons, setButtons] = useState<boolean[]>([]);
-  const rafRef = useRef<number>(0);
+  const timerRef = useRef<number | null>(null);
+  const frameRef = useRef<TelemetryFrame | null>(frame);
+
+  useEffect(() => {
+    frameRef.current = frame;
+  }, [frame]);
 
   useEffect(() => {
     const poll = () => {
@@ -93,31 +98,34 @@ export default function JoystickPanel({ frame }: JoystickPanelProps) {
         setLt(gamepad.buttons[6]?.value ?? 0);
         setRt(gamepad.buttons[7]?.value ?? 0);
         setButtons(Array.from(gamepad.buttons).map(button => button.pressed));
-      } else if (frame) {
-        setLx(frame.gamepad?.lx ?? frame.driveX);
-        setLy(frame.gamepad?.ly ?? frame.driveY);
-        setRx(frame.gamepad?.rx ?? 0);
-        setRy(frame.gamepad?.ry ?? frame.turn);
-        setLt(frame.gamepad?.lt ?? 0);
-        setRt(frame.gamepad?.rt ?? 0);
-        setButtons(frame.gamepad?.buttons ?? [
+      } else if (frameRef.current) {
+        const currentFrame = frameRef.current;
+        setLx(currentFrame.gamepad?.lx ?? currentFrame.driveX);
+        setLy(currentFrame.gamepad?.ly ?? currentFrame.driveY);
+        setRx(currentFrame.gamepad?.rx ?? 0);
+        setRy(currentFrame.gamepad?.ry ?? currentFrame.turn);
+        setLt(currentFrame.gamepad?.lt ?? 0);
+        setRt(currentFrame.gamepad?.rt ?? 0);
+        setButtons(currentFrame.gamepad?.buttons ?? [
           false, false, false, false,
           false, false, false, false,
           false, false, false, false,
-          !!frame.gamepad?.dpad_up,
-          !!frame.gamepad?.dpad_down,
-          !!frame.gamepad?.dpad_left,
-          !!frame.gamepad?.dpad_right,
+          !!currentFrame.gamepad?.dpad_up,
+          !!currentFrame.gamepad?.dpad_down,
+          !!currentFrame.gamepad?.dpad_left,
+          !!currentFrame.gamepad?.dpad_right,
         ]);
       }
-      rafRef.current = requestAnimationFrame(poll);
     };
-    rafRef.current = requestAnimationFrame(poll);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [frame]);
+    poll();
+    timerRef.current = window.setInterval(poll, 50);
+    return () => {
+      if (timerRef.current !== null) window.clearInterval(timerRef.current);
+    };
+  }, []);
 
   return (
-    <div className="flex flex-col h-full bg-scope-bg items-center justify-center gap-4 py-3 overflow-auto">
+    <div className="flex flex-col h-full min-h-0 bg-scope-bg items-center justify-start gap-4 py-3 overflow-auto">
       <div className="flex items-center gap-2 text-[9px] font-mono">
         <div className={`w-2 h-2 rounded-full ${gp ? 'dot-live' : 'dot-dead'}`} />
         <span className="text-scope-muted">
@@ -125,7 +133,7 @@ export default function JoystickPanel({ frame }: JoystickPanelProps) {
         </span>
       </div>
 
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-6 flex-wrap justify-center px-3">
         <Trigger label="LT" value={lt} />
         <Stick label="Left Stick" x={lx} y={ly} color="#0ea5e9" />
         <Stick label="Right Stick" x={rx} y={ry} color="#a855f7" />
@@ -135,7 +143,7 @@ export default function JoystickPanel({ frame }: JoystickPanelProps) {
       <ButtonGrid buttons={buttons.length > 0 ? buttons : new Array(16).fill(false)} />
 
       {frame && (
-        <div className="flex gap-6 text-[9px] font-mono text-scope-muted">
+        <div className="flex gap-6 text-[9px] font-mono text-scope-muted flex-wrap justify-center px-3 pb-2">
           <span>DRIVE_X: <span className="text-scope-text readout">{frame.driveX.toFixed(3)}</span></span>
           <span>DRIVE_Y: <span className="text-scope-text readout">{frame.driveY.toFixed(3)}</span></span>
           <span>TURN: <span className="text-scope-text readout">{frame.turn.toFixed(3)}</span></span>

@@ -74,13 +74,15 @@ export function useSwerveScopeState() {
   useGamepad(sendInput, true);
 
   const frame = history.currentFrame;
-  if (frame) {
+
+  useEffect(() => {
+    if (!frame) return;
     const last = trailRef.current[trailRef.current.length - 1];
     if (!last || Math.hypot(frame.x - last.x, frame.y - last.y) > 0.01) {
       trailRef.current.push({ x: frame.x, y: frame.y });
       if (trailRef.current.length > 2500) trailRef.current.shift();
     }
-  }
+  }, [frame]);
 
   useEffect(() => {
     localStorage.setItem('scope_custom_fields', JSON.stringify(customFields));

@@ -19,13 +19,13 @@ function mkEntry(ts: number, severity: Severity, source: string, msg: string): L
 function frameToLogs(frame: TelemetryFrame, prev: TelemetryFrame | null): LogEntry[] {
   const entries: LogEntry[] = [];
 
-  if (frame.batteryVoltage < 11.5) {
+  if (frame.batteryVoltage < 11.5 && (!prev || prev.batteryVoltage >= 11.5)) {
     entries.push(mkEntry(frame.timestamp, 'error', 'POWER', `Low battery: ${frame.batteryVoltage.toFixed(2)}V`));
-  } else if (frame.batteryVoltage < 12.3) {
+  } else if (frame.batteryVoltage < 12.3 && (!prev || prev.batteryVoltage >= 12.3)) {
     entries.push(mkEntry(frame.timestamp, 'warn', 'POWER', `Battery ${frame.batteryVoltage.toFixed(2)}V - consider swap`));
   }
 
-  if (frame.loopTimeMs > 30) {
+  if (frame.loopTimeMs > 30 && (!prev || prev.loopTimeMs <= 30)) {
     entries.push(mkEntry(frame.timestamp, 'warn', 'LOOP', `Overrun: ${frame.loopTimeMs.toFixed(1)}ms`));
   }
 
@@ -53,7 +53,7 @@ const SEV_COLOR: Record<Severity, string> = {
   debug: '#4a6a8a',
 };
 
-const MAX_LOG = 2000;
+const MAX_LOG = 500;
 
 interface ConsolePanelProps {
   frame: TelemetryFrame | null;
@@ -101,7 +101,7 @@ export default function ConsolePanel({ frame, isLive }: ConsolePanelProps) {
   entries.forEach(entry => counts[entry.severity]++);
 
   return (
-    <div className="flex flex-col h-full bg-scope-bg">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-scope-bg">
       <div className="flex items-center gap-2 px-2 py-1.5 border-b border-scope-border flex-shrink-0 flex-wrap">
         {(['all', 'error', 'warn', 'info', 'debug'] as const).map(level => (
           <button
@@ -140,7 +140,7 @@ export default function ConsolePanel({ frame, isLive }: ConsolePanelProps) {
         <button onClick={clear} className="btn btn-ghost text-[9px] py-0.5">clr</button>
       </div>
 
-      <div ref={listRef} className="flex-1 overflow-y-auto">
+      <div ref={listRef} className="flex-1 min-h-0 overflow-y-auto">
         {filtered.length === 0 ? (
           <div className="p-4 text-[9px] font-mono text-scope-muted">
             {entries.length === 0 ? 'Waiting for events...' : 'No matches'}

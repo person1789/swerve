@@ -3,9 +3,11 @@ import { useRef, useState, useCallback } from 'react';
 import type { TelemetryFrame } from '../types/telemetry';
 
 const MAX_FRAMES = 36_000; // ~12 min @ 50 Hz
+const UI_UPDATE_MS = 50;
 
 export function useHistory() {
   const bufferRef = useRef<TelemetryFrame[]>([]);
+  const lastUiUpdateRef = useRef(0);
   const [length, setLength] = useState(0);
   const [scrubIndex, setScrubIndex] = useState(0);
   const [isLive, setIsLive] = useState(true);
@@ -14,8 +16,14 @@ export function useHistory() {
     const buf = bufferRef.current;
     buf.push(frame);
     if (buf.length > MAX_FRAMES) buf.shift();
-    setLength(buf.length);
-    if (isLive) setScrubIndex(buf.length - 1);
+    const now = performance.now();
+    const shouldRefreshUi = now - lastUiUpdateRef.current >= UI_UPDATE_MS;
+
+    if (shouldRefreshUi) {
+      lastUiUpdateRef.current = now;
+      setLength(buf.length);
+      if (isLive) setScrubIndex(buf.length - 1);
+    }
   }, [isLive]);
 
   const seek = useCallback((idx: number) => {
@@ -33,6 +41,7 @@ export function useHistory() {
   }, []);
 
   const snapToLive = useCallback(() => {
+    setLength(bufferRef.current.length);
     setScrubIndex(bufferRef.current.length - 1);
     setIsLive(true);
   }, []);

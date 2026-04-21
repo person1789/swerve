@@ -70,6 +70,7 @@ export default function App() {
       case 'arena':
         return (
           <Arena
+            prevFrame={state.prevFrame}
             frame={state.frame}
             trail={state.trail}
             showVectors={state.showVectors}

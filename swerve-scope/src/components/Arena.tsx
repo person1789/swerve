@@ -1,9 +1,10 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { memo, useEffect, useRef, useCallback, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent, WheelEvent as ReactWheelEvent } from 'react';
 import type { TelemetryFrame } from '../types/telemetry';
 import { SwerveConfig } from '../lib/SwerveLogic';
 
 interface ArenaProps {
+  prevFrame: TelemetryFrame | null;
   frame: TelemetryFrame | null;
   trail: { x: number; y: number }[];
   showVectors: boolean;
@@ -13,6 +14,7 @@ interface ArenaProps {
 const PX_PER_M = 110;
 const FIELD_M = 3.66;
 const HALF = FIELD_M * PX_PER_M;
+const TELEMETRY_DT_SEC = 0.02;
 const LABEL = ['FL', 'FR', 'RR', 'RL'];
 const MODULE_COLORS = ['#f43f5e', '#fb923c', '#facc15', '#4ade80'];
 const DECODE_TAGS = [
@@ -56,17 +58,83 @@ function arrow(
   ctx.restore();
 }
 
-export default function Arena({ frame, trail, showVectors, showTrail }: ArenaProps) {
+function normalizeAngle(angle: number) {
+  let value = angle;
+  while (value <= -Math.PI) value += Math.PI * 2;
+  while (value > Math.PI) value -= Math.PI * 2;
+  return value;
+}
+
+function lerp(a: number, b: number, t: number) {
+  return a + (b - a) * t;
+}
+
+function lerpAngle(a: number, b: number, t: number) {
+  const delta = normalizeAngle(b - a);
+  return normalizeAngle(a + delta * t);
+}
+
+function interpolateFrame(prevFrame: TelemetryFrame | null, currentFrame: TelemetryFrame | null, alpha: number): TelemetryFrame | null {
+  if (!currentFrame) return null;
+  if (!prevFrame) return currentFrame;
+
+  return {
+    ...currentFrame,
+    x: lerp(prevFrame.x, currentFrame.x, alpha),
+    y: lerp(prevFrame.y, currentFrame.y, alpha),
+    heading: lerpAngle(prevFrame.heading, currentFrame.heading, alpha),
+    targets: currentFrame.targets.map((target, index) => {
+      const prevTarget = prevFrame.targets[index] ?? target;
+      return [
+        lerp(prevTarget[0], target[0], alpha),
+        lerpAngle(prevTarget[1], target[1], alpha),
+      ] as [number, number];
+    }),
+    actuals: currentFrame.actuals.map((actual, index) => {
+      const prevActual = prevFrame.actuals[index] ?? actual;
+      return [
+        lerp(prevActual[0], actual[0], alpha),
+        lerpAngle(prevActual[1], actual[1], alpha),
+      ] as [number, number];
+    }),
+  };
+}
+
+function Arena({ prevFrame, frame, trail, showVectors, showTrail }: ArenaProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-  const rafRef = useRef<number>(0);
+  const animationRef = useRef<number>(0);
   const draggingRef = useRef(false);
   const dragOriginRef = useRef({ x: 0, y: 0 });
   const panStartRef = useRef({ x: 0, y: 0 });
+  const latestFrameRef = useRef<TelemetryFrame | null>(frame);
+  const latestPrevFrameRef = useRef<TelemetryFrame | null>(prevFrame);
+  const latestTrailRef = useRef(trail);
+  const frameReceivedAtRef = useRef(performance.now());
+  const showVectorsRef = useRef(showVectors);
+  const showTrailRef = useRef(showTrail);
 
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [hoverField, setHoverField] = useState<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    latestPrevFrameRef.current = prevFrame;
+    latestFrameRef.current = frame;
+    frameReceivedAtRef.current = performance.now();
+  }, [prevFrame, frame]);
+
+  useEffect(() => {
+    latestTrailRef.current = trail;
+  }, [trail]);
+
+  useEffect(() => {
+    showVectorsRef.current = showVectors;
+  }, [showVectors]);
+
+  useEffect(() => {
+    showTrailRef.current = showTrail;
+  }, [showTrail]);
 
   const worldToScreen = useCallback((worldX: number, worldY: number, width: number, height: number) => ({
     x: width / 2 + pan.x + worldX * PX_PER_M * zoom,
@@ -78,7 +146,7 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
     y: -(screenY - height / 2 - pan.y) / (PX_PER_M * zoom),
   }), [pan.x, pan.y, zoom]);
 
-  const draw = useCallback(() => {
+  const draw = useCallback((now: number) => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
     if (!canvas || !container) return;
@@ -95,6 +163,11 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
+
+    const alpha = Math.max(0, Math.min(1, (now - frameReceivedAtRef.current) / (TELEMETRY_DT_SEC * 1000)));
+    const renderedFrame = interpolateFrame(latestPrevFrameRef.current, latestFrameRef.current, alpha);
+    const renderedTrail = latestTrailRef.current;
+
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, width, height);
 
@@ -146,25 +219,25 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
       ctx.stroke();
     });
 
-    if (showTrail && trail.length > 1) {
-      for (let i = 1; i < trail.length; i++) {
-        const alpha = i / trail.length;
-        ctx.strokeStyle = `rgba(14, 165, 233, ${0.08 + alpha * 0.35})`;
-        ctx.lineWidth = (1 + alpha) / zoom;
+    if (showTrailRef.current && renderedTrail.length > 1) {
+      for (let i = 1; i < renderedTrail.length; i++) {
+        const trailAlpha = i / renderedTrail.length;
+        ctx.strokeStyle = `rgba(14, 165, 233, ${0.08 + trailAlpha * 0.35})`;
+        ctx.lineWidth = (1 + trailAlpha) / zoom;
         ctx.beginPath();
-        ctx.moveTo(trail[i - 1].x * PX_PER_M, -trail[i - 1].y * PX_PER_M);
-        ctx.lineTo(trail[i].x * PX_PER_M, -trail[i].y * PX_PER_M);
+        ctx.moveTo(renderedTrail[i - 1].x * PX_PER_M, -renderedTrail[i - 1].y * PX_PER_M);
+        ctx.lineTo(renderedTrail[i].x * PX_PER_M, -renderedTrail[i].y * PX_PER_M);
         ctx.stroke();
       }
-      const head = trail[trail.length - 1];
+      const head = renderedTrail[renderedTrail.length - 1];
       ctx.fillStyle = 'rgba(14, 165, 233, 0.65)';
       ctx.beginPath();
       ctx.arc(head.x * PX_PER_M, -head.y * PX_PER_M, 3 / zoom, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    if (frame) {
-      const { x, y, heading, actuals, targets } = frame;
+    if (renderedFrame) {
+      const { x, y, heading, actuals, targets } = renderedFrame;
 
       ctx.save();
       ctx.translate(x * PX_PER_M, -y * PX_PER_M);
@@ -228,7 +301,7 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
         ctx.strokeRect(-4, -8, 8, 16);
         ctx.restore();
 
-        if (showVectors) {
+        if (showVectorsRef.current) {
           arrow(ctx, 0, 0, target[0] * 35, -target[1], `${color}40`, 2 / zoom);
           arrow(ctx, 0, 0, actual[0] * 35, -actual[1], color, 1.5 / zoom);
         }
@@ -258,15 +331,15 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
       ctx.lineTo(hoverScreen.x, hoverScreen.y + 6);
       ctx.stroke();
     }
-  }, [frame, hoverField, pan.x, pan.y, showTrail, showVectors, trail, worldToScreen, zoom]);
+  }, [hoverField, pan.x, pan.y, worldToScreen, zoom]);
 
   useEffect(() => {
-    const loop = () => {
-      draw();
-      rafRef.current = requestAnimationFrame(loop);
+    const animate = (now: number) => {
+      draw(now);
+      animationRef.current = requestAnimationFrame(animate);
     };
-    rafRef.current = requestAnimationFrame(loop);
-    return () => cancelAnimationFrame(rafRef.current);
+    animationRef.current = requestAnimationFrame(animate);
+    return () => cancelAnimationFrame(animationRef.current);
   }, [draw]);
 
   const updateHover = useCallback((clientX: number, clientY: number) => {
@@ -332,7 +405,7 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
       }}
     >
       <canvas ref={canvasRef} className="arena-canvas w-full h-full" />
-      <div className="absolute top-2 left-3 text-[9px] text-scope-muted font-mono">FIELD_VIEW // 12x12ft</div>
+      <div className="absolute top-2 left-3 text-[9px] text-scope-muted font-mono">FIELD_VIEW // 12x12ft // 60 FPS</div>
       <div className="absolute top-2 right-3 text-[8px] font-mono text-scope-muted">
         wheel zoom  middle-drag pan  double-click reset
       </div>
@@ -348,3 +421,5 @@ export default function Arena({ frame, trail, showVectors, showTrail }: ArenaPro
     </div>
   );
 }
+
+export default memo(Arena);

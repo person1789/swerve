@@ -50,7 +50,8 @@ body {
 }
 
 .panel-header .title { color: #6a9abf; }
-.panel-body { flex: 1; overflow: hidden; }
+.panel-body { flex: 1; overflow: hidden; min-height: 0; }
+.panel-body > * { min-height: 0; }
 
 /* ── Status dot ─────────────────────────────────────────────────────────── */
 .dot-live  { background: #10b981; box-shadow: 0 0 6px #10b981; }

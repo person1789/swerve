@@ -217,13 +217,15 @@ function ChassisSummary({ frame }: { frame: TelemetryFrame | null }) {
 
 export default function ModuleDetail({ frame }: ModuleDetailProps) {
   return (
-    <div className="w-full h-full p-1 grid grid-cols-3 grid-rows-3 gap-1">
+    <div className="w-full h-full min-h-0 overflow-auto p-1">
+      <div className="grid grid-cols-3 grid-rows-3 gap-1 min-w-[520px] min-h-[520px] h-full">
       <div className="col-start-1 row-start-1"><ModuleCard index={0} frame={frame} /></div>
       <div className="col-start-3 row-start-1"><ModuleCard index={1} frame={frame} /></div>
       <div className="col-start-1 row-start-3"><ModuleCard index={3} frame={frame} /></div>
       <div className="col-start-3 row-start-3"><ModuleCard index={2} frame={frame} /></div>
       <div className="col-start-2 row-start-2">
         <ChassisSummary frame={frame} />
+      </div>
       </div>
     </div>
   );

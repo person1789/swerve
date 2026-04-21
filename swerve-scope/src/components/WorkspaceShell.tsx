@@ -96,7 +96,7 @@ function WorkspacePanel({
 
   return (
     <div
-      className={`panel flex flex-col min-h-0 ${dragOver ? 'tile-drag-over' : ''}`}
+      className={`panel flex flex-col h-full min-h-0 overflow-hidden ${dragOver ? 'tile-drag-over' : ''}`}
       onDragOver={event => {
         event.preventDefault();
         setDragOver(true);
@@ -130,7 +130,7 @@ function WorkspacePanel({
           ))}
         </select>
       </div>
-      <div className="panel-body min-h-0">{children}</div>
+      <div className="panel-body h-full min-h-0">{children}</div>
     </div>
   );
 }
@@ -152,7 +152,7 @@ export default function WorkspaceShell({
   return (
     <div className="workspace-shell">
       <div className="workspace-column" style={{ width: `${leftPct}%` }}>
-        <div style={{ height: `${slotHeights.primary}%` }} className="min-h-0">
+        <div style={{ height: `${slotHeights.primary}%` }} className="min-h-0 overflow-hidden">
           <WorkspacePanel slot="primary" pane={slots.primary} title={paneTitles[slots.primary]} paneTitles={paneTitles} paneChoices={paneChoices} onPaneChange={onPaneChange} onSwapSlots={onSwapSlots}>
             {renderPane(slots.primary)}
           </WorkspacePanel>
@@ -162,7 +162,7 @@ export default function WorkspaceShell({
           onSlotHeightChange('primary', slotHeights.primary + delta);
           onSlotHeightChange('secondary', slotHeights.secondary - delta);
         }} />
-        <div style={{ height: `${slotHeights.secondary}%` }} className="min-h-0">
+        <div style={{ height: `${slotHeights.secondary}%` }} className="min-h-0 overflow-hidden">
           <WorkspacePanel slot="secondary" pane={slots.secondary} title={paneTitles[slots.secondary]} paneTitles={paneTitles} paneChoices={paneChoices} onPaneChange={onPaneChange} onSwapSlots={onSwapSlots}>
             {renderPane(slots.secondary)}
           </WorkspacePanel>
@@ -172,7 +172,7 @@ export default function WorkspaceShell({
       <ResizeX onDrag={dx => onLeftPctChange(leftPct + (dx / Math.max(window.innerWidth, 1)) * 100)} />
 
       <div className="workspace-sidebar">
-        <div style={{ height: `${(slotHeights.sidebarTop / sidebarTotal) * 100}%` }} className="min-h-0">
+        <div style={{ height: `${(slotHeights.sidebarTop / sidebarTotal) * 100}%` }} className="min-h-0 overflow-hidden">
           <WorkspacePanel slot="sidebarTop" pane={slots.sidebarTop} title={paneTitles[slots.sidebarTop]} paneTitles={paneTitles} paneChoices={paneChoices} onPaneChange={onPaneChange} onSwapSlots={onSwapSlots}>
             {renderPane(slots.sidebarTop)}
           </WorkspacePanel>
@@ -182,7 +182,7 @@ export default function WorkspaceShell({
           onSlotHeightChange('sidebarTop', slotHeights.sidebarTop + delta);
           onSlotHeightChange('sidebarMiddle', slotHeights.sidebarMiddle - delta);
         }} />
-        <div style={{ height: `${(slotHeights.sidebarMiddle / sidebarTotal) * 100}%` }} className="min-h-0">
+        <div style={{ height: `${(slotHeights.sidebarMiddle / sidebarTotal) * 100}%` }} className="min-h-0 overflow-hidden">
           <WorkspacePanel slot="sidebarMiddle" pane={slots.sidebarMiddle} title={paneTitles[slots.sidebarMiddle]} paneTitles={paneTitles} paneChoices={paneChoices} onPaneChange={onPaneChange} onSwapSlots={onSwapSlots}>
             {renderPane(slots.sidebarMiddle)}
           </WorkspacePanel>
@@ -192,7 +192,7 @@ export default function WorkspaceShell({
           onSlotHeightChange('sidebarMiddle', slotHeights.sidebarMiddle + delta);
           onSlotHeightChange('sidebarBottom', slotHeights.sidebarBottom - delta);
         }} />
-        <div style={{ height: `${(slotHeights.sidebarBottom / sidebarTotal) * 100}%` }} className="min-h-0">
+        <div style={{ height: `${(slotHeights.sidebarBottom / sidebarTotal) * 100}%` }} className="min-h-0 overflow-hidden">
           <WorkspacePanel slot="sidebarBottom" pane={slots.sidebarBottom} title={paneTitles[slots.sidebarBottom]} paneTitles={paneTitles} paneChoices={paneChoices} onPaneChange={onPaneChange} onSwapSlots={onSwapSlots}>
             {renderPane(slots.sidebarBottom)}
           </WorkspacePanel>

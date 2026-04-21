@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback, useState } from 'react';
+import { useEffect, useRef, useCallback, useState, useMemo } from 'react';
 import uPlot from 'uplot';
 import 'uplot/dist/uPlot.min.css';
 import type { TelemetryFrame, DerivedField } from '../types/telemetry';
@@ -143,8 +143,12 @@ export default function ScopePanel({
     plotRef.current.setData([times, ...series] as uPlot.AlignedData);
   }, [historyLength, isLive, allFields, windowSec, history]);
 
-  const visibleHistory = history.slice(-Math.round(windowSec * 50));
-  const stats = allFields.map(field => {
+  const visibleHistory = useMemo(
+    () => history.slice(-Math.round(windowSec * 50)),
+    [historyLength, history, windowSec],
+  );
+
+  const stats = useMemo(() => allFields.map(field => {
     const values = visibleHistory
       .map(frame => evalExpr(field.expr, frame))
       .filter(value => Number.isFinite(value));
@@ -160,7 +164,7 @@ export default function ScopePanel({
       mean: values.reduce((acc, value) => acc + value, 0) / values.length,
       last: values[values.length - 1],
     };
-  });
+  }), [allFields, visibleHistory]);
 
   return (
     <div className="flex w-full h-full bg-scope-bg min-h-0">
