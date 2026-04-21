@@ -1,8 +1,6 @@
+import { memo } from 'react';
+import { useLiveFrame } from '../hooks/useTelemetry';
 import type { TelemetryFrame } from '../types/telemetry';
-
-interface ModuleDetailProps {
-  frame: TelemetryFrame | null;
-}
 
 const LABELS = ['FL', 'FR', 'RR', 'RL'];
 const COLORS = ['#f43f5e', '#fb923c', '#facc15', '#4ade80'];
@@ -115,7 +113,7 @@ function TractionRing({ color, speedMps }: { color: string; speedMps: number }) 
   );
 }
 
-function ModuleCard({ index, frame }: { index: number; frame: TelemetryFrame | null }) {
+const ModuleCard = memo(function ModuleCard({ index, frame }: { index: number; frame: TelemetryFrame | null }) {
   const color = COLORS[index];
   const label = LABELS[index];
   const target = frame?.targets?.[index] ?? [0, 0];
@@ -153,9 +151,9 @@ function ModuleCard({ index, frame }: { index: number; frame: TelemetryFrame | n
       <CurrentBar amps={amps} color={color} />
     </div>
   );
-}
+});
 
-function ChassisSummary({ frame }: { frame: TelemetryFrame | null }) {
+const ChassisSummary = memo(function ChassisSummary({ frame }: { frame: TelemetryFrame | null }) {
   const actualModules = frame?.actuals ?? [[0, 0], [0, 0], [0, 0], [0, 0]];
   const targetModules = frame?.targets ?? [[0, 0], [0, 0], [0, 0], [0, 0]];
   const actualVx = actualModules.reduce((sum, module) => sum + module[0] * Math.cos(module[1]), 0) / 4;
@@ -213,19 +211,21 @@ function ChassisSummary({ frame }: { frame: TelemetryFrame | null }) {
       </div>
     </div>
   );
-}
+});
 
-export default function ModuleDetail({ frame }: ModuleDetailProps) {
+export default function ModuleDetail() {
+  const frame = useLiveFrame();
+
   return (
     <div className="w-full h-full min-h-0 overflow-auto p-1">
       <div className="grid grid-cols-3 grid-rows-3 gap-1 min-w-[520px] min-h-[520px] h-full">
-      <div className="col-start-1 row-start-1"><ModuleCard index={0} frame={frame} /></div>
-      <div className="col-start-3 row-start-1"><ModuleCard index={1} frame={frame} /></div>
-      <div className="col-start-1 row-start-3"><ModuleCard index={3} frame={frame} /></div>
-      <div className="col-start-3 row-start-3"><ModuleCard index={2} frame={frame} /></div>
-      <div className="col-start-2 row-start-2">
-        <ChassisSummary frame={frame} />
-      </div>
+        <div className="col-start-1 row-start-1"><ModuleCard index={0} frame={frame} /></div>
+        <div className="col-start-3 row-start-1"><ModuleCard index={1} frame={frame} /></div>
+        <div className="col-start-1 row-start-3"><ModuleCard index={3} frame={frame} /></div>
+        <div className="col-start-3 row-start-3"><ModuleCard index={2} frame={frame} /></div>
+        <div className="col-start-2 row-start-2">
+          <ChassisSummary frame={frame} />
+        </div>
       </div>
     </div>
   );

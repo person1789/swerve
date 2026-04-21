@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { memo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import type { WorkspacePaneId, WorkspaceSlotId } from '../types/telemetry';
 
@@ -73,7 +73,7 @@ function ResizeY({ onDrag }: { onDrag: (dy: number) => void }) {
   );
 }
 
-function WorkspacePanel({
+const WorkspacePanel = memo(function WorkspacePanel({
   slot,
   pane,
   title,
@@ -133,7 +133,7 @@ function WorkspacePanel({
       <div className="panel-body h-full min-h-0">{children}</div>
     </div>
   );
-}
+});
 
 export default function WorkspaceShell({
   leftPct,
@@ -148,13 +148,15 @@ export default function WorkspaceShell({
   renderPane,
 }: WorkspaceShellProps) {
   const sidebarTotal = slotHeights.sidebarTop + slotHeights.sidebarMiddle + slotHeights.sidebarBottom;
+  const makePaneRenderer = (slot: WorkspaceSlotId) =>
+    (pane: WorkspacePaneId) => slots[slot] === pane ? renderPane(pane) : null;
 
   return (
     <div className="workspace-shell">
       <div className="workspace-column" style={{ width: `${leftPct}%` }}>
         <div style={{ height: `${slotHeights.primary}%` }} className="min-h-0 overflow-hidden">
           <WorkspacePanel slot="primary" pane={slots.primary} title={paneTitles[slots.primary]} paneTitles={paneTitles} paneChoices={paneChoices} onPaneChange={onPaneChange} onSwapSlots={onSwapSlots}>
-            {renderPane(slots.primary)}
+            {makePaneRenderer('primary')(slots.primary)}
           </WorkspacePanel>
         </div>
         <ResizeY onDrag={dy => {
@@ -164,7 +166,7 @@ export default function WorkspaceShell({
         }} />
         <div style={{ height: `${slotHeights.secondary}%` }} className="min-h-0 overflow-hidden">
           <WorkspacePanel slot="secondary" pane={slots.secondary} title={paneTitles[slots.secondary]} paneTitles={paneTitles} paneChoices={paneChoices} onPaneChange={onPaneChange} onSwapSlots={onSwapSlots}>
-            {renderPane(slots.secondary)}
+            {makePaneRenderer('secondary')(slots.secondary)}
           </WorkspacePanel>
         </div>
       </div>
@@ -174,7 +176,7 @@ export default function WorkspaceShell({
       <div className="workspace-sidebar">
         <div style={{ height: `${(slotHeights.sidebarTop / sidebarTotal) * 100}%` }} className="min-h-0 overflow-hidden">
           <WorkspacePanel slot="sidebarTop" pane={slots.sidebarTop} title={paneTitles[slots.sidebarTop]} paneTitles={paneTitles} paneChoices={paneChoices} onPaneChange={onPaneChange} onSwapSlots={onSwapSlots}>
-            {renderPane(slots.sidebarTop)}
+            {makePaneRenderer('sidebarTop')(slots.sidebarTop)}
           </WorkspacePanel>
         </div>
         <ResizeY onDrag={dy => {
@@ -184,7 +186,7 @@ export default function WorkspaceShell({
         }} />
         <div style={{ height: `${(slotHeights.sidebarMiddle / sidebarTotal) * 100}%` }} className="min-h-0 overflow-hidden">
           <WorkspacePanel slot="sidebarMiddle" pane={slots.sidebarMiddle} title={paneTitles[slots.sidebarMiddle]} paneTitles={paneTitles} paneChoices={paneChoices} onPaneChange={onPaneChange} onSwapSlots={onSwapSlots}>
-            {renderPane(slots.sidebarMiddle)}
+            {makePaneRenderer('sidebarMiddle')(slots.sidebarMiddle)}
           </WorkspacePanel>
         </div>
         <ResizeY onDrag={dy => {
@@ -194,7 +196,7 @@ export default function WorkspaceShell({
         }} />
         <div style={{ height: `${(slotHeights.sidebarBottom / sidebarTotal) * 100}%` }} className="min-h-0 overflow-hidden">
           <WorkspacePanel slot="sidebarBottom" pane={slots.sidebarBottom} title={paneTitles[slots.sidebarBottom]} paneTitles={paneTitles} paneChoices={paneChoices} onPaneChange={onPaneChange} onSwapSlots={onSwapSlots}>
-            {renderPane(slots.sidebarBottom)}
+            {makePaneRenderer('sidebarBottom')(slots.sidebarBottom)}
           </WorkspacePanel>
         </div>
       </div>

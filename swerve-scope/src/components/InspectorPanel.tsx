@@ -1,13 +1,15 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
-import type { TelemetryFrame } from '../types/telemetry';
+import { useHistoryBuffer, useLiveFrame } from '../hooks/useTelemetry';
+import type { AnalysisRange, TelemetryFrame } from '../types/telemetry';
 
 interface InspectorProps {
-  history: TelemetryFrame[];
-  historyLength: number;
-  currentFrame: TelemetryFrame | null;
-  isLive: boolean;
   scrubIndex: number;
+  analysisRange: AnalysisRange | null;
+  bookmarks: number[];
   onJumpToIndex: (index: number) => void;
+  onSetRangeStart: (index: number) => void;
+  onSetRangeEnd: (index: number) => void;
+  onToggleBookmark: (index: number) => void;
 }
 
 type ViewMode = 'live' | 'table' | 'raw';
@@ -44,14 +46,14 @@ function Divider({ label }: { label: string }) {
   );
 }
 
-function useRecorder(history: TelemetryFrame[]) {
+function useRecorder(history: TelemetryFrame[], historyLength: number) {
   const [recording, setRecording] = useState(false);
   const startIdxRef = useRef(0);
 
   const startRecording = useCallback(() => {
-    startIdxRef.current = history.length;
+    startIdxRef.current = historyLength;
     setRecording(true);
-  }, [history.length]);
+  }, [historyLength]);
 
   const stopAndExport = useCallback(() => {
     setRecording(false);
@@ -88,13 +90,16 @@ function useRecorder(history: TelemetryFrame[]) {
 }
 
 export default function InspectorPanel({
-  history,
-  historyLength,
-  currentFrame,
-  isLive,
   scrubIndex,
+  analysisRange,
+  bookmarks,
   onJumpToIndex,
+  onSetRangeStart,
+  onSetRangeEnd,
+  onToggleBookmark,
 }: InspectorProps) {
+  const frame = useLiveFrame();
+  const { buffer: history, length: historyLength } = useHistoryBuffer();
   const [view, setView] = useState<ViewMode>('live');
   const [columns, setColumns] = useState({
     pose: true,
@@ -103,19 +108,21 @@ export default function InspectorPanel({
     battery: true,
   });
   const tableRef = useRef<HTMLDivElement>(null);
-  const { recording, startRecording, stopAndExport } = useRecorder(history);
-  const frame = currentFrame;
-  const visibleRows = history.slice(-200);
+  const { recording, startRecording, stopAndExport } = useRecorder(history, historyLength);
+  const visibleRows = history.slice(-250);
   const visibleStartIndex = Math.max(0, history.length - visibleRows.length);
+  const isLive = scrubIndex >= historyLength - 1;
 
   useEffect(() => {
     if (isLive && view === 'table' && tableRef.current) {
-      tableRef.current.scrollTop = tableRef.current.scrollHeight;
+      requestAnimationFrame(() => {
+        if (tableRef.current) tableRef.current.scrollTop = tableRef.current.scrollHeight;
+      });
     }
   }, [historyLength, isLive, view]);
 
   return (
-    <div className="flex flex-col h-full bg-scope-bg">
+    <div className="flex flex-col h-full min-h-0 overflow-hidden bg-scope-bg">
       <div className="flex items-center gap-2 px-3 py-1.5 border-b border-scope-border flex-shrink-0">
         <div className="flex bg-scope-surface border border-scope-border rounded overflow-hidden text-[9px] font-mono">
           {(['live', 'table', 'raw'] as ViewMode[]).map(nextView => (
@@ -133,6 +140,11 @@ export default function InspectorPanel({
 
         <div className="flex-1" />
 
+        <button onClick={() => onSetRangeStart(scrubIndex)} className="btn btn-ghost text-[9px]">range start</button>
+        <button onClick={() => onSetRangeEnd(scrubIndex)} className="btn btn-ghost text-[9px]">range end</button>
+        <button onClick={() => onToggleBookmark(scrubIndex)} className={`btn text-[9px] ${bookmarks.includes(scrubIndex) ? 'btn-accent' : 'btn-ghost'}`}>
+          {bookmarks.includes(scrubIndex) ? 'unmark' : 'bookmark'}
+        </button>
         {recording ? (
           <button onClick={stopAndExport} className="btn btn-danger text-[9px]">
             stop+export
@@ -141,11 +153,6 @@ export default function InspectorPanel({
           <button onClick={startRecording} className="btn btn-success text-[9px]">
             record
           </button>
-        )}
-        {recording && (
-          <span className="text-[9px] font-mono text-red-400 animate-pulse">
-            {history.length} frames
-          </span>
         )}
       </div>
 
@@ -167,12 +174,15 @@ export default function InspectorPanel({
               {label}
             </label>
           ))}
-          <span className="ml-auto text-[8px] font-mono text-scope-muted">click a row to scrub</span>
+          <span className="text-[8px] font-mono text-scope-muted">
+            range: {analysisRange ? `${analysisRange.startIndex}..${analysisRange.endIndex}` : 'none'}
+          </span>
+          <span className="ml-auto text-[8px] font-mono text-scope-muted">click row to scrub</span>
         </div>
       )}
 
       {view === 'live' && (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden">
           <table className="w-full border-collapse">
             <tbody>
               <Divider label="Odometry" />
@@ -220,11 +230,12 @@ export default function InspectorPanel({
       )}
 
       {view === 'table' && (
-        <div ref={tableRef} className="flex-1 overflow-auto">
+        <div ref={tableRef} className="flex-1 min-h-0 overflow-y-auto overflow-x-auto">
           <table className="telem-table text-[9px]">
             <thead>
               <tr>
                 <th>T(s)</th>
+                <th>M</th>
                 {columns.pose && <th>X</th>}
                 {columns.pose && <th>Y</th>}
                 {columns.heading && <th>H deg</th>}
@@ -238,13 +249,22 @@ export default function InspectorPanel({
             <tbody>
               {visibleRows.map((entry, index) => {
                 const absoluteIndex = visibleStartIndex + index;
+                const inRange = analysisRange
+                  ? absoluteIndex >= analysisRange.startIndex && absoluteIndex <= analysisRange.endIndex
+                  : false;
+                const marked = bookmarks.includes(absoluteIndex);
                 return (
                   <tr
                     key={entry.timestamp + index}
                     onClick={() => onJumpToIndex(absoluteIndex)}
-                    className={absoluteIndex === scrubIndex ? 'bg-scope-surface' : 'cursor-pointer'}
+                    className={[
+                      'cursor-pointer',
+                      absoluteIndex === scrubIndex ? 'bg-scope-surface' : '',
+                      inRange ? 'bg-scope-surface/60' : '',
+                    ].join(' ')}
                   >
                     <td className="readout">{entry.timestamp.toFixed(2)}</td>
+                    <td className="readout">{marked ? '*' : inRange ? 'R' : ''}</td>
                     {columns.pose && <td className="readout">{entry.x.toFixed(2)}</td>}
                     {columns.pose && <td className="readout">{entry.y.toFixed(2)}</td>}
                     {columns.heading && <td className="readout">{(entry.heading * 180 / Math.PI).toFixed(1)}</td>}
@@ -261,7 +281,7 @@ export default function InspectorPanel({
       )}
 
       {view === 'raw' && (
-        <div className="flex-1 overflow-auto p-2 font-mono text-[9px] text-scope-text bg-scope-bg">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto p-2 font-mono text-[9px] text-scope-text bg-scope-bg">
           {frame ? (
             <pre className="whitespace-pre-wrap break-all">
               {JSON.stringify(frame, null, 2)}

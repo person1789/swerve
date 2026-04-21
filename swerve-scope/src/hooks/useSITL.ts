@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import type { TelemetryFrame, ConnectionStatus, RuntimeMode } from '../types/telemetry';
+import type { TelemetryFrame, ConnectionStatus, RuntimeMode, StructuredLogEntry } from '../types/telemetry';
 import {
   HeadingController,
   ModuleEmulator,
@@ -16,6 +16,7 @@ export interface SITLHook {
   lastFrame: TelemetryFrame | null;
   schemaMismatch: string | null;
   sendInput: (input: GamepadInput) => void;
+  resetSimulation: () => void;
 }
 
 export interface GamepadInput {
@@ -38,32 +39,110 @@ interface LocalSimState {
   timestamp: number;
 }
 
-function parseFrame(raw: any): TelemetryFrame {
-  const schemaVersion = Number(raw.schemaVersion ?? 1);
-  return {
+export interface ParsedFrameResult {
+  frame: TelemetryFrame;
+  warnings: string[];
+}
+
+function normalizeModuleStates(value: unknown): [number, number][] {
+  if (!Array.isArray(value)) return [[0, 0], [0, 0], [0, 0], [0, 0]];
+  return new Array(4).fill(null).map((_, index) => {
+    const pair = value[index];
+    if (!Array.isArray(pair)) return [0, 0];
+    return [
+      Number(pair[0] ?? 0),
+      Number(pair[1] ?? 0),
+    ] as [number, number];
+  });
+}
+
+function normalizeLogs(value: unknown): StructuredLogEntry[] {
+  if (!Array.isArray(value)) return [];
+  return value.flatMap(item => {
+    if (!item || typeof item !== 'object') return [];
+    const candidate = item as Record<string, unknown>;
+    const severity = candidate.severity;
+    if (severity !== 'info' && severity !== 'warn' && severity !== 'error' && severity !== 'debug') return [];
+    return [{
+      timestamp: Number(candidate.timestamp ?? 0),
+      severity,
+      source: String(candidate.source ?? 'SITL'),
+      message: String(candidate.message ?? ''),
+    }];
+  });
+}
+
+export function parseTelemetryFrame(raw: unknown): ParsedFrameResult {
+  const candidate = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+  const warnings: string[] = [];
+
+  if (!Array.isArray(candidate.targets)) warnings.push('targets');
+  if (!Array.isArray(candidate.actuals)) warnings.push('actuals');
+  if (candidate.currentDraw !== undefined && !Array.isArray(candidate.currentDraw)) warnings.push('currentDraw');
+  if (candidate.logs !== undefined && !Array.isArray(candidate.logs)) warnings.push('logs');
+
+  const schemaVersion = Number(candidate.schemaVersion ?? 1);
+  const frame: TelemetryFrame = {
     schemaVersion,
-    timestamp: raw.timestamp ?? 0,
-    x: raw.x ?? 0,
-    y: raw.y ?? 0,
-    heading: raw.heading ?? 0,
-    targets: raw.targets ?? [[0, 0], [0, 0], [0, 0], [0, 0]],
-    actuals: raw.actuals ?? [[0, 0], [0, 0], [0, 0], [0, 0]],
-    isMaintaining: raw.isMaintaining ?? false,
-    isSnapping: raw.isSnapping ?? false,
-    snapTargetRad: raw.snapTargetRad ?? 0,
-    controllerMode: raw.controllerMode,
-    drivetrainState: raw.drivetrainState,
-    driveX: raw.driveX ?? raw.gamepad?.lx ?? 0,
-    driveY: raw.driveY ?? raw.gamepad?.ly ?? 0,
-    turn: raw.turn ?? raw.gamepad?.rx ?? 0,
-    gamepad: raw.gamepad,
-    batteryVoltage: raw.batteryVoltage ?? 12.0,
-    loopTimeMs: raw.loopTimeMs ?? 20,
-    currentDraw: raw.currentDraw ?? [],
-    observerVel: raw.observerVel,
-    smootherState: raw.smootherState,
-    logs: raw.logs ?? [],
+    timestamp: Number(candidate.timestamp ?? 0),
+    x: Number(candidate.x ?? 0),
+    y: Number(candidate.y ?? 0),
+    heading: Number(candidate.heading ?? 0),
+    targets: normalizeModuleStates(candidate.targets),
+    actuals: normalizeModuleStates(candidate.actuals),
+    isMaintaining: Boolean(candidate.isMaintaining ?? false),
+    isSnapping: Boolean(candidate.isSnapping ?? false),
+    snapTargetRad: Number(candidate.snapTargetRad ?? 0),
+    controllerMode: candidate.controllerMode === 'manual' || candidate.controllerMode === 'snap' || candidate.controllerMode === 'maintain'
+      ? candidate.controllerMode
+      : undefined,
+    drivetrainState: typeof candidate.drivetrainState === 'string' ? candidate.drivetrainState : undefined,
+    driveX: Number(candidate.driveX ?? (candidate.gamepad as any)?.lx ?? 0),
+    driveY: Number(candidate.driveY ?? (candidate.gamepad as any)?.ly ?? 0),
+    turn: Number(candidate.turn ?? (candidate.gamepad as any)?.rx ?? 0),
+    gamepad: candidate.gamepad && typeof candidate.gamepad === 'object'
+      ? {
+          lx: Number((candidate.gamepad as any).lx ?? 0),
+          ly: Number((candidate.gamepad as any).ly ?? 0),
+          rx: Number((candidate.gamepad as any).rx ?? 0),
+          ry: Number((candidate.gamepad as any).ry ?? 0),
+          lt: Number((candidate.gamepad as any).lt ?? 0),
+          rt: Number((candidate.gamepad as any).rt ?? 0),
+          buttons: Array.isArray((candidate.gamepad as any).buttons)
+            ? (candidate.gamepad as any).buttons.map((value: unknown) => Boolean(value))
+            : undefined,
+          dpad_up: Boolean((candidate.gamepad as any).dpad_up),
+          dpad_down: Boolean((candidate.gamepad as any).dpad_down),
+          dpad_left: Boolean((candidate.gamepad as any).dpad_left),
+          dpad_right: Boolean((candidate.gamepad as any).dpad_right),
+        }
+      : undefined,
+    batteryVoltage: Number(candidate.batteryVoltage ?? 12.0),
+    loopTimeMs: Number(candidate.loopTimeMs ?? 20),
+    currentDraw: Array.isArray(candidate.currentDraw)
+      ? candidate.currentDraw.map(value => Number(value ?? 0))
+      : [],
+    observerVel: candidate.observerVel && typeof candidate.observerVel === 'object'
+      ? {
+          vx: Number((candidate.observerVel as any).vx ?? 0),
+          vy: Number((candidate.observerVel as any).vy ?? 0),
+          omega: Number((candidate.observerVel as any).omega ?? 0),
+        }
+      : undefined,
+    smootherState: candidate.smootherState && typeof candidate.smootherState === 'object'
+      ? {
+          vx: Number((candidate.smootherState as any).vx ?? 0),
+          vy: Number((candidate.smootherState as any).vy ?? 0),
+          omega: Number((candidate.smootherState as any).omega ?? 0),
+          ax: Number((candidate.smootherState as any).ax ?? 0),
+          ay: Number((candidate.smootherState as any).ay ?? 0),
+          alpha: Number((candidate.smootherState as any).alpha ?? 0),
+        }
+      : undefined,
+    logs: normalizeLogs(candidate.logs),
   };
+
+  return { frame, warnings };
 }
 
 function createLocalSimState(): LocalSimState {
@@ -112,6 +191,15 @@ function stepLocalSim(state: LocalSimState, input: GamepadInput, dt: number): Te
   const batteryVoltage = Math.max(11.1, 12.8 - totalCurrent * 0.018);
   const headingState = state.heading.getState();
   const smootherAccel = state.smoother.getAccel();
+  const logs: StructuredLogEntry[] = [];
+  if (batteryVoltage < 11.7) {
+    logs.push({
+      timestamp: state.timestamp,
+      severity: 'warn',
+      source: 'LOCAL_SIM',
+      message: `Voltage sag ${batteryVoltage.toFixed(2)}V under ${totalCurrent.toFixed(1)}A load`,
+    });
+  }
 
   return {
     schemaVersion: 1,
@@ -153,7 +241,7 @@ function stepLocalSim(state: LocalSimState, input: GamepadInput, dt: number): Te
       ay: smootherAccel.vy,
       alpha: smootherAccel.heading,
     },
-    logs: [],
+    logs,
   };
 }
 
@@ -166,6 +254,7 @@ export function useSITL(onFrame: (frame: TelemetryFrame) => void): SITLHook {
   const reconnectRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const inputRef = useRef<GamepadInput>({ drive: 0, strafe: 0, turn: 0 });
   const localSimRef = useRef<LocalSimState>(createLocalSimState());
+  const warningRef = useRef<string | null>(null);
 
   const connect = useCallback(() => {
     if (socketRef.current?.readyState === WebSocket.OPEN || socketRef.current?.readyState === WebSocket.CONNECTING) {
@@ -181,20 +270,26 @@ export function useSITL(onFrame: (frame: TelemetryFrame) => void): SITLHook {
       setStatus('connected');
       setRuntimeMode('sitl');
       setSchemaMismatch(null);
+      warningRef.current = null;
     };
 
     ws.onmessage = event => {
       try {
         const raw = JSON.parse(event.data);
-        const schemaVersion = Number(raw.schemaVersion ?? 1);
-        if (schemaVersion > 1) {
-          setSchemaMismatch(`Renderer expects telemetry schema v1 but received v${schemaVersion}.`);
+        const { frame, warnings } = parseTelemetryFrame(raw);
+        const mismatch = frame.schemaVersion > 1
+          ? `Renderer expects telemetry schema v1 but received v${frame.schemaVersion}.`
+          : warnings.length > 0
+            ? `Telemetry normalized missing/invalid fields: ${warnings.join(', ')}`
+            : null;
+        if (mismatch !== warningRef.current) {
+          warningRef.current = mismatch;
+          setSchemaMismatch(mismatch);
         }
-        const frame = parseFrame(raw);
         setLastFrame(frame);
         onFrame(frame);
       } catch {
-        // Ignore malformed frames.
+        setSchemaMismatch('Received malformed telemetry frame JSON.');
       }
     };
 
@@ -280,5 +375,14 @@ export function useSITL(onFrame: (frame: TelemetryFrame) => void): SITLHook {
     }
   }, []);
 
-  return { status, runtimeMode, lastFrame, schemaMismatch, sendInput };
+  const resetSimulation = useCallback(() => {
+    localSimRef.current = createLocalSimState();
+    inputRef.current = { drive: 0, strafe: 0, turn: 0 };
+    setLastFrame(null);
+    if (runtimeMode === 'local') {
+      setSchemaMismatch(null);
+    }
+  }, [runtimeMode]);
+
+  return { status, runtimeMode, lastFrame, schemaMismatch, sendInput, resetSimulation };
 }

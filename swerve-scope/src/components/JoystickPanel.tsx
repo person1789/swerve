@@ -1,9 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { TelemetryFrame } from '../types/telemetry';
-
-interface JoystickPanelProps {
-  frame: TelemetryFrame | null;
-}
+import { useLiveFrame } from '../hooks/useTelemetry';
 
 function Stick({ label, x, y, color = '#0ea5e9' }: { label: string; x: number; y: number; color?: string }) {
   const cx = 50;
@@ -68,7 +64,8 @@ function ButtonGrid({ buttons }: { buttons: boolean[] }) {
   );
 }
 
-export default function JoystickPanel({ frame }: JoystickPanelProps) {
+export default function JoystickPanel() {
+  const frame = useLiveFrame();
   const [gp, setGp] = useState<Gamepad | null>(null);
   const [lx, setLx] = useState(0);
   const [ly, setLy] = useState(0);
@@ -78,7 +75,7 @@ export default function JoystickPanel({ frame }: JoystickPanelProps) {
   const [rt, setRt] = useState(0);
   const [buttons, setButtons] = useState<boolean[]>([]);
   const timerRef = useRef<number | null>(null);
-  const frameRef = useRef<TelemetryFrame | null>(frame);
+  const frameRef = useRef(frame);
 
   useEffect(() => {
     frameRef.current = frame;
@@ -100,6 +97,7 @@ export default function JoystickPanel({ frame }: JoystickPanelProps) {
         setButtons(Array.from(gamepad.buttons).map(button => button.pressed));
       } else if (frameRef.current) {
         const currentFrame = frameRef.current;
+        setGp(null);
         setLx(currentFrame.gamepad?.lx ?? currentFrame.driveX);
         setLy(currentFrame.gamepad?.ly ?? currentFrame.driveY);
         setRx(currentFrame.gamepad?.rx ?? 0);

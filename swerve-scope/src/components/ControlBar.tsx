@@ -1,4 +1,4 @@
-import type { ConnectionStatus, RuntimeMode } from '../types/telemetry';
+import type { AnalysisRange, ConnectionStatus, RuntimeMode } from '../types/telemetry';
 
 interface ControlBarProps {
   status: ConnectionStatus;
@@ -21,6 +21,16 @@ interface ControlBarProps {
   onToggleVectors: () => void;
   onToggleTrail: () => void;
   onResetWorkspace: () => void;
+  onResetSimulation: () => void;
+  onExportSession: () => void;
+  onImportSession: () => void;
+  sessionError: string | null;
+  bookmarkCount: number;
+  analysisRange: AnalysisRange | null;
+  onAddBookmark: () => void;
+  onPrevBookmark: () => void;
+  onNextBookmark: () => void;
+  onClearRange: () => void;
 }
 
 const STATUS_COLORS: Record<ConnectionStatus, string> = {
@@ -62,8 +72,21 @@ export default function ControlBar({
   onToggleVectors,
   onToggleTrail,
   onResetWorkspace,
+  onResetSimulation,
+  onExportSession,
+  onImportSession,
+  sessionError,
+  bookmarkCount,
+  analysisRange,
+  onAddBookmark,
+  onPrevBookmark,
+  onNextBookmark,
+  onClearRange,
 }: ControlBarProps) {
   const currentSec = scrubIndex * 0.02;
+  const rangeLabel = analysisRange
+    ? `${analysisRange.startIndex}..${analysisRange.endIndex}`
+    : 'none';
 
   return (
     <div className="flex-shrink-0 bg-scope-surface border-b border-scope-border">
@@ -100,7 +123,7 @@ export default function ControlBar({
             Docked Workspace
           </span>
           <span className="text-[8px] font-mono text-scope-muted">
-            canonical shell
+            range {rangeLabel}
           </span>
         </div>
 
@@ -128,6 +151,17 @@ export default function ControlBar({
         <button onClick={onResetWorkspace} className="btn btn-ghost text-[9px]">
           RESET LAYOUT
         </button>
+        {runtimeMode === 'local' && (
+          <button onClick={onResetSimulation} className="btn btn-ghost text-[9px]">
+            RESET SIM
+          </button>
+        )}
+        <button onClick={onImportSession} className="btn btn-ghost text-[9px]">
+          LOAD
+        </button>
+        <button onClick={onExportSession} className="btn btn-ghost text-[9px]" disabled={historyLength === 0}>
+          SAVE
+        </button>
         <button onClick={onClearHistory} className="btn btn-ghost text-[9px]">
           CLR
         </button>
@@ -136,6 +170,12 @@ export default function ControlBar({
       {schemaMismatch && (
         <div className="px-3 pb-2 text-[9px] font-mono text-amber-300">
           {schemaMismatch}
+        </div>
+      )}
+
+      {sessionError && (
+        <div className="px-3 pb-2 text-[9px] font-mono text-red-300">
+          {sessionError}
         </div>
       )}
 
@@ -197,6 +237,22 @@ export default function ControlBar({
             ))}
           </div>
         )}
+
+        <div className="flex items-center gap-1.5 flex-shrink-0">
+          <button onClick={onPrevBookmark} className="btn btn-ghost text-[9px] py-0.5 px-1.5" disabled={bookmarkCount === 0}>
+            B-
+          </button>
+          <button onClick={onAddBookmark} className="btn btn-ghost text-[9px] py-0.5 px-1.5">
+            B+
+          </button>
+          <button onClick={onNextBookmark} className="btn btn-ghost text-[9px] py-0.5 px-1.5" disabled={bookmarkCount === 0}>
+            B&gt;
+          </button>
+          <button onClick={onClearRange} className="btn btn-ghost text-[9px] py-0.5 px-1.5" disabled={!analysisRange}>
+            RANGE CLR
+          </button>
+          <span className="text-[8px] font-mono text-scope-muted">{bookmarkCount} bookmarks</span>
+        </div>
 
         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${isLive ? 'dot-live' : 'dot-conn'}`} />
       </div>
