@@ -69,6 +69,7 @@ export default function ConsolePanel({ frame, prevFrame, isLive }: ConsolePanelP
   const [filter, setFilter]         = useState<Severity | 'all'>('all');
   const [autoScroll, setAutoScroll] = useState(true);
   const [search, setSearch]         = useState('');
+  const [draft, setDraft]           = useState('');
   const listRef = useRef<HTMLDivElement>(null);
   const prevFrameRef = useRef<TelemetryFrame | null>(null);
 
@@ -182,6 +183,32 @@ export default function ConsolePanel({ frame, prevFrame, isLive }: ConsolePanelP
             {counts.error} error{counts.error > 1 ? 's' : ''}
           </span>
         )}
+      </div>
+
+      {/* Manual log injection */}
+      <div className="flex gap-2 p-2 border-t border-scope-border flex-shrink-0">
+        <input
+          className="expr-input flex-1 text-[9px] py-1"
+          placeholder="Inject log message…"
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          onKeyDown={e => {
+            if (e.key === 'Enter' && draft.trim()) {
+              setEntries(prev => [...prev, mkEntry(performance.now() / 1000, 'info', 'MANUAL', draft.trim())]);
+              setDraft('');
+            }
+          }}
+        />
+        <button
+          onClick={() => {
+            if (!draft.trim()) return;
+            setEntries(prev => [...prev, mkEntry(performance.now() / 1000, 'info', 'MANUAL', draft.trim())]);
+            setDraft('');
+          }}
+          className="btn btn-accent text-[9px] py-1 px-2"
+        >
+          send
+        </button>
       </div>
     </div>
   );

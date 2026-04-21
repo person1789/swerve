@@ -4,6 +4,7 @@ import type { TelemetryFrame } from '../types/telemetry';
 
 interface InspectorProps {
   history: TelemetryFrame[];
+  historyLength: number;
   currentFrame: TelemetryFrame | null;
   isLive: boolean;
 }
@@ -86,7 +87,7 @@ function useRecorder(history: TelemetryFrame[]) {
   return { recording, startRecording, stopAndExport };
 }
 
-export default function InspectorPanel({ history, currentFrame, isLive }: InspectorProps) {
+export default function InspectorPanel({ history, historyLength, currentFrame, isLive }: InspectorProps) {
   const [view, setView] = useState<ViewMode>('live');
   const tableRef = useRef<HTMLDivElement>(null);
   const { recording, startRecording, stopAndExport } = useRecorder(history);
@@ -98,7 +99,7 @@ export default function InspectorPanel({ history, currentFrame, isLive }: Inspec
     if (isLive && view === 'table' && tableRef.current) {
       tableRef.current.scrollTop = tableRef.current.scrollHeight;
     }
-  }, [history.length, isLive, view]);
+  }, [historyLength, isLive, view]);
 
   return (
     <div className="flex flex-col h-full bg-scope-bg">

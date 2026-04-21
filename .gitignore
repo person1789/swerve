@@ -82,4 +82,7 @@ lint/tmp/
 
 # Web dependencies
 **/node_modules/
-**/dist/
+**/dist/
+# Local patch artifacts
+swerve-scope-changed-files.zip
+swerve-scope-changed-files-with-paths.zip

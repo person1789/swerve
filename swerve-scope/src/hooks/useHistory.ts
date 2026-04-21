@@ -24,6 +24,14 @@ export function useHistory() {
     setIsLive(false);
   }, []);
 
+  const stepBy = useCallback((delta: number) => {
+    setScrubIndex(prev => {
+      const clamped = Math.max(0, Math.min(prev + delta, bufferRef.current.length - 1));
+      return clamped;
+    });
+    setIsLive(false);
+  }, []);
+
   const snapToLive = useCallback(() => {
     setScrubIndex(bufferRef.current.length - 1);
     setIsLive(true);
@@ -45,7 +53,7 @@ export function useHistory() {
   const currentFrame: TelemetryFrame | null = bufferRef.current[scrubIndex] ?? null;
 
   return {
-    push, seek, snapToLive, clear, getFrame, getBuffer,
+    push, seek, stepBy, snapToLive, clear, getFrame, getBuffer,
     length, scrubIndex, isLive, currentFrame,
   };
 }

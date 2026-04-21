@@ -1,5 +1,5 @@
 // App.tsx — SwerveScope main application shell
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import type { DerivedField, TelemetryFrame } from './types/telemetry';
 import { useHistory } from './hooks/useHistory';
 import { useSITL } from './hooks/useSITL';
@@ -102,11 +102,22 @@ export default function App() {
   const [activeTab,    setActiveTab]    = useState('drive');
   const [showVectors,  setShowVectors]  = useState(true);
   const [showTrail,    setShowTrail]    = useState(true);
-  const [customFields, setCustomFields] = useState<DerivedField[]>([]);
-  const [activeFields, setActiveFields] = useState<string[]>([
-    'speed', 'hdg_deg', 'battery', 'loop_ms',
-    'm0_spd', 'm1_spd', 'm2_spd', 'm3_spd',
-  ]);
+  const [isPlaying,    setIsPlaying]    = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
+  const [customFields, setCustomFields] = useState<DerivedField[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('scope_custom_fields') || '[]');
+    } catch {
+      return [];
+    }
+  });
+  const [activeFields, setActiveFields] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('scope_active_fields') || '["speed","hdg_deg","battery","loop_ms","m0_spd","m1_spd","m2_spd","m3_spd"]');
+    } catch {
+      return ['speed', 'hdg_deg', 'battery', 'loop_ms', 'm0_spd', 'm1_spd', 'm2_spd', 'm3_spd'];
+    }
+  });
 
   // Resizable left/right split (percent 0–100)
   const [leftPct, setLeftPct] = useState(62);
@@ -154,10 +165,19 @@ export default function App() {
     );
   }, []);
 
+  useEffect(() => {
+    localStorage.setItem('scope_custom_fields', JSON.stringify(customFields));
+  }, [customFields]);
+
+  useEffect(() => {
+    localStorage.setItem('scope_active_fields', JSON.stringify(activeFields));
+  }, [activeFields]);
+
   // ── Clear ────────────────────────────────────────────────────────────
   const handleClear = useCallback(() => {
     history.clear();
     trailRef.current = [];
+    setIsPlaying(false);
   }, [history]);
 
   // ── Resize handlers ──────────────────────────────────────────────────
@@ -172,6 +192,65 @@ export default function App() {
 
   const frame    = history.currentFrame;
   const prevFrame = prevFrameRef.current;
+
+  // ── Playback loop ──────────────────────────────────────────────────────
+  useEffect(() => {
+    if (history.isLive || !isPlaying) return;
+    const id = window.setInterval(() => {
+      if (history.scrubIndex >= history.length - 1) {
+        setIsPlaying(false);
+        return;
+      }
+      history.stepBy(1);
+    }, Math.max(5, 20 / playbackRate));
+    return () => window.clearInterval(id);
+  }, [history, isPlaying, playbackRate]);
+
+  // ── Keyboard shortcuts ────────────────────────────────────────────────
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) return;
+
+      switch (e.key) {
+        case ' ':
+          e.preventDefault();
+          history.snapToLive();
+          setIsPlaying(false);
+          break;
+        case 'l':
+        case 'L':
+          setShowTrail(v => !v);
+          break;
+        case 'v':
+        case 'V':
+          setShowVectors(v => !v);
+          break;
+        case 'k':
+        case 'K':
+          if (!history.isLive) setIsPlaying(v => !v);
+          break;
+        case 'ArrowLeft':
+          if (!history.isLive) history.stepBy(-1);
+          break;
+        case 'ArrowRight':
+          if (!history.isLive) history.stepBy(1);
+          break;
+        case '1': setActiveTab('drive'); break;
+        case '2': setActiveTab('modules'); break;
+        case '3': setActiveTab('scopes'); break;
+        case '4': setActiveTab('joystick'); break;
+        case '5': setActiveTab('inspector'); break;
+        case '6': setActiveTab('console'); break;
+        case '7': setActiveTab('exprs'); break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [history]);
 
   // ── Right-column secondary content ─────────────────────────────────
   const renderMain = () => {
@@ -199,6 +278,7 @@ export default function App() {
                 <Panel title="Inspection Engine // Live" className="h-full">
                   <InspectorPanel
                     history={history.getBuffer()}
+                    historyLength={history.length}
                     currentFrame={frame}
                     isLive={history.isLive}
                   />
@@ -247,10 +327,10 @@ export default function App() {
               <Panel title="Diagnostic Scopes // Time-Series" className="flex-1">
                 <ScopePanel
                   history={history.getBuffer()}
+                  historyLength={history.length}
                   isLive={history.isLive}
                   activeFields={activeFields}
                   customFields={customFields}
-                  windowSec={30}
                 />
               </Panel>
             </div>
@@ -284,11 +364,12 @@ export default function App() {
           <div className="split-h flex-1 min-h-0">
             <div className="flex flex-col min-w-0" style={{ width: `${leftPct}%` }}>
               <Panel title="Inspection Engine // Telemetry" className="flex-1">
-                <InspectorPanel
-                  history={history.getBuffer()}
-                  currentFrame={frame}
-                  isLive={history.isLive}
-                />
+                  <InspectorPanel
+                    history={history.getBuffer()}
+                    historyLength={history.length}
+                    currentFrame={frame}
+                    isLive={history.isLive}
+                  />
               </Panel>
             </div>
             <HSplitter onDrag={handleHDrag} />
@@ -320,10 +401,10 @@ export default function App() {
               <Panel title="Diagnostic Scopes" className="flex-1">
                 <ScopePanel
                   history={history.getBuffer()}
+                  historyLength={history.length}
                   isLive={history.isLive}
                   activeFields={activeFields}
                   customFields={customFields}
-                  windowSec={30}
                 />
               </Panel>
             </div>
@@ -352,10 +433,15 @@ export default function App() {
       <ControlBar
         status={status}
         isLive={history.isLive}
+        isPlaying={isPlaying}
+        playbackRate={playbackRate}
         historyLength={history.length}
         scrubIndex={history.scrubIndex}
         durationSec={history.length * 0.02}
         onSeek={history.seek}
+        onTogglePlay={() => setIsPlaying(v => !v)}
+        onStep={(delta) => history.stepBy(delta)}
+        onRateChange={setPlaybackRate}
         onSnapToLive={history.snapToLive}
         onClearHistory={handleClear}
         showVectors={showVectors}

@@ -7,10 +7,10 @@ import { evalExpr, BUILTIN_EXPRS } from '../lib/ExprEval';
 
 interface ScopePanelProps {
   history: TelemetryFrame[];
+  historyLength: number;
   isLive: boolean;
   activeFields: string[];            // field ids from BUILTIN_EXPRS or custom
   customFields: DerivedField[];
-  windowSec: number;                 // how many seconds of data to show
 }
 
 const UPLOT_OPTS_BASE: Partial<uPlot.Options> = {
@@ -54,11 +54,12 @@ function buildSeries(fields: DerivedField[]): uPlot.Series[] {
 
 export default function ScopePanel({
   history,
+  historyLength,
   isLive,
   activeFields,
   customFields,
-  windowSec,
 }: ScopePanelProps) {
+  const [windowSec, setWindowSec] = useState(30);
   const containerRef = useRef<HTMLDivElement>(null);
   const plotRef      = useRef<uPlot | null>(null);
   const roRef        = useRef<ResizeObserver | null>(null);
@@ -119,10 +120,23 @@ export default function ScopePanel({
     );
 
     plotRef.current.setData([times, ...series] as uPlot.AlignedData);
-  }, [history, isLive, allFields, windowSec]);
+  }, [historyLength, isLive, allFields, windowSec, history]);
 
   return (
     <div className="flex flex-col w-full h-full bg-scope-bg">
+      <div className="flex items-center justify-end px-3 py-1 border-b border-scope-border flex-shrink-0">
+        <label className="text-[9px] font-mono text-scope-muted mr-2">window</label>
+        <select
+          value={windowSec}
+          onChange={e => setWindowSec(Number(e.target.value))}
+          className="bg-scope-surface border border-scope-border rounded text-[9px] font-mono text-scope-text px-1 py-0.5"
+        >
+          {[5, 15, 30, 60].map(s => (
+            <option key={s} value={s}>{s}s</option>
+          ))}
+        </select>
+      </div>
+
       {/* Legend strip */}
       {allFields.length > 0 && (
         <div className="flex flex-wrap gap-x-4 gap-y-1 px-3 py-1 border-b border-scope-border flex-shrink-0">
