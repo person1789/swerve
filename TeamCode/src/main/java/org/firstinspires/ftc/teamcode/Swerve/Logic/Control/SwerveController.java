@@ -1,14 +1,14 @@
 package org.firstinspires.ftc.teamcode.Swerve.Logic.Control;
 
+import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Core.PIDController;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
-import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 
 /**
  * SwerveController
  * 
- * The modular "Brain" of the swerve drivetrain. 
- * This class is designed to run on the robot (OpModes) OR in a simulator (SITL).
+ * Parses controller inputs and outputs chassis-level velocity vectors.
  */
 public class SwerveController {
 
@@ -27,24 +27,29 @@ public class SwerveController {
     /**
      * Update the control logic and produce the target chassis speeds.
      * 
-     * @param vx Field-centric X velocity [-1.0, 1.0]
-     * @param vy Field-centric Y velocity [-1.0, 1.0]
-     * @param turn Manual rotation input [-1.0, 1.0]
+     * @param vx             Field-centric X velocity (m/s)
+     * @param vy             Field-centric Y velocity (m/s)
+     * @param turn           Manual rotation input (rad/s)
      * @param currentHeading Current robot heading in radians
-     * @param dt Loop time in seconds
-     * @return Target Pose (velocities in m/s and rad/s)
+     * @param dt             Loop time in seconds
+     * @return Target Vector (vx, vy, omega)
      */
-    public Pose update(double vx, double vy, double turn, double currentHeading, double dt) {
-        
-        // 1. Determine if we are actively turning
-        if (Math.abs(turn) > 0.05) {
+    public Vector update(double vx, double vy, double turn, double currentHeading, double dt) {
+
+        // 1. Apply Component-wise Deadband (on the 3D input vector)
+        Vector input = MathUtil.applyDeadband(new Vector(vx, vy, turn), SwerveConfig.INPUT_DEADBAND);
+        double dvx = input.x();
+        double dvy = input.y();
+        double dturn = input.omega();
+
+        if (Math.abs(dturn) > 1e-6) {
             isSnapping = false;
             isMaintaining = false;
         }
 
         // 2. Heading Retention Logic
-        boolean isMoving = Math.hypot(vx, vy) > 0.1;
-        boolean noTurnInput = Math.abs(turn) < 0.05;
+        boolean isMoving = input.magnitude() > 1e-6;
+        boolean isTurning = Math.abs(dturn) > 1e-6;
 
         double calculatedTurn;
 
@@ -54,7 +59,7 @@ public class SwerveController {
             if (Math.abs(currentHeading - targetHeading) < 0.02) {
                 isSnapping = false;
             }
-        } else if (isMoving && noTurnInput) {
+        } else if (isMoving && !isTurning) {
             if (!isMaintaining) {
                 targetHeading = currentHeading;
                 isMaintaining = true;
@@ -63,14 +68,10 @@ public class SwerveController {
             calculatedTurn = maintainPID.calculate(currentHeading, targetHeading, dt);
         } else {
             isMaintaining = false;
-            calculatedTurn = turn * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S;
+            calculatedTurn = dturn;
         }
 
-        return new Pose(
-            vx * SwerveConfig.MAX_SPEED_MPS,
-            vy * SwerveConfig.MAX_SPEED_MPS,
-            calculatedTurn
-        );
+        return new Vector(dvx, dvy, calculatedTurn);
     }
 
     public void setSnapTarget(double angleRad) {
@@ -85,7 +86,15 @@ public class SwerveController {
         this.isMaintaining = false;
     }
 
-    public boolean isMaintaining() { return isMaintaining; }
-    public boolean isSnapping() { return isSnapping; }
-    public double getTargetHeading() { return targetHeading; }
+    public boolean isMaintaining() {
+        return isMaintaining;
+    }
+
+    public boolean isSnapping() {
+        return isSnapping;
+    }
+
+    public double getTargetHeading() {
+        return targetHeading;
+    }
 }

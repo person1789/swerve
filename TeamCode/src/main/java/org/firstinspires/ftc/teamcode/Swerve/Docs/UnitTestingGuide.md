@@ -1,65 +1,54 @@
 # The Beginner's Guide to Unit Testing for FTC Swerve
 
-Unit testing is like having a "digital robot" in your computer that double-checks your math every time you change a line of code. It allows you to verify that your swerve kinematics and control loops are working perfectly **before** you even turn on the real robot.
+Unit testing is like having a "digital twin" in your computer that double-checks your math every time you change a line of code. It allows you to verify that your swerve kinematics and control loops are working perfectly **before** you even turn on the real robot.
 
 ---
 
-## 1. What are Unit Tests?
-Instead of downloading code to a Control Hub and watching the robot move, a Unit Test runs only a small piece of code (like a single function) on your laptop. 
-- **Goal**: Make sure `Input A` always produces `Desired Output B`.
-- **Benefit**: You catch math errors in seconds instead of spending hours debugging on the field.
+## 1. Why Unit Test?
+Our swerve system operates in **Physical Units** (meters per second, radians per second). Unit tests ensure that:
+- A command of $1.0$ m/s North actually calculates the correct wheel speeds.
+- The `Vector` rotation math doesn't have "flipped" axes.
+- The `MotionSmoother` correctly ramps speed without jumping.
 
 ## 2. Setting Up Your Environment
-Your repository is already pre-configured for **JUnit 5**, the industry standard for Java testing.
+The repository is pre-configured for **JUnit 5**.
 
-### Requirements:
-- **Android Studio**: Ensure you have Android Studio installed.
-- **Gradle**: The build system (configured in `build.gradle`) handles the "Runner."
+### Running Tests:
+- **Android Studio**: Right-click on the `test` folder and select **Run 'Tests in Swerve'**.
+- **Terminal**: Run `./gradlew test` for a full system validation.
 
----
-
-## 3. How to Run Your Tests
-
-### Method A: Using Android Studio (Recommended)
-1. In the Project pane, navigate to: `TeamCode > src > test > java > org.firstinspires.ftc.teamcode.Swerve.Tests`.
-2. Right-click on a file (e.g., `GeometryTest`).
-3. Select **"Run 'GeometryTest'"** (with the green play icon).
-4. A window will appear at the bottom showing green checkmarks for passed tests and red X's for failed ones.
-
-### Method B: Using the Terminal (Fastest)
-Open the terminal at the bottom of Android Studio and type:
-```powershell
-./gradlew test
-```
-This will run every single unit test in your project and provide a summary of the results.
-
----
-
-## 4. Writing Your First Test
-A test is just a regular Java function with a `@Test` label on top. We use **Assertions** to check if the code is doing the right thing.
-
+## 3. Testing the Vector Math
+Since we replaced legacy types with a unified `Vector` class, it is the most critical part of our test suite.
 ```java
 @Test
-public void testingAddition() {
-    int result = 2 + 2;
-    // We "Assert" that the result should be 4
-    assertEquals(4, result); 
+public void testVectorRotation() {
+    Vector start = new Vector(1, 0); // Pointing North
+    Vector rotated = start.rotate(Math.PI / 2); // Rotate 90 degrees
+    
+    assertEquals(0, rotated.x(), 1e-6);
+    assertEquals(1, rotated.y(), 1e-6);
 }
 ```
 
-## 5. Anatomy of a Swerve Test
-For our swerve library, we test the "Logic" without the "Motors." 
+## 4. The Swerve Pipeline Test
+For our swerve library, we test the "Logic" without the "Motors." We simulate a loop and check the output.
 
-1. **Arrange**: Create the controller (e.g., `PIDController`).
-2. **Act**: Tell it to calculate something (e.g., `pid.calculate(current, dt)`).
-3. **Assert**: Check if the power output is what you expected.
+1. **Arrange**: Create a `SwerveKinematics` object with your robot's trackwidth.
+2. **Act**: Pass a 3D `Vector(1, 0, 0)` into `inverseKinematics`.
+3. **Assert**: Verify that all 4 `SwerveModuleState` objects have a speed of $1.0$ m/s and an angle of $0$.
+
+## 5. Testing the "Brain"
+You can test the `SwerveController` by simulating a "disturbance":
+1. Set a snap target of $0$.
+2. Simulate a current heading of $0.1$ radians.
+3. Assert that the controller outputs a negative angular velocity to correct the error.
 
 ---
 
 ## 6. Best Practices
-- **Test Edge Cases**: What happens if the robot's heading is exactly 180°? What if the joystick is at (0,0)?
-- **Keep Tests Small**: Each test should only check one specific behavior.
-- **Run Often**: Run your tests every time you make a change to the core math files.
+- **Standard Units**: Always write tests in m/s and rad/s.
+- **Delta Thresholds**: When comparing doubles, always use a small delta (e.g., `1e-6`) to account for floating-point math.
+- **Fail Fast**: If your tests fail on your laptop, **DO NOT** download the code to the robot.
 
-> [!TIP]
-> If a test fails, don't panic! It's doing its job. It found a bug on your laptop so it doesn't break your robot on the field.
+> [!IMPORTANT]
+> A green test suite is your "License to Drive." Never test new movement logic on the field without a passing test suite.

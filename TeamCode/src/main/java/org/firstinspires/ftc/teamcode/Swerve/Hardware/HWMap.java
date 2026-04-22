@@ -5,7 +5,9 @@ import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServoImplEx;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
+import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 
 public class HWMap {
 
@@ -32,6 +34,7 @@ public class HWMap {
     private VoltageSensor voltageSensor;
 
     private final GoBildaPinpointDriver odo;
+    public final IMU imu;
 
     public HWMap (HardwareMap hardwareMap) {
         FLM = hardwareMap.get(DcMotorEx.class, "FLM");
@@ -50,6 +53,11 @@ public class HWMap {
         BRE = hardwareMap.get(AnalogInput.class, "BRE");
 
         odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
+
+        imu = hardwareMap.get(IMU.class, "imu");
+        IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
+                SwerveConfig.HUB_LOGO_DIR, SwerveConfig.HUB_USB_DIR));
+        imu.initialize(parameters);
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
     }

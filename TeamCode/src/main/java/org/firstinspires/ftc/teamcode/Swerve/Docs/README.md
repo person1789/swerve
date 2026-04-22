@@ -1,30 +1,37 @@
 # Swerve Library Overview
 
-Welcome to the custom Swerve codebase. This library is designed for zero-dependency, high-performance robot control. It includes built-in support for **Field-Centric driving**, **Jerk-Limited S-Curves**, and **Pinpoint Localization**.
+Welcome to the refactored Swerve codebase. This library provides a high-performance, unit-aware architecture designed for the most demanding FTC game challenges.
 
-## Quick Start for New Programmers
+## 🚀 Core Features
+- **Unified Vector Math**: All geometry and dynamics use a single, robust `Vector` class.
+- **Fail-Safe Localization**: Triple-redundant fusion of GoBILDA Pinpoint, Internal IMU, and Forward Kinematics.
+- **Unit-Aware Control**: Everything speaks in meters, radians, and seconds—no more "normalized power" guesswork.
+- **Centralized Tuning**: `SwerveConfig` allows real-time tuning of every PID gain and limit via FTC Dashboard.
 
-### 1. Where do I tune the robot?
-Go to `Swerve/Core/SwerveConfig.java`. This file contains all the constants for:
-- PID gains for steering and heading snap.
-- Digital offsets for your wheel pods.
-- Speed and acceleration limits.
+## 🕹️ Quick Start for Drivers
 
-### 2. How do I run the robot?
-Use the `SwerveTeleOp` OpMode in the `Swerve/OpModes` folder. 
-- **Options Button**: Resets the field-centric heading (points "forward" away from you).
-- **D-Pad**: Snaps the robot to cardinal directions (0, 90, 180, 270 degrees).
-- **Left Stick**: Move the robot in any direction.
-- **Right Stick**: Rotate the robot.
+### 1. Heading Calibration
+Press the **Options/Start** button to reset the field-centric heading. "Forward" will now be pointing away from you.
 
-### 3. How do I verify my changes?
-Before testing on the real field, always run the **Unit Tests** on your computer. See the [Unit Testing Guide](./UnitTestingGuide.md) for instructions.
+### 2. Cardinal Snapping
+Use the **D-Pad** to snap the robot's heading to 0°, 90°, 180°, or 270° instantly.
 
-## Documentation Index
-- [Architecture & Data Flow](./Architecture.md): How the "brains" of the robot work.
-- [Unit Testing Guide](./UnitTestingGuide.md): How to prevent bugs on your laptop.
-- [Simulator Guide](./Simulator.md): How to run the Next.js "Digital Twin" App.
-- [Movement Logic](./MovementLogic.md): Deep dive into Asymmetric Braking and S-Curves.
+### 3. Precision Control
+The joysticks use non-linear cubic scaling. Use the center of the stick for fine adjustments and the edges for maximum speed.
+
+## 🛠️ Developer Guide
+
+### Where is the "Brain"?
+- **`SwerveController`**: Handles the logic of what the robot *wants* to do (Heading Hold, Snapping).
+- **`MotionSmoother`**: Handles the physics of how the robot *moves* (Scaling, Accel/Jerk limits).
+- **`SwerveDrivetrain`**: Orchestrates the hardware execution.
+
+### How do I tune?
+Open `Swerve/Core/SwerveConfig.java`. It is organized into:
+- **Geometry**: Wheelbase and trackwidth.
+- **Limits**: Max speed, accel, and jerk.
+- **PID Gains**: Steering and Heading coefficients.
+- **Hardware**: Pinpoint offsets and motor inversions.
 
 ---
-*Created for the FTC Swerve Project.*
+*Built for performance. Refactored for precision.*

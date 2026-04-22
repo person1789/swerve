@@ -1,36 +1,33 @@
-# 🏎️ Movement Logic: S-Curve & Asymmetric Braking
+# 🏎️ Movement Logic: Units, Curves, and Smoothing
 
-This document explains the advanced motion profiling logic that gives this swerve drivetrain its high-performance feel.
+This system treats the robot as a physical entity with mass and momentum, rather than just a collection of motors. All logic operates in **Standard Units** (m/s, rad/s).
 
-## 1. S-Curve Smoothing (Velocity & Jerk)
+## 1. The Unified Pipeline
+The `MotionSmoother` is the sole authority for how the robot *feels* and *moves*. It handles two distinct responsibilities:
 
-To prevent motor saturation and mechanical wear, all acceleration is filtered through a **Jerk-Limited S-Curve** in the `MotionSmoother` class.
+### A. Non-Linear Input Scaling
+Joystick inputs are not linear. We apply a cubic sensitivity curve (tunable via `STICK_SCALAR`) to allow for pinpoint precision at low speeds while maintaining full power at the edges. This is calculated **component-wise** to allow for cleaner axial snapping.
 
-- **Acceleration Limit**: Prevents the motors from drawing too much current during initial takeoff.
-- **Jerk Limit**: Smooths the *change* in acceleration, ensuring that speed increases are elastic and fluid rather than robotic and jerky.
+### B. S-Curve Dynamics (Velocity & Jerk)
+To prevent the robot from rocking, slipping, or flipping, all movement follows a **Jerk-Limited S-Curve**:
+- **Acceleration Limit**: Prevents high-current spikes and wheel slip.
+- **Jerk Limit**: Smooths the *rate of change* of acceleration, resulting in "elastic" and natural movement.
 
-## 2. Intelligent Asymmetric Braking
+## 2. Intelligent Responsive Braking
+The system distinguishes between **Intentional Deceleration** and **System-Imposed Limits**:
+- **Braking**: If you release the stick or pull it back, the system detects a "Braking" state and bypasses the S-curve to give you immediate, crisp response.
+- **Ramping**: If you push the stick forward, the system enforces the smooth S-curve to protect the hardware.
 
-The core "magic" of this system is its ability to distinguish between **Driver Intent** and **System Controls**.
+## 3. Second-Order Kinematics
+Standard swerve kinematics suffer from "skew" when rotating and translating simultaneously. Our `SwerveKinematics` implements **Second-Order Discretization**:
+- It pre-rotates the translational velocity vector by half the angular displacement expected over the next loop cycle.
+- This ensures that if you command "Drive North while spinning," the robot travels in a perfectly straight line relative to the field.
 
-### The Problem
-Traditional smoothing makes the robot feel "slidy" when trying to stop, as the smoother ramps down the speed slowly even when you pull your finger off the stick.
+## 4. Component-Wise Deadbanding
+We use a component-wise deadband (`DEADBAND_THRESHOLD`) rather than a radial one. This allows the driver to "lock" onto cardinal axes (Pure X or Pure Y) more easily during precision tasks like scoring.
 
-### The Solution: Asymmetric Logic
-The `MotionSmoother` now receives two separate targets:
-1.  **Driver Target**: The raw stick input.
-2.  **System Limit**: The scaled version of that input (after `SwerveAuditor` ensures motors won't saturate).
-
-**Behavior Logic:**
-- **When Speeding Up**: The robot follows the smooth S-curve.
-- **When Slowing Down (By Choice)**: If the `MotionSmoother` detects that the **Driver Target** is decreasing (you pulled back on the stick), it **bypasses all smoothing** and snaps to the target instantly.
-- **When Slowing Down (By System)**: If the robot slows down because of an internal limit (but your stick is still pushed forward), it **maintains smooth deceleration** to keep the chassis stable.
-
-## 3. Skew Correction
-
-At high rotational speeds, swerve drives tend to "skew" or orbit slightly. Our `SwerveKinematics` includes a **Half-Angle Skew correction** that pre-calculates where the wheels *will be* after the frame's rotation, ensuring a perfectly straight line during high-speed spinning maneuvers.
-
-## 🛠️ Tuning
-Values for these systems are located in `SwerveConfig.java`:
-- `MAX_ACCEL`: Maximum m/s² allowed.
-- `MAX_JERK`: Maximum m/s³ allowed (the higher this is, the "snappier" it feels).
+## 🛠️ Tuning via SwerveConfig
+All movement constants are centrally located for real-time dashboard tuning:
+- `MAX_SPEED_MPS`: The physical top speed.
+- `MAX_ACCEL` / `MAX_JERK`: The "sharpness" of the smoothing.
+- `STICK_SCALAR`: The sensitivity of the joystick curves.

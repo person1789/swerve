@@ -15,6 +15,8 @@ package org.firstinspires.ftc.teamcode.Swerve.Core;
  * Convention note: all angles are in RADIANS unless a method name explicitly
  * states degrees (e.g. normalizeAngleDegrees).
  */
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
+
 public final class MathUtil {
 
     /** No instances. */
@@ -109,5 +111,22 @@ public final class MathUtil {
     public static double applyDeadband(double value, double deadband) {
         if (Math.abs(value) < deadband) return 0.0;
         return Math.signum(value) * (Math.abs(value) - deadband) / (1.0 - deadband);
+    }
+
+    /**
+     * Apply a component-wise deadband to a Vector.
+     * If the absolute value of a component is less than the deadband, it is set to 0.
+     *
+     * @param v        Vector to process
+     * @param deadband threshold below which a component is treated as zero
+     * @return processed Vector
+     */
+    public static Vector applyDeadband(Vector v, double deadband) {
+        double[] result = new double[v.dimension];
+        for (int i = 0; i < v.dimension; i++) {
+            double val = v.get(i);
+            result[i] = (Math.abs(val) < deadband) ? 0.0 : val;
+        }
+        return new Vector(result);
     }
 }

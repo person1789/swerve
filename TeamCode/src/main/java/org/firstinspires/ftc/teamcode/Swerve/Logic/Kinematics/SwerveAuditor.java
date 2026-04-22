@@ -1,61 +1,56 @@
-/**
- * SwerveAuditor: An optimization tool that cleans up wheel commands.
- * It looks at the calculated wheel directions and makes smart adjustments, 
- * such as telling a wheel to spin backwards if it can reach the target direction 
- * faster by doing so, reducing mechanical wear and steering time.
- */
 package org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 
 /**
- * SwerveAuditor
+ * SwerveAuditor: Optimizes module states for shortest-path steering and 
+ * ensures the robot doesn't attempt to exceed physical speed limits.
  */
 public class SwerveAuditor {
 
-    private static final double FLIP_THRESHOLD = Math.PI / 2.0;
-
     /**
-     * Optimize four module states and normalize speeds.
+     * One-pass optimization for all modules.
+     * Handles NaN protection, shortest-path logic, and speed desaturation.
+     * 
+     * @param desiredStates    The raw module states from kinematics.
+     * @param currentAnglesRad The current actual rotation of the modules.
+     * @return Optimized and normalized module states.
      */
-    public SwerveModuleState[] optimize(SwerveModuleState[] desiredStates,
-                                        double[] currentAnglesRad,
-                                        double maxSpeed) {
-        
+    public SwerveModuleState[] optimize(SwerveModuleState[] desiredStates, double[] currentAnglesRad) {
+        // 1. NaN Protection: Safety first
+        for (SwerveModuleState s : desiredStates) {
+            if (Double.isNaN(s.speedMetersPerSecond)) s.speedMetersPerSecond = 0.0;
+            if (Double.isNaN(s.angleRadians)) s.angleRadians = 0.0;
+        }
+
         SwerveModuleState[] optimized = new SwerveModuleState[4];
-
-        for (int i = 0; i < 4; i++) {
-            optimized[i] = optimizeSingle(desiredStates[i].copy(), currentAnglesRad[i]);
-        }
-
-        normalizeByMax(optimized, maxSpeed);
-        return optimized;
-    }
-
-    public static SwerveModuleState optimizeSingle(SwerveModuleState state,
-                                                   double currentAngle) {
-        double error = MathUtil.angleError(currentAngle, state.angleRadians);
-
-        if (Math.abs(error) > FLIP_THRESHOLD) {
-            // Flip: reverse drive direction and aim for the opposite heading.
-            state.speedMetersPerSecond *= -1.0;
-            state.angleRadians = MathUtil.normalizeAngle(state.angleRadians + Math.PI);
-        }
-
-        return state;
-    }
-
-    public static void normalizeByMax(SwerveModuleState[] states, double maxSpeed) {
         double maxFound = 0.0;
-        for (SwerveModuleState s : states) {
-            maxFound = Math.max(maxFound, Math.abs(s.speedMetersPerSecond));
+
+        // 2. Shortest-Path Optimization (Angle Flipping)
+        for (int i = 0; i < 4; i++) {
+            SwerveModuleState state = desiredStates[i].copy();
+            double error = MathUtil.angleError(currentAnglesRad[i], state.angleRadians);
+
+            if (Math.abs(error) > SwerveConfig.FLIP_THRESHOLD) {
+                // Reverse motor and rotate 180 degrees if it's faster
+                state.speedMetersPerSecond *= -1.0;
+                state.angleRadians = MathUtil.normalizeAngle(state.angleRadians + Math.PI);
+            }
+
+            optimized[i] = state;
+            maxFound = Math.max(maxFound, Math.abs(state.speedMetersPerSecond));
         }
 
-        if (maxFound > maxSpeed && maxFound > 1e-9) {
-            double scale = maxSpeed / maxFound;
-            for (SwerveModuleState s : states) {
+        // 3. Speed Desaturation (Normalization)
+        // Only scales if the requested speed exceeds the physical maximum defined in config.
+        if (maxFound > SwerveConfig.MAX_SPEED_MPS) {
+            double scale = SwerveConfig.MAX_SPEED_MPS / maxFound;
+            for (SwerveModuleState s : optimized) {
                 s.speedMetersPerSecond *= scale;
             }
         }
+
+        return optimized;
     }
 }

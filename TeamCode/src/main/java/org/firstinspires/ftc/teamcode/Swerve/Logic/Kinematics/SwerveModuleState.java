@@ -6,7 +6,6 @@
 package org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
-import org.firstinspires.ftc.teamcode.Swerve.Geometry.D2Vector;
 
 /**
  * SwerveModuleState

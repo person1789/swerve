@@ -1,55 +1,45 @@
 # Swerve System Architecture
 
-This library follows a strict **Input -> Logic -> Hardware** abstraction hierarchy. This design separates driver-input logic from geometric math and hardware coordination, making the code easier to test and tune.
+This library follows a strict **Input -> Brain -> Pipeline -> Hardware** abstraction hierarchy. The entire system is built on a unified **Vector domain language**, ensuring that every component speaks the same mathematical "language" (m/s, rad/s) without unit conversion errors.
 
 ## 1. Input Layer (`Swerve.Input`)
-- **Responsibility**: Takes raw joystick data and smooths it for the robot.
+- **Responsibility**: Processes raw driver intent into physically achievable velocity commands.
 - **Key Components**: 
-  - `JoystickScaling`: Applies non-linear curves to make fine control easier.
-  - `MotionSmoother`: Implements S-curve profiles (jerk/accel limiting) to prevent the chassis from rocking or flipping during high-speed maneuvers.
+  - `MotionSmoother`: The **Sole Authority** for robot dynamics. It integrates non-linear joystick scaling, responsive braking logic, and S-curve smoothing (accel/jerk limiting) into a single high-performance pipeline.
 
-## 2. Logic Layer (`Swerve.Logic`)
-- **Responsibility**: The mathematical "brains" of the robot. 
-- **Kinematics/**: 
-  - `SwerveKinematics`: The core engine that calculates how each of the 4 wheels must move to achieve a desired chassis velocity.
-  - `SwerveAuditor`: Optimizes wheel movements (e.g., flipping module directions so they only ever turn a maximum of 90 degrees).
-- **Localization/**: 
-  - `SwerveLocalizer`: Interfaces with the **GoBILDA Pinpoint** computer to track the robot's precise (X, Y, Heading) pose on the field.
-
-## 3. Hardware Layer (`Swerve.Hardware`)
-- **Responsibility**: Direct management of the robot's physical components.
+## 2. Brain Layer (`Swerve.Logic.Control`)
+- **Responsibility**: Interprets the driver's goal (e.g., "point at the goal while moving left").
 - **Key Components**:
-  - `SwerveDrivetrain`: The high-level coordinator that feeds smoothed inputs into the kinematics engine and commands the modules.
-  - `SwerveModule`: Controls an individual "pod," managing its specific Drive Motor and Steer Servo via a local PID loop.
-- **Config**: `swerve.xml` (located here) defines the hardware port mapping.
+  - `SwerveController`: Manages state-driven logic like **Heading Retention** and **Cardinal Snapping**. It outputs the final target `Vector` for the drivetrain.
 
-## 4. Operational Entry Points (`Swerve.OpModes`)
-- **Main Driver Logic**:
-  - `SwerveTeleOp`: The primary competitive tele-op mode.
-  - `MainTeleOp`: Alternative/Legacy driver control logic.
-  - `SwerveModulePIDTune`: A specialized utility for calibrating steering response.
+## 3. Pipeline Layer (`Swerve.Logic.Kinematics`)
+- **Responsibility**: Translates chassis-level velocity into module-level motor commands.
+- **Key Components**:
+  - `SwerveKinematics`: Performs **Second-Order Inverse Kinematics** to calculate module speeds/angles while correcting for curvilinear "skew."
+  - `SwerveAuditor`: Optimizes module movements to minimize turn time (e.g., direction flipping).
 
-## 5. Core Utilities (`Swerve.Core` & `Swerve.Geometry`)
-- **Swerve.Core**:
-  - `SwerveConfig`: Centralized tuning for everything from PID gains to wheel offsets.
-  - `HWMap`: The "Bridge" that connects software variables to physical robot hardware.
-  - `Logger`: A high-performance telemetry system for real-time debugging.
-  - `Pinpoint`: Driver for the GoBILDA Pinpoint computer.
-- **Swerve.Geometry**:
-  - `MathUtil`: Specialized helpers for angle normalization.
-  - `Pose`/`Point`/`D2Vector`: Math types used throughout the library.
+## 4. Hardware Layer (`Swerve.Hardware`)
+- **Responsibility**: Direct hardware orchestration and feedback.
+- **Key Components**:
+  - `SwerveDrivetrain`: Coordinates the flow from the Controller through the Pipeline. It also manages the **Fail-Safe Localization** system.
+  - `SwerveModule`: Controls an individual pod's motor and servo via local PID control.
 
-## 6. Simulation & Testing (`swerve-scope/`)
-- **Digital Twin**: Located outside the main Java source, this is a separate app that mirrors your robot's exact physics and logic for practice and testing.
+## 5. Fail-Safe Localization (`Swerve.Logic.Localization`)
+- **Responsibility**: Tracks the robot's pose on the field with triple-redundancy.
+- **Key Components**:
+  - `SwerveLocalizer`: Fuses **GoBILDA Pinpoint** (primary), **Internal IMU** (heading fallback), and **SwerveVelocityObserver** (encoder dead-reckoning) into a single robust field position.
+  - `SwerveVelocityObserver`: Calculates actual chassis velocity from wheel feedback using Forward Kinematics.
+
+## 6. Core Utilities (`Swerve.Core` & `Swerve.Geometry`)
+- **Swerve.Config**: `SwerveConfig.java` is the centralized "Control Panel" for the robot. All PID gains, limits, and offsets are tuned here and can be updated in real-time via FTC Dashboard.
+- **Swerve.Geometry**: Unified `Vector` class handles all N-dimensional arithmetic, rotations, and interpolation, replacing fragmented legacy types like `Point` and `Pose`.
 
 ---
 
-## The Control Loop
-Each 20ms control cycle follows this path:
-1. `SwerveTeleOp` reads raw joysticks and passes them to `SwerveDrivetrain`.
-2. `SwerveDrivetrain` identifies **Driver Intent** and calculates **System Limits**.
-3. `MotionSmoother` performs **Asymmetric Braking** (Snappy human response, smooth system ramp).
-4. `SwerveKinematics` calculates 4 target wheel states with **Skew Correction**.
-5. `SwerveAuditor` optimizes those states to minimize steering turn-time.
-6. `SwerveModule` instances use PID to command physical motors.
-7. `SwerveLocalizer` updates the field coordinate (X, Y, θ).
+## The Control Loop (50Hz+)
+1. **Localization**: `SwerveLocalizer` fuses Pinpoint, IMU, and Wheel Feedback to find current `Pose`.
+2. **Intent**: `OpMode` reads sticks and calls `SwerveController`.
+3. **Brain**: `SwerveController` applies Heading Hold/Snap logic.
+4. **Dynamics**: `MotionSmoother` enforces Accel/Jerk limits and applies joystick curves.
+5. **Kinematics**: `SwerveKinematics` resolves the 3D Vector into 4 Module States.
+6. **Execution**: `SwerveModule` updates the hardware.

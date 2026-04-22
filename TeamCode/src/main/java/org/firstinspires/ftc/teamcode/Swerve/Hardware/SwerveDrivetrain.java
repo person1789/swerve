@@ -4,7 +4,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
-import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveAuditor;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
@@ -75,34 +75,31 @@ public class SwerveDrivetrain {
     }
 
     /**
-     * Processes driver intent through the control pipeline to update hardware.
+     * Processes chassis velocity commands through the control pipeline to update hardware.
      * 
-     * @param driverTarget Requested robot velocity (vx, vy, omega).
-     * @param dt           Time since last update.
+     * @param chassisSpeeds Requested robot velocity Vector (vx, vy, omega).
+     * @param dt            Time since last update.
      */
-    public void setPose(Pose driverTarget, double dt) {
+    public void setVelocity(Vector chassisSpeeds, double dt) {
         // Update velocity estimate from wheel feedback
         velocityObserver.update(modules);
 
-        boolean hasInput = (Math.hypot(driverTarget.x, driverTarget.y) > 0.01 || Math.abs(driverTarget.heading) > 0.01);
+        boolean hasInput = chassisSpeeds.magnitude() > 0.01;
 
-        // 1. Enforce physical capability limits
-        SwerveModuleState[] rawStates = kinematics.toModuleStates(driverTarget.x, driverTarget.y, driverTarget.heading);
+        // 1. Kinematic Desaturation: Ensure the requested velocity is physically possible
+        SwerveModuleState[] rawStates = kinematics.inverseKinematics(chassisSpeeds);
         double maxFound = 0.0;
         for (SwerveModuleState s : rawStates) maxFound = Math.max(maxFound, Math.abs(s.speedMetersPerSecond));
         
         double scalingFactor = (maxFound > SwerveConfig.MAX_SPEED_MPS) ? SwerveConfig.MAX_SPEED_MPS / maxFound : 1.0;
-        Pose systemLimit = new Pose(driverTarget.x * scalingFactor, driverTarget.y * scalingFactor, driverTarget.heading * scalingFactor);
+        Vector systemLimit = chassisSpeeds.scale(scalingFactor);
 
-        // 2. Apply S-Curve Motion Smoothing
-        Pose smoothedPose = smoother.calculate(driverTarget, systemLimit, dt);
-
-        // 3. Coordinate State Transitions
-        double batteryVoltage = voltageSensor.getVoltage();
+        // 2. Apply S-Curve Motion Smoothing (Sole authority for ramps)
+        Vector smoothedVelocity = smoother.smooth(systemLimit, dt);
 
         switch (state) {
             case DRIVING:
-                driveWithPipeline(smoothedPose, dt, batteryVoltage);
+                driveWithPipeline(smoothedVelocity, dt);
                 if (!hasInput) {
                     lockTimer.reset();
                     state = States.WAITING_TO_LOCK;
@@ -110,13 +107,13 @@ public class SwerveDrivetrain {
                 break;
 
             case WAITING_TO_LOCK:
-                driveWithPipeline(new Pose(0, 0, 0), dt, batteryVoltage);
+                driveWithPipeline(new Vector(0, 0, 0), dt);
                 if (hasInput) state = States.DRIVING;
                 else if (lockTimer.milliseconds() > SwerveConfig.LOCK_DELAY_MS) state = States.LOCKED;
                 break;
 
             case LOCKED:
-                applyXStance(dt, batteryVoltage);
+                applyXStance(dt);
                 if (hasInput) state = States.DRIVING;
                 break;
         }
@@ -127,19 +124,19 @@ public class SwerveDrivetrain {
     /**
      * Low-level pipeline: Kinematics -> Optimize -> Hardware command.
      */
-    private void driveWithPipeline(Pose pose, double dt, double batteryVoltage) {
-        SwerveModuleState[] raw = kinematics.toModuleStates(pose.x, pose.y, pose.heading);
+    private void driveWithPipeline(Vector velocity, double dt) {
+        SwerveModuleState[] raw = kinematics.inverseKinematics(velocity);
         double[] currentAngles = new double[4];
         for (int i = 0; i < 4; i++) currentAngles[i] = modules[i].getCurrentRotation();
 
-        SwerveModuleState[] optimized = auditor.optimize(raw, currentAngles, SwerveConfig.MAX_SPEED_MPS);
+        SwerveModuleState[] optimized = auditor.optimize(raw, currentAngles);
 
-        for (int i = 0; i < 4; i++) modules[i].update(optimized[i], dt, batteryVoltage);
+        for (int i = 0; i < 4; i++) modules[i].update(optimized[i], dt);
     }
 
-    private void applyXStance(double dt, double batteryVoltage) {
+    private void applyXStance(double dt) {
         double[] xAngles = { Math.toRadians(45), Math.toRadians(-45), Math.toRadians(45), Math.toRadians(-45) };
-        for (int i = 0; i < 4; i++) modules[i].update(xAngles[i], 0.0, dt, batteryVoltage);
+        for (int i = 0; i < 4; i++) modules[i].update(xAngles[i], 0.0, dt);
     }
 
     private void performHealthSystemScan() {
@@ -152,10 +149,10 @@ public class SwerveDrivetrain {
 
     public void log() {
         for (int i = 0; i < 4; i++) modules[i].log(i);
-        Pose actual = velocityObserver.getVelocity();
-        logger.log("ObsV_X", actual.x, Logger.LogLevels.PRODUCTION);
-        logger.log("ObsV_Y", actual.y, Logger.LogLevels.PRODUCTION);
-        logger.log("ObsV_W", actual.heading, Logger.LogLevels.PRODUCTION);
+        Vector actual = velocityObserver.getVelocity();
+        logger.log("ObsV_X", actual.x(), Logger.LogLevels.PRODUCTION);
+        logger.log("ObsV_Y", actual.y(), Logger.LogLevels.PRODUCTION);
+        logger.log("ObsV_W", actual.omega(), Logger.LogLevels.PRODUCTION);
         logger.log("Battery_V", voltageSensor.getVoltage(), Logger.LogLevels.PRODUCTION);
     }
 
@@ -171,6 +168,6 @@ public class SwerveDrivetrain {
         }
     }
 
-    public Pose getActualVelocity() { return velocityObserver.getVelocity(); }
+    public Vector getActualVelocity() { return velocityObserver.getVelocity(); }
     public States getState() { return state; }
 }
