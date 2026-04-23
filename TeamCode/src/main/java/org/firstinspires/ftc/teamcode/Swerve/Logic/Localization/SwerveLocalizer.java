@@ -153,6 +153,51 @@ public class SwerveLocalizer {
         // The masterPose will track the offset internally.
     }
 
+    /**
+     * Applies a vision-based pose correction from LimelightLocalizer.
+     *
+     * Two correction modes:
+     *
+     * 1. HARD RESET — if the Euclidean distance between the vision pose and the
+     *    current masterPose exceeds {@code SwerveConfig.LIMELIGHT_HARD_RESET_THRESHOLD_IN},
+     *    the X/Y components are snapped directly to the vision estimate. This
+     *    recovers from large Pinpoint drift in one step.
+     *
+     * 2. SOFT BLEND — otherwise, masterPose is lerped toward the vision pose by
+     *    {@code trustFactor}, which scales with tag count (see LimelightLocalizer).
+     *    e.g. trustFactor = 0.10 → 10% vision, 90% odometry this cycle.
+     *
+     * Heading is NEVER sourced from vision. The omega() component of the
+     * masterPose is always preserved from the Pinpoint/IMU pipeline. The
+     * visionPose heading is carried along for logging purposes only.
+     *
+     * @param visionPose  Field-space pose from LimelightLocalizer (inches, radians).
+     * @param trustFactor Blending weight in [0.0, 1.0]. 0 = ignore, 1 = full snap.
+     */
+    public void applyVisionUpdate(Vector visionPose, double trustFactor) {
+        if (visionPose == null || trustFactor <= 0.0) return;
+
+        double errorX    = visionPose.x() - masterPose.x();
+        double errorY    = visionPose.y() - masterPose.y();
+        double errorDist = Math.sqrt(errorX * errorX + errorY * errorY);
+
+        double newX;
+        double newY;
+
+        if (errorDist > SwerveConfig.LIMELIGHT_HARD_RESET_THRESHOLD_IN) {
+            // Hard reset: snap X/Y to vision estimate directly.
+            newX = visionPose.x();
+            newY = visionPose.y();
+        } else {
+            // Soft blend: lerp masterPose toward vision by trustFactor.
+            newX = masterPose.x() + trustFactor * errorX;
+            newY = masterPose.y() + trustFactor * errorY;
+        }
+
+        // Heading always comes from Pinpoint/IMU — never from vision.
+        masterPose = new Vector(newX, newY, masterPose.omega());
+    }
+
     private double metersToInches(double meters) {
         return meters / 0.0254;
     }

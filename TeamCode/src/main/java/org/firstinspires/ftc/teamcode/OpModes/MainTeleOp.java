@@ -19,6 +19,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Logic.Control.SwerveController;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Localization.SwerveLocalizer;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
+import org.firstinspires.ftc.teamcode.Swerve.Hardware.Limelight.LimelightLocalizer;
 
 @Config
 @TeleOp
@@ -26,6 +27,10 @@ public class MainTeleOp extends LinearOpMode {
     private SwerveDrivetrain swerveDrivetrain;
     private SwerveController swerveController;
     private SwerveLocalizer localizer;
+
+    // Declared null; only assigned when SwerveConfig.LIMELIGHT_ENABLED = true.
+    // This ensures no hardware map lookup occurs if the camera is absent.
+    private LimelightLocalizer limelightLocalizer = null;
 
     private Logger logger;
     private HWMap hwMap;
@@ -47,6 +52,12 @@ public class MainTeleOp extends LinearOpMode {
         localizer = new SwerveLocalizer(hwMap);
         swerveDrivetrain = new SwerveDrivetrain(hwMap, logger);
         swerveController = new SwerveController();
+
+        // Optional: Limelight vision relocalization.
+        // Completely skipped (no hardware map call) if LIMELIGHT_ENABLED = false.
+        if (SwerveConfig.LIMELIGHT_ENABLED) {
+            limelightLocalizer = new LimelightLocalizer(hardwareMap);
+        }
 
         Pose storedPose = PoseStorage.getCurrentPose();
         if (storedPose != null) {
@@ -76,7 +87,22 @@ public class MainTeleOp extends LinearOpMode {
 
             // 2. Localization (Fail-Safe Fusion)
             localizer.update(swerveDrivetrain.getActualVelocity(), dt);
-            Vector currentPose = localizer.getPose(); // 3D Vector [x, y, heading]
+
+            // 2a. Vision relocalization (only runs when LIMELIGHT_ENABLED = true).
+            // All Limelight code is isolated in this block — nothing outside it
+            // references LimelightLocalizer, preserving full subsystem isolation.
+            if (SwerveConfig.LIMELIGHT_ENABLED && limelightLocalizer != null) {
+                // omega() from the velocity observer is rad/s; convert for MT2 gate.
+                double angularVelDegS = Math.toDegrees(swerveDrivetrain.getActualVelocity().omega());
+                limelightLocalizer.update(Math.toDegrees(localizer.getHeading()), angularVelDegS);
+                if (limelightLocalizer.hasVisionUpdate()) {
+                    localizer.applyVisionUpdate(
+                            limelightLocalizer.getVisionPose(),
+                            limelightLocalizer.getTrustFactor());
+                }
+            }
+
+            Vector currentPose = localizer.getPose(); // [x, y, heading]
             double heading = currentPose.omega();
 
             // 3. Process Driver Intent (Field-Centric)
@@ -119,5 +145,16 @@ public class MainTeleOp extends LinearOpMode {
         logger.log("Pinpoint Used", localizer.isUsingPinpoint() ? 1.0 : 0.0, Logger.LogLevels.PRODUCTION);
         logger.log("Pinpoint Invalid Loops", localizer.getConsecutiveInvalidPinpointLoops(), Logger.LogLevels.PRODUCTION);
         swerveDrivetrain.log();
+
+        // Limelight telemetry — only emitted when the subsystem is active.
+        if (SwerveConfig.LIMELIGHT_ENABLED && limelightLocalizer != null) {
+            logger.log("LL Tag Count",  limelightLocalizer.getLastTagCount(),              Logger.LogLevels.PRODUCTION);
+            logger.log("LL Has Update", limelightLocalizer.hasVisionUpdate() ? 1.0 : 0.0, Logger.LogLevels.PRODUCTION);
+            logger.log("LL Trust",      limelightLocalizer.getTrustFactor(),               Logger.LogLevels.PRODUCTION);
+            if (limelightLocalizer.getVisionPose() != null) {
+                logger.log("LL Vision X (in)", limelightLocalizer.getVisionPose().x(), Logger.LogLevels.PRODUCTION);
+                logger.log("LL Vision Y (in)", limelightLocalizer.getVisionPose().y(), Logger.LogLevels.PRODUCTION);
+            }
+        }
     }
 }

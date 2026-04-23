@@ -167,4 +167,63 @@ public class SwerveConfig {
     public static double inchesToMeters(double inches) {
         return inches * 0.0254;
     }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 9. Limelight Vision Relocalization
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Master enable switch for Limelight pose relocalization.
+     *
+     * FALSE (default): LimelightLocalizer is never instantiated. No hardware
+     * map lookup is attempted. SwerveLocalizer runs on Pinpoint + IMU only.
+     * The camera does not need to be physically connected.
+     *
+     * TRUE: LimelightLocalizer is created at OpMode init and applyVisionUpdate()
+     * is called every loop where the camera produces a valid result.
+     *
+     * This is a @Config field — it can be toggled live on FTC Dashboard without
+     * redeploying, which is useful for comparing odometry-only vs. vision-fused
+     * accuracy during practice.
+     */
+    public static boolean LIMELIGHT_ENABLED = false;
+
+    /**
+     * Reject Limelight results that are older than this many milliseconds.
+     * Staleness > threshold means the camera has not computed a new frame since
+     * the last poll — applying a stale correction moves the pose backward in time.
+     */
+    public static long LIMELIGHT_MAX_STALENESS_MS = 100;
+
+    /**
+     * Suppress vision updates when the robot is spinning faster than this
+     * threshold (degrees/second). Fast spins introduce IMU lag that corrupts
+     * the MT2 heading seed, causing transient XY errors.
+     */
+    public static double LIMELIGHT_MAX_ANGULAR_VEL_DEG_S = 360.0;
+
+    /**
+     * Maximum allowed camera-to-tag depth (meters) when only one tag is visible.
+     * Single-tag accuracy degrades at long range; multi-tag estimates are exempt.
+     */
+    public static double LIMELIGHT_MAX_TAG_DISTANCE_M = 4.0;
+
+    /**
+     * Blending alpha applied to the masterPose when exactly 1 tag is visible.
+     * 0.05 = 5% vision correction per loop, 95% odometry retained.
+     */
+    public static double LIMELIGHT_SINGLE_TAG_ALPHA = 0.05;
+
+    /**
+     * Blending alpha applied to the masterPose when 2+ tags are visible.
+     * Higher trust warranted by reduced ambiguity and better geometry.
+     */
+    public static double LIMELIGHT_MULTI_TAG_ALPHA = 0.15;
+
+    /**
+     * If vision disagrees with odometry by more than this many inches, perform
+     * a hard snap to the vision pose (X/Y only) instead of a soft lerp.
+     * This recovers from significant Pinpoint drift in one step.
+     */
+    public static double LIMELIGHT_HARD_RESET_THRESHOLD_IN = 18.0;
 }
