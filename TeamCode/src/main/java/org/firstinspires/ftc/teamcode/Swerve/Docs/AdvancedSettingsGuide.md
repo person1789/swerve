@@ -1,58 +1,91 @@
 # Advanced Swerve Settings Guide
 
-This guide documents the advanced control features that are actually in scope for this FTC swerve implementation.
+This guide documents the settings that matter for the current robot and how they fit together.
 
-## 1. Open-Loop Drive Power With Encoder Observation
+It is not a dump of every constant. It is the "what should I touch, and why?" guide.
 
-The drivetrain drives the wheel motors in `RUN_WITHOUT_ENCODER` mode on purpose.
+## Current baseline assumptions
 
-That means:
+The current docs assume:
 
-- motor output is open-loop power
-- the REV hub is not running its built-in drive velocity loop
-- the software still reads encoder-derived velocity through `DcMotorEx.getVelocity()` for the observer
+- REV hub orientation:
+  - `HUB_LOGO_DIR = LEFT`
+  - `HUB_USB_DIR = DOWN`
+- Pinpoint odometry offsets:
+  - `ODO_X_OFFSET_MM = -127.6669`
+  - `ODO_Y_OFFSET_MM = -52.23`
+- linear limits:
+  - `MAX_LINEAR_SPEED_IN_S = 72.0`
+  - `MAX_LINEAR_ACCEL_IN_S2 = 72.0`
+  - `MAX_LINEAR_JERK_IN_S3 = 360.0`
 
-That is the intended pairing for the current design:
+If those assumptions change on the real robot, update `SwerveConfig.java` first and then treat old tuning results with suspicion.
 
-- custom Java logic owns the drive behavior
-- motor encoders still provide wheel speed feedback
-- the observer can estimate chassis velocity from real wheel motion
+## 1. Hardware truth settings
 
-## 2. Second-Order Kinematics
+These should match the physical robot before you do any tuning:
 
-The kinematics layer discretizes chassis motion over the loop interval before resolving module states.
+- `OFFSETS`
+- `INVERSIONS`
+- `ODO_X_OFFSET_MM`
+- `ODO_Y_OFFSET_MM`
+- `HUB_LOGO_DIR`
+- `HUB_USB_DIR`
+- `WHEEL_RADIUS_METERS`
+- `TRACK_WIDTH_IN`
+- `WHEEL_BASE_IN`
 
-Result:
+If these are wrong, PID tuning usually turns into expensive lying.
 
-- better translation accuracy during simultaneous rotation
-- less spin-strafe skew at high angular velocity
+## 2. Drive architecture
 
-## 3. Motion Smoothing
+The drivetrain currently uses:
 
-`MotionSmoother` is the single authority for shaping requested chassis velocity.
+- open-loop drive power
+- encoder-derived wheel speed feedback
+- software-side motion shaping
+- software-side kinematics and optimization
 
-The current implementation includes:
+The wheel motors run in `RUN_WITHOUT_ENCODER` on purpose. That means:
 
-- non-linear input shaping
+- the REV hub is not closing the wheel velocity loop for you
+- your Java pipeline owns drive behavior
+- wheel encoder velocity is still available for observation and localization
+
+That is the intended design right now.
+
+## 3. Motion shaping
+
+`MotionSmoother` is the main "feel" layer.
+
+It handles:
+
+- non-linear stick shaping
 - acceleration limiting
 - jerk limiting during ramp-up
-- immediate snap-down when the driver brakes or reverses intent
+- faster snap-down response when the driver brakes or reverses
 
 Primary tunables:
 
-- `MAX_ACCEL`
-- `MAX_JERK`
+- `MAX_LINEAR_ACCEL_IN_S2`
+- `MAX_LINEAR_JERK_IN_S3`
 - `INPUT_INTERCEPT`
 - `INPUT_SPLINE_POINT`
 - `INPUT_SLOPE`
 
-## 4. Heading Hold And Snap
+When to touch them:
 
-`SwerveController` provides:
+- If the robot feels too lazy off the line, look at accel and jerk.
+- If the robot feels twitchy around stick center, look at the input curve values.
+- If the robot feels unstable at high command changes, reduce aggressiveness before touching PID.
+
+## 4. Heading behavior
+
+`SwerveController` currently provides:
 
 - manual turn passthrough
-- delayed heading maintenance while translating
-- heading snap targets
+- delayed heading maintenance
+- heading snap support in the controller layer
 
 Primary tunables:
 
@@ -60,26 +93,47 @@ Primary tunables:
 - `SNAP_P`, `SNAP_I`, `SNAP_D`
 - `HEADING_LOCK_DELAY_S`
 
-## 5. Observer Filtering
+Important note:
 
-The wheel-speed observer estimates chassis velocity from module states and then smooths that estimate with a low-pass blend.
+Do not tune heading hold until:
 
-Primary tuning value:
+- module steering behaves correctly
+- odometry and hub orientation are correct
+- forward and strafe both make sense in `SwerveSystemCheck`
 
+## 5. Kinematics and observer
+
+The drivetrain uses second-order kinematics plus an observed chassis velocity estimate.
+
+Relevant settings:
+
+- `TRACK_WIDTH_IN`
+- `WHEEL_BASE_IN`
 - `OBSERVER_LPF_GAIN`
 
-Higher values react faster but pass more noise. Lower values are smoother but lag more.
+If commanded motion and observed motion disagree systematically, fix geometry or wheel conversion before touching observer filtering.
 
-## 6. Intentionally Out Of Scope
+## 6. What to change first
 
-The following are intentionally not part of the current FTC implementation:
+Use this order:
 
-- voltage-compensated feedforward using `kS`, `kV`, and `kA`
-- direct voltage targeting at the motor layer
-- using `RUN_USING_ENCODER` as a second drive controller underneath the custom pipeline
+1. hardware names and directions
+2. module offsets and inversion
+3. hub orientation
+4. odometry offsets
+5. wheel radius and geometry
+6. motion shaping
+7. steering PID
+8. heading PID
 
-That keeps control authority in one place and avoids stacking:
+That order saves a lot of pain.
 
-- custom swerve logic
-- hub closed-loop velocity control
-- a separate feedforward voltage model
+## 7. Things intentionally not in scope right now
+
+The current design intentionally does not rely on:
+
+- REV closed-loop drive velocity control under the swerve logic
+- full voltage feedforward modeling with `kS`, `kV`, `kA`
+- a layered stack of competing drive controllers
+
+That keeps control authority in one place and makes debugging simpler.

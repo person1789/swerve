@@ -10,12 +10,12 @@ import org.junit.jupiter.api.Test;
 
 class MotionSmootherTest {
 
-    private final double originalMaxSpeed = SwerveConfig.MAX_SPEED_MPS;
+    private final double originalMaxSpeed = SwerveConfig.MAX_LINEAR_SPEED_IN_S;
     private final double originalMaxOmega = SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S;
 
     @AfterEach
     void restoreConfig() {
-        SwerveConfig.MAX_SPEED_MPS = originalMaxSpeed;
+        SwerveConfig.MAX_LINEAR_SPEED_IN_S = originalMaxSpeed;
         SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S = originalMaxOmega;
     }
 
@@ -75,7 +75,7 @@ class MotionSmootherTest {
     @Test
     void fullScaleInputMapsToConfiguredPhysicalLimits() {
         // Passes if full stick commands are converted into the configured physical translation and rotation limits before smoothing.
-        SwerveConfig.MAX_SPEED_MPS = 2.0;
+        SwerveConfig.MAX_LINEAR_SPEED_IN_S = 2.0 / 0.0254;
         SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S = 5.0;
         MotionSmoother smoother = new MotionSmoother();
         smoother.setLimits(1000.0, 1000.0);

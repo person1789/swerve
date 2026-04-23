@@ -55,8 +55,9 @@ class SwerveKinematicsAndAuditorTest {
         SwerveModuleState[] optimized = auditor.optimize(desired, currentAngles);
 
         assertEquals(Math.toRadians(-80.0), optimized[0].angleRadians, 1e-9);
+        double maxLinearSpeedMps = org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig.getMaxLinearSpeedMetersPerSecond();
         for (int i = 0; i < optimized.length; i++) {
-            assertTrue(Math.abs(optimized[i].speedMetersPerSecond) <= 1.35 + 1e-9);
+            assertTrue(Math.abs(optimized[i].speedMetersPerSecond) <= maxLinearSpeedMps + 1e-9);
         }
     }
 

@@ -2,35 +2,41 @@
 
 A high-performance swerve drivetrain library for the FTC control loop.
 
-## Key Features
+## Current focus
 
-- Second-order kinematics for combined translation and rotation
-- Open-loop drive power with encoder-based velocity observation
-- Local steering PID at each module
-- Jerk-limited motion smoothing
-- Browser-based mocked-hardware simulator for drivetrain logic
+This codebase is currently centered on:
 
-## System Architecture
+- teleop bring-up
+- drivetrain validation on real hardware
+- canned diagnostic testing through `SwerveSystemCheck`
+- local JVM tests for the math and control stack
+
+Simulator and historical design notes still exist, but they are no longer the main entry point.
+
+## Code layout
 
 - `Hardware/`: motors, encoders, Pinpoint, and drivetrain orchestration
 - `Logic/`: control, kinematics, localization, and observers
 - `Geometry/`: vector and pose math types
 - `Input/`: driver input shaping and smoothing
-- `docs/`: tuning, simulation, testing, and audit docs
+- `docs/`: current setup, tuning, and testing docs
+- `docs/stale/`: older or superseded notes kept for reference
 
-## Getting Started
+## Getting started
 
 1. Initialize hardware in `HWMap.java`.
 2. Calibrate module offsets in `SwerveConfig.java`.
-3. Read `docs/AdvancedSettingsGuide.md` for the current control-scope assumptions.
-4. Read `docs/PIDTuningGuide.md` before tuning any closed-loop behavior.
+3. Set the odometry offsets and REV hub orientation in `SwerveConfig.java` to match the robot.
+4. Read `docs/TeleOpBringupGuide.md` before the first teleop-only run.
+5. Use `docs/SystemCheckOpMode.md` before pushing speed or blaming PID.
+6. Read `docs/AdvancedSettingsGuide.md` for the current control assumptions.
+7. Read `docs/PIDTuningGuide.md` before tuning any closed-loop behavior.
 
-## Testing And Verification
+## Testing and verification
 
 The repo includes local JVM tests under `src/test/java`.
 
-- Use `docs/UnitTestingGuide.md` for test structure and Gradle details.
-- Use `docs/Simulator.md` to run the mocked-hardware drivetrain simulator.
-
----
-Built for competition robotics and ongoing iteration.
+- Use `docs/LocalTestingGuide.md` for quick commands and test entry points.
+- Use `docs/UnitTestingGuide.md` for deeper Gradle and test-structure details.
+- Use `docs/SystemCheckOpMode.md` for on-robot canned-command diagnostics and CSV logging.
+- Use `docs/stale/README.md` only for historical context, not day-to-day setup.

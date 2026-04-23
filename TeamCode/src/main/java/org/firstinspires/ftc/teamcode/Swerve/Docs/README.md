@@ -1,43 +1,74 @@
-# Swerve Library Overview
+# Swerve Docs
 
-Welcome to the refactored swerve codebase. The architecture is designed to keep drivetrain logic modular, testable, and easier to tune.
+This folder is the current documentation set for the robot as it exists now.
 
-## Core Features
+If you are trying to get the robot driving, tuning, or diagnosed on real hardware, start here rather than in the historical notes.
 
-- Unified vector math through `Vector`
-- Pinpoint-plus-IMU-plus-observer localization architecture
-- Centralized tuning in `SwerveConfig`
-- Local JVM tests for pure logic
-- A thin mocked-hardware simulator for drivetrain behavior
+## Read These First
 
-## Quick Start For Drivers
+### For the first real robot run
 
-### 1. Heading Calibration
+- `TeleOpBringupGuide.md`
+- `SystemCheckOpMode.md`
 
-Press the `Options/Start` button to reset the field-centric heading.
+### For configuration and control assumptions
 
-### 2. Cardinal Snapping
+- `AdvancedSettingsGuide.md`
+- `PIDTuningGuide.md`
 
-Use the D-pad to snap the robot heading to the configured cardinal targets.
+### For local development and tests
 
-### 3. Precision Control
+- `LocalTestingGuide.md`
+- `UnitTestingGuide.md`
 
-The input pipeline uses non-linear shaping plus motion smoothing for finer low-speed control.
+## Current robot-specific assumptions
 
-## Developer Guide
+These are the values the docs now assume unless a guide says otherwise:
 
-### Where is the brain?
+- REV hub orientation:
+  - logo facing `LEFT`
+  - USB facing `DOWN`
+- Pinpoint odometry offsets:
+  - `ODO_X_OFFSET_MM = -127.6669`
+  - `ODO_Y_OFFSET_MM = -52.23`
+- linear motion limits:
+  - `MAX_LINEAR_SPEED_IN_S = 72.0`
+  - `MAX_LINEAR_ACCEL_IN_S2 = 72.0`
+  - `MAX_LINEAR_JERK_IN_S3 = 360.0`
 
-- `SwerveController` handles heading-maintain and snapping decisions.
-- `MotionSmoother` shapes requested motion.
-- `SwerveDrivetrain` coordinates the hardware-facing pipeline.
+## Main workflows
 
-### What should I read first?
+### Teleop bring-up
 
-- `AdvancedSettingsGuide.md` for scope and drivetrain assumptions
-- `PIDTuningGuide.md` for loop-by-loop tuning order
-- `UnitTestingGuide.md` for local tests and Gradle tasks
-- `CodebaseAudit.md` for known issues and stale areas
+Use `TeleOpBringupGuide.md` to:
 
----
-Built for iteration, tuning, and competition use.
+- confirm hardware assumptions
+- place the robot correctly
+- do first drive tests
+- understand what can still go wrong on the floor
+
+### Drivetrain diagnostics
+
+Use `SystemCheckOpMode.md` to:
+
+- run canned forward, strafe, and rotate tests
+- inspect FTC Dashboard telemetry
+- log CSV output
+- pull the CSV off a REV Control Hub or phone-based RC
+
+### Tuning
+
+Use `PIDTuningGuide.md` after the robot already behaves basically correctly in:
+
+- `MainTeleOp`
+- `SwerveSystemCheck`
+
+Do not treat PID tuning as the first fix for bad offsets, bad orientation, or bad module direction.
+
+## Historical docs
+
+Stale or historical documents live in:
+
+- `stale/README.md`
+
+That folder includes older audits, simulator notes, architecture snapshots, and speculative analysis that may still be interesting but are not the primary source of truth anymore.

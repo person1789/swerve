@@ -7,6 +7,7 @@ import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.teamcode.Swerve.Core.RobotSettings;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 
 @Config
 @Deprecated
@@ -30,7 +31,8 @@ public class Pinpoint {
     public Pinpoint(HWMap hwMap, RobotSettings robotSettings) {
         odo = hwMap.getOdo();
         this.robotSettings = robotSettings;
-        Xoffset = -127.6669; Yoffset = -52.23;
+        Xoffset = SwerveConfig.ODO_X_OFFSET_MM;
+        Yoffset = SwerveConfig.ODO_Y_OFFSET_MM;
 
         odo.setOffsets(Xoffset, Yoffset, DistanceUnit.MM);
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);

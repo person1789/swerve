@@ -45,8 +45,9 @@ public class SwerveAuditor {
             maxFound = Math.max(maxFound, Math.abs(state.speedMetersPerSecond));
         }
 
-        if (maxFound > SwerveConfig.MAX_SPEED_MPS) {
-            double scale = SwerveConfig.MAX_SPEED_MPS / maxFound;
+        double maxLinearSpeedMps = SwerveConfig.getMaxLinearSpeedMetersPerSecond();
+        if (maxFound > maxLinearSpeedMps) {
+            double scale = maxLinearSpeedMps / maxFound;
             for (SwerveModuleState s : optimized) {
                 s.speedMetersPerSecond *= scale;
             }

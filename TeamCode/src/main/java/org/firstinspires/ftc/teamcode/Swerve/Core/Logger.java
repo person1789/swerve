@@ -1,8 +1,5 @@
 package org.firstinspires.ftc.teamcode.Swerve.Core;
 
-import com.acmerobotics.dashboard.FtcDashboard;
-import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
-
 import org.firstinspires.ftc.robotcore.external.Telemetry;
 
 
@@ -19,11 +16,7 @@ public class Logger {
     private boolean previousTogglePressed;
 
     public Logger(Telemetry telemetry) {
-        if (SwerveConfig.DASHBOARD_ENABLED) {
-            this.telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
-        } else {
-            this.telemetry = telemetry;
-        }
+        this.telemetry = telemetry;
         this.telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
         this.telemetry.setMsTransmissionInterval(100);
         state = LogLevels.PRODUCTION;
@@ -51,19 +44,18 @@ public class Logger {
         }
     }
 
-    public void updateLoggingLevel(boolean D_Pad_Right) {
-        boolean togglePressed = D_Pad_Right && !previousTogglePressed;
-        previousTogglePressed = D_Pad_Right;
+    public void updateLoggingLevel(boolean toggleButtonPressed) {
+        boolean togglePressed = toggleButtonPressed && !previousTogglePressed;
+        previousTogglePressed = toggleButtonPressed;
 
         if (togglePressed) {
             if (state == LogLevels.PRODUCTION) {
                 state = LogLevels.DEBUG;
-                telemetry.addData("CURRENT LOGGER STATE", state);
             } else if (state == LogLevels.DEBUG) {
                 state = LogLevels.DRIVER_DATA;
-                telemetry.addData("CURRENT LOGGER STATE", state);
-            } else if(state == LogLevels.DRIVER_DATA)
+            } else if (state == LogLevels.DRIVER_DATA) {
                 state = LogLevels.PRODUCTION;
+            }
             telemetry.addData("CURRENT LOGGER STATE", state);
         }
     }

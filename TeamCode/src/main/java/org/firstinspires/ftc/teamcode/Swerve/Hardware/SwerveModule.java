@@ -69,7 +69,7 @@ public class SwerveModule {
         double currentAngle = getCurrentRotation();
         double error = MathUtil.angleError(currentAngle, targetAngle);
 
-        double drivePower = (driveSpeedMps / SwerveConfig.MAX_SPEED_MPS);
+        double drivePower = (driveSpeedMps / SwerveConfig.getMaxLinearSpeedMetersPerSecond());
 
         rotationController.setPID(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
         rotationController.setSetpoint(0.0);
@@ -110,6 +110,11 @@ public class SwerveModule {
      */
     public double getVelocityMps() {
         return io.getDriveVelocityMetersPerSecond();
+    }
+
+    public static double driveTicksPerSecondToMetersPerSecond(double ticksPerSecond) {
+        double wheelRps = (ticksPerSecond / SwerveConfig.DRIVE_TICKS_PER_REV) / SwerveConfig.DRIVE_GEAR_RATIO;
+        return wheelRps * (2 * Math.PI * SwerveConfig.WHEEL_RADIUS_METERS);
     }
 
     /**
@@ -208,9 +213,7 @@ public class SwerveModule {
 
         @Override
         public double getDriveVelocityMetersPerSecond() {
-            double tps = driveMotor.getVelocity();
-            double wheelRps = (tps / SwerveConfig.DRIVE_TICKS_PER_REV) / SwerveConfig.DRIVE_GEAR_RATIO;
-            return wheelRps * (2 * Math.PI * SwerveConfig.WHEEL_RADIUS_METERS);
+            return driveTicksPerSecondToMetersPerSecond(driveMotor.getVelocity());
         }
 
         @Override

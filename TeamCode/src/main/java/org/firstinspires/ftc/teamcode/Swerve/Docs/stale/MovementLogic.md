@@ -28,6 +28,6 @@ We use a component-wise deadband (`DEADBAND_THRESHOLD`) rather than a radial one
 
 ## 🛠️ Tuning via SwerveConfig
 All movement constants are centrally located for real-time dashboard tuning:
-- `MAX_SPEED_MPS`: The physical top speed.
-- `MAX_ACCEL` / `MAX_JERK`: The "sharpness" of the smoothing.
+- `MAX_LINEAR_SPEED_IN_S`: The physical top speed in inches/second.
+- `MAX_LINEAR_ACCEL_IN_S2` / `MAX_LINEAR_JERK_IN_S3`: The "sharpness" of the smoothing.
 - `STICK_SCALAR`: The sensitivity of the joystick curves.

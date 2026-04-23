@@ -1,32 +1,92 @@
-# Local Unit Testing Guide — Android Studio Integration
+# Local Testing Guide
 
-This guide explains how to run the Swerve Control System tests directly on your computer (Host Machine) within Android Studio, allowing for rapid iteration without needing a physical robot.
+This guide covers the local JVM test flow that exists in the repo today. It does not use the simulator and it does not require a robot to be connected.
 
-## 1. Running via the IDE (Recommended)
-Android Studio provides a visual way to run and debug tests.
+## What you can test locally
 
-1.  Open the Project view in Android Studio.
-2.  Navigate to `TeamCode > src > test > java > ... > Swerve > Tests`.
-3.  **Right-Click** on `MasterTestSuite.java`.
-4.  Select **Run 'MasterTestSuite.main()'**.
-5.  The results will appear in the **Run** tab at the bottom of the IDE with full color formatting.
+Use local tests for logic that does not need FTC runtime hardware objects:
 
-## 2. Running via Terminal
-If you prefer the command line within the IDE terminal:
+- math helpers
+- geometry
+- PID logic
+- input shaping
+- kinematics
+- observer logic
+- drivetrain state-machine behavior that is already abstracted behind test IO
 
-```bash
-# In the Android Studio Terminal (bottom of screen)
-./gradlew :TeamCode:testDebugUnitTest --tests "org.firstinspires.ftc.teamcode.Swerve.Tests.MasterTestSuite"
+Current examples live under `TeamCode/src/test/java`, including:
+
+- `Swerve/Core/MathUtilTest.java`
+- `Swerve/Input/MotionSmootherTest.java`
+- `Swerve/Logic/Control/SwerveControllerTest.java`
+- `Swerve/Hardware/SwerveDrivetrainTest.java`
+
+## What you should not try to unit test directly
+
+These still belong to on-robot or deeper integration testing unless you extract more seams first:
+
+- `HWMap`
+- `SwerveLocalizer`
+- `MainTeleOp`
+- direct IMU, motor, servo, and Pinpoint bring-up
+
+## Run tests from Android Studio
+
+1. Open the `TeamCode/src/test/java` tree.
+2. Right-click an actual test class such as `SwerveControllerTest`.
+3. Choose **Run**.
+
+You can also right-click the `test` source root to run the whole local suite.
+
+## Run tests from the terminal
+
+Run all local TeamCode tests:
+
+```powershell
+.\gradlew :TeamCode:testDebugUnitTest
 ```
 
-## 3. Interpreting Results
-The `MasterTestSuite` is configured with professional status indicators:
+Run one test class:
 
-- **✔ (Checkmark)**: The logic passed the mathematical verification.
-- **✘ (Cross)**: An error was detected. The "Reason" line will tell you exactly what assertion failed (e.g., expected 1.0 but got 1.5).
-- **⚠ (Warning)**: Indicates a setup error, usually caused by a class trying to access robot hardware (which is not available on your PC).
+```powershell
+.\gradlew :TeamCode:testDebugUnitTest --tests "org.firstinspires.ftc.teamcode.Swerve.Logic.Control.SwerveControllerTest"
+```
 
-## 4. Key Rule for Local Tests
-Only classes that perform **Pure Math or Logic** can be tested this way. 
-> [!IMPORTANT]
-> If a test tries to talk to a physical Motor (`DcMotorEx`) or Sensor (`IMU`) without a Mock, the test will throw a `RuntimeException`. Use the provided **Logic Tests** (Kinematics, PID, Smoother) to calibrate your "Brain" before deploying to the "Body".
+Run one test method:
+
+```powershell
+.\gradlew :TeamCode:testDebugUnitTest --tests "org.firstinspires.ftc.teamcode.Swerve.Logic.Control.SwerveControllerTest.headingLockWaitsForConfiguredDelayBeforeActivating"
+```
+
+Compile-check the robot code without running tests:
+
+```powershell
+.\gradlew :TeamCode:compileDebugJavaWithJavac
+```
+
+## TeleOp-focused starting points
+
+If your next goal is better `MainTeleOp` confidence without building a full OpMode harness, start with these:
+
+1. `SwerveControllerTest`
+   - heading hold
+   - snap behavior
+   - reset behavior
+2. `MotionSmootherTest`
+   - acceleration and braking feel
+3. `SwerveDrivetrainTest`
+   - idle locking behavior
+   - drive-mode setup
+4. `SwerveModuleTest`
+   - wheel speed conversion sanity
+
+## TeleOp bring-up on the real robot
+
+For `MainTeleOp`, the practical field test flow is:
+
+1. Place the robot anywhere with open space.
+2. Point it in the direction you want to count as forward.
+3. Start `MainTeleOp`.
+4. Tap `START` if you want to re-zero heading before driving.
+
+That is enough for teleop-only testing. You do not need to run autonomous first.

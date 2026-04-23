@@ -1,15 +1,26 @@
 # PID Tuning Guide
 
-This guide defines how to tune each PID loop in the current codebase and what counts as pass or fail for each loop.
+This guide defines how to tune the loops that matter in the current codebase and what counts as pass or fail for each one.
+
+Right now, this repo is teleop-first. If you are not actively running autonomous, the most important tuning order is:
+
+1. module steering PID
+2. heading maintain PID
+3. heading snap PID if you actually use it
+
+Do not jump into pathing or autonomous follower gains until the drivetrain is already boringly correct in:
+
+- `MainTeleOp`
+- `SwerveSystemCheck`
 
 Tune in this order:
 
 1. Steering module PID
 2. Heading maintain PID
 3. Heading snap PID
-4. Pedro translational PID
-5. Pedro heading PID
-6. Pedro drive PID
+4. Pedro translational PID if you return to autonomous
+5. Pedro heading PID if you return to autonomous
+6. Pedro drive PID if you return to autonomous
 
 Do not tune a higher-level loop until the lower-level loop below it passes.
 
@@ -71,12 +82,13 @@ Purpose:
 How to tune:
 
 1. Confirm steering PID already passes.
-2. Drive the robot in straight translations with no turn input.
-3. Start with `HEADING_I = 0`.
-4. Lower `HEADING_P` if the robot weaves or corrects too aggressively.
-5. Increase `HEADING_P` if the robot drifts without correcting enough.
-6. Increase `HEADING_D` if corrections overshoot.
-7. Adjust `HEADING_LOCK_DELAY_S` if heading hold engages too early or too late.
+2. Confirm hub orientation and odometry are correct.
+3. Drive the robot in straight translations with no turn input.
+4. Start with `HEADING_I = 0`.
+5. Lower `HEADING_P` if the robot weaves or corrects too aggressively.
+6. Increase `HEADING_P` if the robot drifts without correcting enough.
+7. Increase `HEADING_D` if corrections overshoot.
+8. Adjust `HEADING_LOCK_DELAY_S` if heading hold engages too early or too late.
 
 Pass conditions:
 
@@ -132,6 +144,8 @@ Fail conditions:
 
 ## 4. Pedro Translational PID
 
+If you are not running autonomous right now, skip this section.
+
 Source:
 
 - `pedroPathing/Constants.java`
@@ -142,30 +156,9 @@ Purpose:
 
 - Corrects path-tracking error in X/Y translation while following paths.
 
-How to tune:
-
-1. Confirm the base swerve stack already drives straight and holds heading.
-2. Run short simple paths first.
-3. Tune the primary translational loop before the secondary loop.
-4. Raise translational `P` until the robot converges on the path aggressively enough.
-5. Raise translational `D` if it overshoots or wobbles around the path.
-6. Add `I` only if there is repeatable residual position error.
-
-Pass conditions:
-
-- The robot converges to the path quickly.
-- Cross-track error decreases without oscillation.
-- Straight paths remain straight.
-- Endpoints are reached without a long settling tail.
-
-Fail conditions:
-
-- The robot wanders beside the path.
-- The robot crosses over the path repeatedly.
-- Endpoint approach is unstable.
-- Position error remains large after the path should be complete.
-
 ## 5. Pedro Heading PID
+
+If you are not running autonomous right now, skip this section.
 
 Source:
 
@@ -177,31 +170,9 @@ Purpose:
 
 - Controls robot orientation while following a path.
 
-How to tune:
-
-1. Confirm translational path tracking already passes.
-2. Use paths with clear heading targets.
-3. Tune the primary heading loop first.
-4. Reduce `P` if the robot oscillates near heading targets.
-5. Increase `P` if the robot lags behind desired heading.
-6. Increase `D` if the robot overshoots and rebounds.
-7. Add `I` only if repeatable final heading error remains.
-
-Pass conditions:
-
-- The robot tracks commanded heading smoothly during motion.
-- Final heading at path end is repeatable.
-- Heading corrections do not destabilize translational tracking.
-- Endpoint orientation settles cleanly.
-
-Fail conditions:
-
-- The robot swings past heading targets.
-- Heading lags badly through curves.
-- Final heading varies too much run to run.
-- Heading correction causes visible path wobble.
-
 ## 6. Pedro Drive PID
+
+If you are not running autonomous right now, skip this section.
 
 Source:
 
@@ -213,45 +184,7 @@ Purpose:
 
 - Shapes velocity-related drive response inside the follower.
 
-How to tune:
-
-1. Tune this last.
-2. Use repeatable paths with clear acceleration and deceleration phases.
-3. Make small changes only.
-4. Compare path timing, endpoint overshoot, and smoothness across runs.
-
-Pass conditions:
-
-- Path speed changes feel smooth and predictable.
-- The robot does not surge at path start.
-- The robot does not lunge through deceleration zones.
-- Endpoint approach remains controlled.
-
-Fail conditions:
-
-- The robot surges on acceleration.
-- The robot brakes too late or too abruptly.
-- Path timing is inconsistent across identical runs.
-- Small coefficient changes create unstable behavior.
-
-## 7. High-Gain Review Rule
-
-Any P gain greater than `0.5` should be treated as a review checkpoint, not an automatic failure.
-
-Before accepting such a gain, confirm:
-
-- the lower-level loop beneath it already passes
-- the robot is stable over repeated runs
-- the gain solves a real tracking issue rather than masking a geometry or localization problem
-
-Current values above `0.5`:
-
-- `SwerveConfig.HEADING_P = 1.0`
-- `SwerveConfig.SNAP_P = 2.0`
-- `Constants.headingPIDFCoefficients(... 1.2, ...)`
-- `Constants.secondaryHeadingPIDFCoefficients(... 0.63, ...)`
-
-## 8. Tuning Stop Rules
+## 7. Tuning Stop Rules
 
 Stop tuning and fix the underlying system first if any of these are true:
 

@@ -65,7 +65,7 @@ Files:
 Fix:
 
 - normalized driver commands are now converted into physical chassis targets using
-  `MAX_SPEED_MPS` and `MAX_ANGULAR_VELOCITY_RAD_S`
+  `MAX_LINEAR_SPEED_IN_S` and `MAX_ANGULAR_VELOCITY_RAD_S`
 
 ### 2.4 Module flipping no longer collapses speed to zero
 

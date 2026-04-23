@@ -49,6 +49,7 @@ public class MainTeleOp extends LinearOpMode {
         Pose storedPose = PoseStorage.getCurrentPose();
         if (storedPose != null) {
             localizer.setPose(storedPose.toVector());
+            PoseStorage.clear();
         }
 
         waitForStart();
@@ -64,6 +65,8 @@ public class MainTeleOp extends LinearOpMode {
             boolean startPressed = gamepadE1.getButton(GamepadKeys.Button.START);
             if (startPressed && !previousStartPressed) {
                 localizer.resetHeading();
+                swerveController.resetHeading(0.0);
+                swerveDrivetrain.resetSmoother();
             }
             previousStartPressed = startPressed;
 

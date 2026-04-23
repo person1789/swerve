@@ -26,8 +26,8 @@ public class SwerveConfig {
     // 2. Physical Limits (Hard Caps)
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Physical top speed of the drive motor in m/s. */
-    public static double MAX_SPEED_MPS = 1.35;
+    /** Physical top speed of the drivetrain in inches/second. */
+    public static double MAX_LINEAR_SPEED_IN_S = 72.0;
     
     /** Max angular velocity in rad/s. */
     public static double MAX_ANGULAR_VELOCITY_RAD_S = 4.0;
@@ -39,11 +39,11 @@ public class SwerveConfig {
     // 3. Motion Smoothing (Dynamics)
     // ─────────────────────────────────────────────────────────────────────────
 
-    /** Max acceleration in m/s^2. */
-    public static double MAX_ACCEL = 3.0; 
+    /** Max linear acceleration in inches/second^2. */
+    public static double MAX_LINEAR_ACCEL_IN_S2 = 72.0;
     
-    /** Max jerk in m/s^3. (Controls S-curve) */
-    public static double MAX_JERK = 10.0; 
+    /** Max linear jerk in inches/second^3. Reaches max accel in about 0.2 seconds. */
+    public static double MAX_LINEAR_JERK_IN_S3 = 360.0;
 
     // ─────────────────────────────────────────────────────────────────────────
     // 4. Input Conditioning (Driver Feel)
@@ -93,9 +93,9 @@ public class SwerveConfig {
     /** Inversion flags for steering encoders. */
     public static boolean[] INVERSIONS = { false, false, false, false };
 
-    /** Odometry Pod offsets relative to center (in mm). */
-    public static double ODO_X_OFFSET_MM = 0.0;
-    public static double ODO_Y_OFFSET_MM = 0.0;
+    /** Odometry pod offsets relative to center in mm. */
+    public static double ODO_X_OFFSET_MM = -127.6669;
+    public static double ODO_Y_OFFSET_MM = -52.23;
 
     /** Time in ms with no input before locking (X-stance). */
     public static double LOCK_DELAY_MS = 200.0;
@@ -105,9 +105,9 @@ public class SwerveConfig {
 
     /** Hub Orientation for fallback IMU. */
     public static RevHubOrientationOnRobot.LogoFacingDirection HUB_LOGO_DIR = 
-            RevHubOrientationOnRobot.LogoFacingDirection.UP;
+            RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
     public static RevHubOrientationOnRobot.UsbFacingDirection HUB_USB_DIR =
-            RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
+            RevHubOrientationOnRobot.UsbFacingDirection.DOWN;
 
     /** Angle error threshold in radians before flipping module direction. */
     public static double FLIP_THRESHOLD = Math.PI / 2.0;
@@ -133,8 +133,24 @@ public class SwerveConfig {
     public static double DRIVE_GEAR_RATIO = 7.43; // Reduction
 
     /** Wheel radius in meters. */
-    public static double WHEEL_RADIUS_METERS = 0.049; // 49mm diameter swerve wheel
+    public static double WHEEL_RADIUS_METERS = 0.0245; // 49 mm diameter swerve wheel
 
     /** Current draw threshold in amps above which a stall is declared. */
     public static double DRIVE_CURRENT_THRESHOLD = 7.0;
+
+    public static double getMaxLinearSpeedMetersPerSecond() {
+        return inchesToMeters(MAX_LINEAR_SPEED_IN_S);
+    }
+
+    public static double getMaxLinearAccelMetersPerSecondSquared() {
+        return inchesToMeters(MAX_LINEAR_ACCEL_IN_S2);
+    }
+
+    public static double getMaxLinearJerkMetersPerSecondCubed() {
+        return inchesToMeters(MAX_LINEAR_JERK_IN_S3);
+    }
+
+    public static double inchesToMeters(double inches) {
+        return inches * 0.0254;
+    }
 }

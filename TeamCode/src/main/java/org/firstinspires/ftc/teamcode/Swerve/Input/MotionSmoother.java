@@ -15,8 +15,8 @@ public class MotionSmoother {
     private Vector currentVelocity = new Vector(0, 0, 0);
     private Vector currentAcceleration = new Vector(0, 0, 0);
     private Vector lastTarget = new Vector(0, 0, 0);
-    private double maxAccel = SwerveConfig.MAX_ACCEL;
-    private double maxJerk = SwerveConfig.MAX_JERK;
+    private double maxAccel = SwerveConfig.getMaxLinearAccelMetersPerSecondSquared();
+    private double maxJerk = SwerveConfig.getMaxLinearJerkMetersPerSecondCubed();
 
     public MotionSmoother() {
     }
@@ -92,8 +92,8 @@ public class MotionSmoother {
 
     private Vector toPhysicalTarget(Vector normalizedTarget) {
         return new Vector(
-                normalizedTarget.x() * SwerveConfig.MAX_SPEED_MPS,
-                normalizedTarget.y() * SwerveConfig.MAX_SPEED_MPS,
+                normalizedTarget.x() * SwerveConfig.getMaxLinearSpeedMetersPerSecond(),
+                normalizedTarget.y() * SwerveConfig.getMaxLinearSpeedMetersPerSecond(),
                 normalizedTarget.omega() * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S);
     }
 
@@ -118,7 +118,7 @@ public class MotionSmoother {
         currentVelocity = new Vector(0, 0, 0);
         currentAcceleration = new Vector(0, 0, 0);
         lastTarget = new Vector(0, 0, 0);
-        maxAccel = SwerveConfig.MAX_ACCEL;
-        maxJerk = SwerveConfig.MAX_JERK;
+        maxAccel = SwerveConfig.getMaxLinearAccelMetersPerSecondSquared();
+        maxJerk = SwerveConfig.getMaxLinearJerkMetersPerSecondCubed();
     }
 }
