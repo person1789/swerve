@@ -35,6 +35,18 @@ public class SwerveConfig {
     /** Loop period in seconds (target 20ms). */
     public static double LOOP_TIME_SEC = 0.020;
 
+    /** Number of recent loop samples used by the rolling-average dt estimator. */
+    public static int LOOP_TIME_AVERAGE_WINDOW = 8;
+
+    /**
+     * Largest allowed ratio between a measured loop time and the current rolling
+     * average before the sample is treated as an outlier and ignored.
+     */
+    public static double LOOP_TIME_OUTLIER_MULTIPLIER = 2.0;
+
+    /** Absolute max loop time in seconds before the sample is treated as an outlier. */
+    public static double LOOP_TIME_OUTLIER_MAX_SEC = 0.060; //60ms
+
     // ─────────────────────────────────────────────────────────────────────────
     // 3. Motion Smoothing (Dynamics)
     // ─────────────────────────────────────────────────────────────────────────
@@ -122,7 +134,7 @@ public class SwerveConfig {
     public static double OBSERVER_LPF_GAIN = 0.15;
 
     /** Enable dashboard telemetry during tuning only. */
-    public static boolean DASHBOARD_ENABLED = false;
+    public static boolean DASHBOARD_ENABLED = true;
 
     // ─────────────────────────────────────────────────────────────────────────
     // 8. Drive Motor Physical Constants

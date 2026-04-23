@@ -12,7 +12,7 @@ public class LoopTimeEstimator {
     private double sampleSum = 0.0;
 
     public LoopTimeEstimator() {
-        this(8);
+        this(SwerveConfig.LOOP_TIME_AVERAGE_WINDOW);
     }
 
     public LoopTimeEstimator(int windowSize) {
@@ -32,7 +32,12 @@ public class LoopTimeEstimator {
             return SwerveConfig.LOOP_TIME_SEC;
         }
 
-        double sanitized = sanitize(measuredDtSec);
+        double currentAverage = sampleSum / sampleCount;
+        double sanitized = sanitize(measuredDtSec, currentAverage);
+        if (isOutlier(sanitized, currentAverage)) {
+            return currentAverage;
+        }
+
         addSample(sanitized);
         return sampleSum / sampleCount;
     }
@@ -61,10 +66,17 @@ public class LoopTimeEstimator {
         nextIndex = (nextIndex + 1) % samples.length;
     }
 
-    private double sanitize(double measuredDtSec) {
+    private double sanitize(double measuredDtSec, double fallbackAverage) {
         if (!Double.isFinite(measuredDtSec) || measuredDtSec <= 0.0) {
-            return sampleSum / sampleCount;
+            return fallbackAverage;
         }
         return measuredDtSec;
+    }
+
+    private boolean isOutlier(double measuredDtSec, double currentAverage) {
+        if (measuredDtSec > SwerveConfig.LOOP_TIME_OUTLIER_MAX_SEC) {
+            return true;
+        }
+        return measuredDtSec > currentAverage * SwerveConfig.LOOP_TIME_OUTLIER_MULTIPLIER;
     }
 }

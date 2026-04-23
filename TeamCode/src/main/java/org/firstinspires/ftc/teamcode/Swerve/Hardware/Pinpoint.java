@@ -48,15 +48,29 @@ public class Pinpoint {
 
     public void update() {
         odo.update();
-        pos = odo.getPosition();
-        x = pos.getX(DistanceUnit.INCH);
-        y= pos.getY(DistanceUnit.INCH);
-        heading = pos.getHeading(AngleUnit.DEGREES);
+        Pose2D nextPos = odo.getPosition();
+        double nextX = nextPos != null ? nextPos.getX(DistanceUnit.INCH) : Double.NaN;
+        double nextY = nextPos != null ? nextPos.getY(DistanceUnit.INCH) : Double.NaN;
+        double nextHeading = nextPos != null ? nextPos.getHeading(AngleUnit.DEGREES) : Double.NaN;
+
+        pos = nextPos;
+        if (Double.isFinite(nextX)) {
+            x = nextX;
+        }
+        if (Double.isFinite(nextY)) {
+            y = nextY;
+        }
+        if (Double.isFinite(nextHeading)) {
+            heading = nextHeading;
+        }
     }
 
     public void updateHeadingOnly() {
         odo.update(GoBildaPinpointDriver.ReadData.ONLY_UPDATE_HEADING);
-        heading = odo.getHeading(AngleUnit.DEGREES);
+        double nextHeading = odo.getHeading(AngleUnit.DEGREES);
+        if (Double.isFinite(nextHeading)) {
+            heading = nextHeading;
+        }
     }
 
     public Pose2D getPos() {
@@ -79,8 +93,8 @@ public class Pinpoint {
 
     public void resetIMU() {
         Pose2D current = pos != null ? pos : odo.getPosition();
-        double currentX = current != null ? current.getX(DistanceUnit.INCH) : x;
-        double currentY = current != null ? current.getY(DistanceUnit.INCH) : y;
+        double currentX = current != null && Double.isFinite(current.getX(DistanceUnit.INCH)) ? current.getX(DistanceUnit.INCH) : x;
+        double currentY = current != null && Double.isFinite(current.getY(DistanceUnit.INCH)) ? current.getY(DistanceUnit.INCH) : y;
         odo.setPosition(new Pose2D(DistanceUnit.INCH, currentX, currentY, AngleUnit.DEGREES, 0));
         heading = 0.0;
         x = currentX;

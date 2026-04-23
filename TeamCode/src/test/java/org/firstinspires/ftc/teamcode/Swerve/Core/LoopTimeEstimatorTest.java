@@ -37,4 +37,15 @@ class LoopTimeEstimatorTest {
 
         assertEquals((0.020 + 0.030 + 0.025) / 3.0, dt, 1e-9);
     }
+
+    @Test
+    void outlierMeasurementsAreIgnored() {
+        LoopTimeEstimator estimator = new LoopTimeEstimator(4);
+
+        estimator.update(0.020);
+        estimator.update(0.020);
+        double dt = estimator.update(0.200);
+
+        assertEquals(0.020, dt, 1e-9);
+    }
 }

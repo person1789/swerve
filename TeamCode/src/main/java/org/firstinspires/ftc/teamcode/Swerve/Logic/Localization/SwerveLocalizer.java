@@ -20,7 +20,10 @@ public class SwerveLocalizer {
     private final IMU imu;
     
     private Vector masterPose = new Vector(0, 0, 0); // [X, Y, Heading]
+    private Vector rawPinpointPose = new Vector(Double.NaN, Double.NaN, Double.NaN);
     private boolean pinpointPreviouslyHealthy = false;
+    private boolean usingPinpoint = false;
+    private int consecutiveInvalidPinpointLoops = 0;
     private double headingOffset = 0.0;
 
     public SwerveLocalizer(HWMap hwMap) {
@@ -42,28 +45,51 @@ public class SwerveLocalizer {
      */
     public void update(Vector observedVelocity, double dt) {
         odo.update();
-        
-        boolean pinpointHealthy = (odo.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY);
+
+        boolean pinpointDeviceReady = (odo.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY);
+        Pose2D pos = odo.getPosition();
+        double rawHeading = odo.getHeading(AngleUnit.RADIANS);
+        double rawX = pos != null ? pos.getX(DistanceUnit.INCH) : Double.NaN;
+        double rawY = pos != null ? pos.getY(DistanceUnit.INCH) : Double.NaN;
+        rawPinpointPose = new Vector(rawX, rawY, rawHeading);
+
+        boolean pinpointHealthy = pinpointDeviceReady
+                && isFinite(rawX)
+                && isFinite(rawY)
+                && isFinite(rawHeading);
+
         double heading;
         double x;
         double y;
         if (pinpointHealthy) {
-            Pose2D pos = odo.getPosition();
-            heading = odo.getHeading(AngleUnit.RADIANS);
-            x = pos.getX(DistanceUnit.INCH);
-            y = pos.getY(DistanceUnit.INCH);
-            headingOffset = masterPose.omega() - imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            heading = rawHeading;
+            x = rawX;
+            y = rawY;
+
+            double imuYaw = getFiniteImuYawRadians();
+            if (isFinite(imuYaw)) {
+                headingOffset = masterPose.omega() - imuYaw;
+            }
         } else {
             if (pinpointPreviouslyHealthy) {
-                headingOffset = masterPose.omega() - imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+                double imuYaw = getFiniteImuYawRadians();
+                if (isFinite(imuYaw)) {
+                    headingOffset = masterPose.omega() - imuYaw;
+                }
             }
-            heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) + headingOffset;
-            Vector worldVelocity = observedVelocity.rotate(masterPose.omega());
+
+            double imuYaw = getFiniteImuYawRadians();
+            heading = isFinite(imuYaw) ? imuYaw + headingOffset : masterPose.omega();
+
+            Vector safeObservedVelocity = sanitizeVelocity(observedVelocity);
+            Vector worldVelocity = safeObservedVelocity.rotate(masterPose.omega());
             x = masterPose.x() + metersToInches(worldVelocity.x()) * dt;
             y = masterPose.y() + metersToInches(worldVelocity.y()) * dt;
         }
 
         masterPose = new Vector(x, y, heading);
+        usingPinpoint = pinpointHealthy;
+        consecutiveInvalidPinpointLoops = pinpointHealthy ? 0 : (consecutiveInvalidPinpointLoops + 1);
         pinpointPreviouslyHealthy = pinpointHealthy;
     }
 
@@ -75,32 +101,82 @@ public class SwerveLocalizer {
         return masterPose.omega();
     }
 
+    public Vector getRawPinpointPose() {
+        return rawPinpointPose;
+    }
+
+    public boolean isUsingPinpoint() {
+        return usingPinpoint;
+    }
+
+    public int getConsecutiveInvalidPinpointLoops() {
+        return consecutiveInvalidPinpointLoops;
+    }
+
     public void resetHeading() {
         Pose2D currentPos = odo.getPosition();
         double x = masterPose.x();
         double y = masterPose.y();
 
         if (currentPos != null) {
-            x = currentPos.getX(DistanceUnit.INCH);
-            y = currentPos.getY(DistanceUnit.INCH);
+            double currentX = currentPos.getX(DistanceUnit.INCH);
+            double currentY = currentPos.getY(DistanceUnit.INCH);
+            if (isFinite(currentX)) {
+                x = currentX;
+            }
+            if (isFinite(currentY)) {
+                y = currentY;
+            }
         }
 
         imu.resetYaw();
         odo.setPosition(new Pose2D(DistanceUnit.INCH, x, y, AngleUnit.RADIANS, 0.0));
         headingOffset = 0.0;
         masterPose = new Vector(x, y, 0.0);
-        pinpointPreviouslyHealthy = (odo.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY);
+        rawPinpointPose = new Vector(x, y, 0.0);
+        usingPinpoint = false;
+        consecutiveInvalidPinpointLoops = 0;
+        pinpointPreviouslyHealthy = false;
     }
 
     public void setPose(Vector pose) {
-        this.masterPose = pose;
-        headingOffset = pose.omega() - imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-        odo.setPosition(new Pose2D(DistanceUnit.INCH, pose.x(), pose.y(), AngleUnit.RADIANS, pose.omega()));
+        Vector safePose = sanitizePose(pose, masterPose);
+        this.masterPose = safePose;
+
+        double imuYaw = getFiniteImuYawRadians();
+        if (isFinite(imuYaw)) {
+            headingOffset = safePose.omega() - imuYaw;
+        }
+
+        odo.setPosition(new Pose2D(DistanceUnit.INCH, safePose.x(), safePose.y(), AngleUnit.RADIANS, safePose.omega()));
         // Note: IMU doesn't support setting an arbitrary yaw, only resetting to 0.
         // The masterPose will track the offset internally.
     }
 
     private double metersToInches(double meters) {
         return meters / 0.0254;
+    }
+
+    private double getFiniteImuYawRadians() {
+        double yaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        return isFinite(yaw) ? yaw : Double.NaN;
+    }
+
+    private Vector sanitizeVelocity(Vector observedVelocity) {
+        double vx = isFinite(observedVelocity.x()) ? observedVelocity.x() : 0.0;
+        double vy = isFinite(observedVelocity.y()) ? observedVelocity.y() : 0.0;
+        double omega = isFinite(observedVelocity.omega()) ? observedVelocity.omega() : 0.0;
+        return new Vector(vx, vy, omega);
+    }
+
+    private Vector sanitizePose(Vector candidate, Vector fallback) {
+        double x = isFinite(candidate.x()) ? candidate.x() : fallback.x();
+        double y = isFinite(candidate.y()) ? candidate.y() : fallback.y();
+        double heading = isFinite(candidate.omega()) ? candidate.omega() : fallback.omega();
+        return new Vector(x, y, heading);
+    }
+
+    private boolean isFinite(double value) {
+        return Double.isFinite(value);
     }
 }

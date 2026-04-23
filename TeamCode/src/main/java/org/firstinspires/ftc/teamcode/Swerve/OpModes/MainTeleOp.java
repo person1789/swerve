@@ -110,8 +110,14 @@ public class MainTeleOp extends LinearOpMode {
     }
 
     private void logUpdate(double heading, double dt) {
+        Vector rawPinpointPose = localizer.getRawPinpointPose();
         logger.log("Loop Time (ms)", dt * 1000.0, Logger.LogLevels.PRODUCTION);
         logger.log("Heading (deg)", Math.toDegrees(heading), Logger.LogLevels.PRODUCTION);
+        logger.log("Pinpoint Raw X (in)", rawPinpointPose.x(), Logger.LogLevels.PRODUCTION);
+        logger.log("Pinpoint Raw Y (in)", rawPinpointPose.y(), Logger.LogLevels.PRODUCTION);
+        logger.log("Pinpoint Raw Heading (deg)", Math.toDegrees(rawPinpointPose.omega()), Logger.LogLevels.PRODUCTION);
+        logger.log("Pinpoint Used", localizer.isUsingPinpoint() ? 1.0 : 0.0, Logger.LogLevels.PRODUCTION);
+        logger.log("Pinpoint Invalid Loops", localizer.getConsecutiveInvalidPinpointLoops(), Logger.LogLevels.PRODUCTION);
         swerveDrivetrain.log();
     }
 }
