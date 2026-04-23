@@ -1,6 +1,7 @@
 package org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 
 /**
@@ -72,6 +73,10 @@ public class SwerveKinematics {
         return states;
     }
 
+    public SwerveModuleState[] toModuleStates(double vx, double vy, double omega) {
+        return inverseKinematics(new Vector(vx, vy, omega));
+    }
+
     /**
      * Forward Kinematics: Resolves module states back into chassis velocity.
      * Used by the Velocity Observer for feedback fusion.
@@ -90,6 +95,10 @@ public class SwerveKinematics {
         }
 
         return new Vector(vx / 4.0, vy / 4.0, omega / 4.0);
+    }
+
+    public Pose toChassisSpeeds(SwerveModuleState[] states) {
+        return Pose.from(forwardKinematics(states));
     }
 
     public void setLoopTimeSec(double loopTimeSec) {

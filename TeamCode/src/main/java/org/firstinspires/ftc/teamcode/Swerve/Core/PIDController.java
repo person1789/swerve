@@ -23,8 +23,8 @@ public class PIDController {
     private double setpoint;
     private double integralSum = 0;
     private double lastError = 0;
+    private double lastMeasurement = 0;
     private double maxIntegralSum = 1.0; // Default limit to prevent runaway
-    private double lastTimestamp = 0;
     
     // For derivative filtering
     private double derivativeBuffer = 0;
@@ -88,12 +88,32 @@ public class PIDController {
         double iOut = Ki * integralSum;
 
         // D term with derivative filtering
+        double rawDerivative = -(current - lastMeasurement) / dt;
+        derivativeBuffer = (derivativeFilter * derivativeBuffer) + ((1.0 - derivativeFilter) * rawDerivative);
+        double dOut = Kd * derivativeBuffer;
+
+        lastError = error;
+        lastMeasurement = current;
+        
+        return pOut + iOut + dOut;
+    }
+
+    public double calculateFromError(double error, double dt) {
+        if (dt <= 0) return 0;
+
+        double pOut = Kp * error;
+
+        integralSum += error * dt;
+        integralSum = Range.clip(integralSum, -maxIntegralSum, maxIntegralSum);
+        double iOut = Ki * integralSum;
+
         double rawDerivative = (error - lastError) / dt;
         derivativeBuffer = (derivativeFilter * derivativeBuffer) + ((1.0 - derivativeFilter) * rawDerivative);
         double dOut = Kd * derivativeBuffer;
 
         lastError = error;
-        
+        lastMeasurement = setpoint - error;
+
         return pOut + iOut + dOut;
     }
 
@@ -103,6 +123,7 @@ public class PIDController {
     public void reset() {
         integralSum = 0;
         lastError = 0;
+        lastMeasurement = 0;
         derivativeBuffer = 0;
     }
 }

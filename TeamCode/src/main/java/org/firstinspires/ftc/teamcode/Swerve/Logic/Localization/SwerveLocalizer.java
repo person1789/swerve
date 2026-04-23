@@ -21,6 +21,7 @@ public class SwerveLocalizer {
     
     private Vector masterPose = new Vector(0, 0, 0); // [X, Y, Heading]
     private boolean pinpointPreviouslyHealthy = false;
+    private double headingOffset = 0.0;
 
     public SwerveLocalizer(HWMap hwMap) {
         this.odo = hwMap.getOdo();
@@ -43,41 +44,23 @@ public class SwerveLocalizer {
         odo.update();
         
         boolean pinpointHealthy = (odo.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY);
-        
-        // 1. Heading Fusion (Priority: Pinpoint -> IMU -> Integration)
         double heading;
-        if (pinpointHealthy) {
-            heading = odo.getHeading(AngleUnit.RADIANS);
-        } else {
-            // Fallback: Use IMU if available, otherwise integrate observed angular velocity
-            try {
-                heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-            } catch (Exception e) {
-                heading = masterPose.omega() + observedVelocity.omega() * dt;
-            }
-        }
-
-        // 2. Position Fusion (Priority: Pinpoint -> Dead Reckoning)
-        Vector position;
+        double x;
+        double y;
         if (pinpointHealthy) {
             Pose2D pos = odo.getPosition();
-            position = new Vector(pos.getX(DistanceUnit.INCH), pos.getY(DistanceUnit.INCH));
-            
-            // If Pinpoint just reconnected, we might need to "re-seed" its position 
-            // from our master pose if it lost track, but Pinpoint usually handles its own persistence.
-            if (!pinpointPreviouslyHealthy) {
-                // Potential sync logic here if Pinpoint resets on disconnect
-            }
+            heading = odo.getHeading(AngleUnit.RADIANS);
+            x = pos.getX(DistanceUnit.INCH);
+            y = pos.getY(DistanceUnit.INCH);
+            headingOffset = masterPose.omega() - imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         } else {
-            // Dead Reckon: Transform chassis velocity to field-centric and integrate
+            heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) + headingOffset;
             Vector worldVelocity = observedVelocity.rotate(masterPose.omega());
-            position = new Vector(
-                masterPose.x() + worldVelocity.x() * dt,
-                masterPose.y() + worldVelocity.y() * dt
-            );
+            x = masterPose.x() + worldVelocity.x() * dt;
+            y = masterPose.y() + worldVelocity.y() * dt;
         }
 
-        masterPose = new Vector(position.x(), position.y(), heading);
+        masterPose = new Vector(x, y, heading);
         pinpointPreviouslyHealthy = pinpointHealthy;
     }
 
@@ -92,11 +75,13 @@ public class SwerveLocalizer {
     public void resetHeading() {
         odo.resetPosAndIMU();
         imu.resetYaw();
+        headingOffset = 0.0;
         masterPose = new Vector(masterPose.x(), masterPose.y(), 0);
     }
 
     public void setPose(Vector pose) {
         this.masterPose = pose;
+        headingOffset = pose.omega() - imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         odo.setPosition(new Pose2D(DistanceUnit.INCH, pose.x(), pose.y(), AngleUnit.RADIANS, pose.omega()));
         // Note: IMU doesn't support setting an arbitrary yaw, only resetting to 0.
         // The masterPose will track the offset internally.

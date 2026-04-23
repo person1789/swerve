@@ -4,7 +4,6 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
-import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveAuditor;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;

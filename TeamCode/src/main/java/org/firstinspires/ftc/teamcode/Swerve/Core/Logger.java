@@ -18,8 +18,13 @@ public class Logger {
     private LogLevels state;
 
     public Logger(Telemetry telemetry) {
-        this.telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
-        telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
+        if (SwerveConfig.DASHBOARD_ENABLED) {
+            this.telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+        } else {
+            this.telemetry = telemetry;
+        }
+        this.telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
+        this.telemetry.setMsTransmissionInterval(100);
         state = LogLevels.PRODUCTION;
     }
 

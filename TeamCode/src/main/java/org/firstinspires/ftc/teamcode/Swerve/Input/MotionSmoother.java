@@ -15,6 +15,8 @@ public class MotionSmoother {
     private Vector currentVelocity = new Vector(0, 0, 0);
     private Vector currentAcceleration = new Vector(0, 0, 0);
     private Vector lastTarget = new Vector(0, 0, 0);
+    private double maxAccel = SwerveConfig.MAX_ACCEL;
+    private double maxJerk = SwerveConfig.MAX_JERK;
 
     public MotionSmoother() {
     }
@@ -32,30 +34,33 @@ public class MotionSmoother {
         // 1. Apply Non-Linear Input Curves (Sensitivity Tuning)
         Vector curvedTarget = applyInputCurves(target);
 
-        double maxAccel = SwerveConfig.MAX_ACCEL;
-        double maxJerk = SwerveConfig.MAX_JERK;
-
         double[] nextVel = new double[3];
         double[] nextAccel = new double[3];
 
         for (int i = 0; i < 3; i++) {
             double targetVal = curvedTarget.get(i);
             double lastTargetVal = lastTarget.get(i);
-            
-            boolean isBraking = Math.abs(targetVal) < Math.abs(lastTargetVal) - 1e-4;
+            double currentVel = currentVelocity.get(i);
+            double currentAccelVal = currentAcceleration.get(i);
+
+            boolean isBraking = Math.signum(targetVal) != Math.signum(lastTargetVal)
+                    || Math.abs(targetVal) < Math.abs(lastTargetVal) - 1e-4;
 
             if (isBraking) {
-                nextAccel[i] = 0;
+                nextAccel[i] = (targetVal - currentVel) / dt;
                 nextVel[i] = targetVal;
             } else {
-                double desiredAccel = (targetVal - currentVelocity.get(i)) / dt;
-                double accelError = desiredAccel - currentAcceleration.get(i);
-                
-                double limitedJerkAccelChange = MathUtil.clamp(accelError, -maxJerk * dt, maxJerk * dt);
-                double newAccel = MathUtil.clamp(currentAcceleration.get(i) + limitedJerkAccelChange, -maxAccel, maxAccel);
-                
+                double targetAccel = MathUtil.clamp((targetVal - currentVel) / dt, -maxAccel, maxAccel);
+                double jerk = MathUtil.clamp((targetAccel - currentAccelVal) / dt, -maxJerk, maxJerk);
+                double newAccel = MathUtil.clamp(currentAccelVal + jerk * dt, -maxAccel, maxAccel);
+
                 nextAccel[i] = newAccel;
-                nextVel[i] = currentVelocity.get(i) + (newAccel * dt);
+                double nextValue = currentVel + (newAccel * dt);
+                if ((targetVal - currentVel) * (targetVal - nextValue) < 0) {
+                    nextValue = targetVal;
+                    nextAccel[i] = (nextValue - currentVel) / dt;
+                }
+                nextVel[i] = nextValue;
             }
         }
 
@@ -97,9 +102,16 @@ public class MotionSmoother {
                     : input / slope);
     }
 
+    public void setLimits(double maxAccel, double maxJerk) {
+        this.maxAccel = maxAccel;
+        this.maxJerk = maxJerk;
+    }
+
     public void reset() {
         currentVelocity = new Vector(0, 0, 0);
         currentAcceleration = new Vector(0, 0, 0);
         lastTarget = new Vector(0, 0, 0);
+        maxAccel = SwerveConfig.MAX_ACCEL;
+        maxJerk = SwerveConfig.MAX_JERK;
     }
 }

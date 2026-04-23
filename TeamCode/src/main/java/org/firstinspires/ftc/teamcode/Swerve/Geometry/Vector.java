@@ -9,7 +9,7 @@ public class Vector {
     public final int dimension;
 
     public Vector(double... components) {
-        this.components = components;
+        this.components = components.clone();
         this.dimension = components.length;
     }
 

@@ -11,6 +11,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
+import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Control.SwerveController;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Localization.SwerveLocalizer;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
@@ -30,7 +32,9 @@ public class MainTeleOp extends LinearOpMode {
 
     @Override
     public void runOpMode() throws InterruptedException {
-        telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+        if (SwerveConfig.DASHBOARD_ENABLED) {
+            telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
+        }
         gamepadE1 = new GamepadEx(gamepad1);
         logger = new Logger(telemetry);
         hwMap = new HWMap(hardwareMap);
@@ -39,6 +43,13 @@ public class MainTeleOp extends LinearOpMode {
         localizer = new SwerveLocalizer(hwMap);
         swerveDrivetrain = new SwerveDrivetrain(hwMap, logger);
         swerveController = new SwerveController();
+
+        if (PoseStorage.currentPose != null) {
+            localizer.setPose(new Vector(
+                    PoseStorage.currentPose.getX(),
+                    PoseStorage.currentPose.getY(),
+                    PoseStorage.currentPose.getHeading()));
+        }
 
         waitForStart();
         timer.reset();
@@ -66,7 +77,7 @@ public class MainTeleOp extends LinearOpMode {
             double turn = -gamepad1.right_stick_x;
 
             // Rotate translation to be field-centric
-            Vector rawTranslation = new Vector(vx, vy).rotate(heading);
+            Vector rawTranslation = new Vector(vx, vy).rotate(-heading);
 
             // 4. Run Control Brain (Heading Hold / Snap)
             Vector chassisSpeeds = swerveController.update(

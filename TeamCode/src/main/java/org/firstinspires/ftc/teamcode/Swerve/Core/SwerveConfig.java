@@ -75,6 +75,7 @@ public class SwerveConfig {
     public static double HEADING_P = 1.0;
     public static double HEADING_I = 0.0;
     public static double HEADING_D = 0.05;
+    public static double HEADING_LOCK_DELAY_S = 0.1;
 
     // Heading Snap (Intentional Target)
     public static double SNAP_P = 2.0;
@@ -102,8 +103,8 @@ public class SwerveConfig {
     /** Hub Orientation for fallback IMU. */
     public static RevHubOrientationOnRobot.LogoFacingDirection HUB_LOGO_DIR = 
             RevHubOrientationOnRobot.LogoFacingDirection.UP;
-    public static RevHubOrientationOnRobot.USBFacingDirection HUB_USB_DIR = 
-            RevHubOrientationOnRobot.USBFacingDirection.FORWARD;
+    public static RevHubOrientationOnRobot.UsbFacingDirection HUB_USB_DIR =
+            RevHubOrientationOnRobot.UsbFacingDirection.FORWARD;
 
     /** Angle error threshold in radians before flipping module direction. */
     public static double FLIP_THRESHOLD = Math.PI / 2.0;
@@ -119,6 +120,9 @@ public class SwerveConfig {
 
     /** Low-pass filter gain for the velocity observer (0.0 to 1.0). */
     public static double OBSERVER_LPF_GAIN = 0.15;
+
+    /** Enable dashboard telemetry during tuning only. */
+    public static boolean DASHBOARD_ENABLED = false;
 
     // ─────────────────────────────────────────────────────────────────────────
     // 8. Drive Motor Physical Constants

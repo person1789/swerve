@@ -3,14 +3,15 @@ package org.firstinspires.ftc.teamcode.Swerve.OpModes;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
-import com.arcrobotics.ftclib.controller.PIDFController;
 import com.arcrobotics.ftclib.util.Timing;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServoImplEx;
 
-import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
+import org.firstinspires.ftc.teamcode.Swerve.Core.PIDController;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 
 import java.util.concurrent.TimeUnit;
@@ -20,12 +21,9 @@ import java.util.concurrent.TimeUnit;
 public class SwerveModulePIDTune extends LinearOpMode {
 
     HWMap hwMap;
-    public static double targetAngle = 0;
+    public static double targetAngleDeg = 0;
 
-    private PIDFController pidfController;
-
-
-    public static double P = 0.015, I = 0.0, D = 0.005, F = 0.0;
+    private PIDController steerController;
 
     public static double direction = -1.0;
 
@@ -48,26 +46,25 @@ public class SwerveModulePIDTune extends LinearOpMode {
         telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
 
         // Setup PID
-        pidfController = new PIDFController(P, I, D, F);
+        steerController = new PIDController(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
 
         waitForStart();
 
         while (opModeIsActive()) {
-            pidfController.setPIDF(P, I, D, F);
+            steerController.setPID(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
 
-            double currentPos = (FLE.getVoltage() / 3.3) * 360;
-
-            double error = AngleUnit.normalizeDegrees(targetAngle - currentPos);
-
-            double power = pidfController.calculate(0, error);
+            double currentRad = MathUtil.normalizeAngle((FLE.getVoltage() / 3.3) * 2.0 * Math.PI - SwerveConfig.OFFSETS[0]);
+            double targetRad = Math.toRadians(targetAngleDeg);
+            double error = MathUtil.angleError(currentRad, targetRad);
+            double power = steerController.calculateFromError(error, 0.025);
 
             double safePower = Math.max(-1, Math.min(1, power * direction));
 
             FLS.setPower(safePower);
 
-            telemetry.addData("Target", targetAngle);
-            telemetry.addData("Current", currentPos);
-            telemetry.addData("Error", error);
+            telemetry.addData("Target (deg)", targetAngleDeg);
+            telemetry.addData("Current (deg)", Math.toDegrees(currentRad));
+            telemetry.addData("Error (deg)", Math.toDegrees(error));
             telemetry.addData("Power", safePower);
             telemetry.update();
             sleep(sleepTime);

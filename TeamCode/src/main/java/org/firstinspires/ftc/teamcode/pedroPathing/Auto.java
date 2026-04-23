@@ -10,6 +10,8 @@ import com.pedropathing.util.Timer;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
+import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
+
 @Autonomous
 public class Auto extends LinearOpMode {
     private Follower follower;
@@ -70,6 +72,8 @@ public class Auto extends LinearOpMode {
             telemetry.addData("heading", follower.getPose().getHeading());
             telemetry.update();
         }
+
+        PoseStorage.currentPose = follower.getPose();
     }
 }
 
