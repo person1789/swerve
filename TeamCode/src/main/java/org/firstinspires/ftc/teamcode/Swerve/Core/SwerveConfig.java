@@ -119,4 +119,20 @@ public class SwerveConfig {
 
     /** Low-pass filter gain for the velocity observer (0.0 to 1.0). */
     public static double OBSERVER_LPF_GAIN = 0.15;
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 8. Drive Motor Physical Constants
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /** Encoder ticks per revolution of the drive motor shaft. */
+    public static double DRIVE_TICKS_PER_REV = 28.0; // GoBILDA 6000 RPM Yellow Jacket
+
+    /** Gear reduction between drive motor and wheel. */
+    public static double DRIVE_GEAR_RATIO = 7.43; // Reduction
+
+    /** Wheel radius in meters. */
+    public static double WHEEL_RADIUS_METERS = 0.049; // 49mm diameter swerve wheel
+
+    /** Current draw threshold in amps above which a stall is declared. */
+    public static double DRIVE_CURRENT_THRESHOLD = 7.0;
 }

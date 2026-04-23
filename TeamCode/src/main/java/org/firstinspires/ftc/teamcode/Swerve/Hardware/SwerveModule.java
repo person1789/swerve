@@ -34,6 +34,7 @@ public class SwerveModule {
     private double lastDrivePower = 0.0;
 
     private final PIDController rotationController;
+    private double motorScaling = 1.0;
 
     /**
      * @param driveMotor Driving motor.
@@ -72,8 +73,8 @@ public class SwerveModule {
         double drivePower = (driveSpeedMps / SwerveConfig.MAX_SPEED_MPS) * cosScaler;
 
         rotationController.setPID(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
-        rotationController.setSetpoint(targetAngle);
-        double pidOut = rotationController.calculate(currentAngle, dt);
+        rotationController.setSetpoint(0.0);
+        double pidOut = rotationController.calculate(-error, dt);
 
         double steeringPower;
         if (Math.abs(error) < 0.02) {
@@ -88,7 +89,7 @@ public class SwerveModule {
         lastDrivePower = drivePower;
 
         steerServo.setPower(steeringPower);
-        driveMotor.setPower(Range.clip(drivePower, -1.0, 1.0));
+        driveMotor.setPower(Range.clip(drivePower * motorScaling, -1.0, 1.0));
     }
 
     public void update(SwerveModuleState state, double dt) {
@@ -163,5 +164,9 @@ public class SwerveModule {
 
     public void setMode(DcMotor.RunMode mode) {
         driveMotor.setMode(mode);
+    }
+
+    public void setMotorScaling(double scalar) {
+        this.motorScaling = MathUtil.clamp(scalar, 0.0, 1.0);
     }
 }

@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.Swerve.Logic.Localization;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
-import org.firstinspires.ftc.hardware.SwerveModule;
+import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveModule;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;

@@ -22,7 +22,7 @@ public class MainTeleOp extends LinearOpMode {
     private SwerveDrivetrain swerveDrivetrain;
     private SwerveController swerveController;
     private SwerveLocalizer localizer;
-    
+
     private Logger logger;
     private HWMap hwMap;
     private GamepadEx gamepadE1;
@@ -34,7 +34,7 @@ public class MainTeleOp extends LinearOpMode {
         gamepadE1 = new GamepadEx(gamepad1);
         logger = new Logger(telemetry);
         hwMap = new HWMap(hardwareMap);
-        
+
         // Initialize Core Systems
         localizer = new SwerveLocalizer(hwMap);
         swerveDrivetrain = new SwerveDrivetrain(hwMap, logger);
@@ -59,22 +59,22 @@ public class MainTeleOp extends LinearOpMode {
             double heading = currentPose.omega();
 
             // 3. Process Driver Intent (Field-Centric)
-            // Raw joystick values (-1 to 1) are passed. SwerveController handles deadbands/curves.
+            // Raw joystick values (-1 to 1) are passed. SwerveController handles
+            // deadbands/curves.
             double vx = -gamepad1.left_stick_y;
             double vy = -gamepad1.left_stick_x;
             double turn = -gamepad1.right_stick_x;
 
             // Rotate translation to be field-centric
-            Vector rawTranslation = new Vector(vx, vy).rotate(-heading);
-            
+            Vector rawTranslation = new Vector(vx, vy).rotate(heading);
+
             // 4. Run Control Brain (Heading Hold / Snap)
             Vector chassisSpeeds = swerveController.update(
-                rawTranslation.x(), 
-                rawTranslation.y(), 
-                turn, 
-                heading, 
-                dt
-            );
+                    rawTranslation.x(),
+                    rawTranslation.y(),
+                    turn,
+                    heading,
+                    dt);
 
             // 5. Execute Drivetrain Pipeline (Smoothing -> Kinematics -> HW)
             swerveDrivetrain.setVelocity(chassisSpeeds, dt);
