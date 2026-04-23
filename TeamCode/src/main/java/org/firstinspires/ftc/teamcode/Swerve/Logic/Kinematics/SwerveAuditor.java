@@ -4,7 +4,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 
 /**
- * SwerveAuditor: Optimizes module states for shortest-path steering and 
+ * SwerveAuditor: Optimizes module states for shortest-path steering and
  * ensures the robot doesn't attempt to exceed physical speed limits.
  */
 public class SwerveAuditor {
@@ -18,22 +18,23 @@ public class SwerveAuditor {
      * @return Optimized and normalized module states.
      */
     public SwerveModuleState[] optimize(SwerveModuleState[] desiredStates, double[] currentAnglesRad) {
-        // 1. NaN Protection: Safety first
         for (SwerveModuleState s : desiredStates) {
-            if (Double.isNaN(s.speedMetersPerSecond)) s.speedMetersPerSecond = 0.0;
-            if (Double.isNaN(s.angleRadians)) s.angleRadians = 0.0;
+            if (Double.isNaN(s.speedMetersPerSecond))
+                s.speedMetersPerSecond = 0.0;
+            if (Double.isNaN(s.angleRadians))
+                s.angleRadians = 0.0;
         }
 
         SwerveModuleState[] optimized = new SwerveModuleState[4];
         double maxFound = 0.0;
 
-        // 2. Shortest-Path Optimization (Angle Flipping)
         for (int i = 0; i < 4; i++) {
             SwerveModuleState state = desiredStates[i].copy();
+            double cosineScale = Math.cos(MathUtil.angleError(currentAnglesRad[i], state.angleRadians));
+            state.speedMetersPerSecond *= Math.max(0, cosineScale);
             double error = MathUtil.angleError(currentAnglesRad[i], state.angleRadians);
 
             if (Math.abs(error) > SwerveConfig.FLIP_THRESHOLD) {
-                // Reverse motor and rotate 180 degrees if it's faster
                 state.speedMetersPerSecond *= -1.0;
                 state.angleRadians = MathUtil.normalizeAngle(state.angleRadians + Math.PI);
             }
@@ -42,8 +43,6 @@ public class SwerveAuditor {
             maxFound = Math.max(maxFound, Math.abs(state.speedMetersPerSecond));
         }
 
-        // 3. Speed Desaturation (Normalization)
-        // Only scales if the requested speed exceeds the physical maximum defined in config.
         if (maxFound > SwerveConfig.MAX_SPEED_MPS) {
             double scale = SwerveConfig.MAX_SPEED_MPS / maxFound;
             for (SwerveModuleState s : optimized) {

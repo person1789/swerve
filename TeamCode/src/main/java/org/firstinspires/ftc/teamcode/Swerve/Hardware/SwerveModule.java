@@ -68,9 +68,7 @@ public class SwerveModule {
         double currentAngle = getCurrentRotation();
         double error = MathUtil.angleError(currentAngle, targetAngle);
 
-        // Cosine scaling reduces scrubbing when wheels are misaligned.
-        double cosScaler = Math.abs(Math.cos(error));
-        double drivePower = (driveSpeedMps / SwerveConfig.MAX_SPEED_MPS) * cosScaler;
+        double drivePower = (driveSpeedMps / SwerveConfig.MAX_SPEED_MPS);
 
         rotationController.setPID(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
         rotationController.setSetpoint(0.0);
@@ -140,20 +138,20 @@ public class SwerveModule {
         if (logger == null)
             return;
         String prefix = "Mod" + index + " ";
-        
+
         // Steering Performance
         logger.log(prefix + "TargetDeg", Math.toDegrees(lastTargetAngleRad), Logger.LogLevels.PRODUCTION);
         logger.log(prefix + "CurrentDeg", Math.toDegrees(getCurrentRotation()), Logger.LogLevels.PRODUCTION);
-        
+
         // Drive Performance
         logger.log(prefix + "TargetVelMps", lastTargetVelocityMps, Logger.LogLevels.PRODUCTION);
         logger.log(prefix + "ActualVelMps", getVelocityMps(), Logger.LogLevels.PRODUCTION);
         logger.log(prefix + "DrivePower", lastDrivePower, Logger.LogLevels.PRODUCTION);
-        
+
         // Hardware Health & Calibration
         logger.log(prefix + "CurrentAmps", getCurrentAmps(), Logger.LogLevels.PRODUCTION);
         logger.log(prefix + "EncoderVolt", encoder.getVoltage(), Logger.LogLevels.DEBUG);
-        
+
         if (isStalled())
             logger.log(prefix + "HEALTH_ALARM", 1.0, Logger.LogLevels.PRODUCTION);
     }

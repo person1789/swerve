@@ -14,6 +14,8 @@ public class SwerveController {
 
     private final PIDController snapController;
     private final PIDController maintainPID;
+    private static final double HEADING_LOCK_DELAY_S = 0.1; // 100ms settling
+    private double headingLockTimer = 0;
 
     private double targetHeading = 0.0;
     private boolean isSnapping = false;
@@ -56,17 +58,23 @@ public class SwerveController {
         if (isSnapping) {
             calculatedTurn = snapController.calculate(currentHeading, targetHeading, dt);
             // Auto-stop snapping if we are close enough
-            if (Math.abs(currentHeading - targetHeading) < 0.02) {
+            if (Math.abs(currentHeading - targetHeading) < 0.05) {
                 isSnapping = false;
             }
         } else if (isMoving && !isTurning) {
-            if (!isMaintaining) {
-                targetHeading = currentHeading;
-                isMaintaining = true;
-                maintainPID.reset();
+            headingLockTimer += dt;
+            if (headingLockTimer > HEADING_LOCK_DELAY_S) {
+                if (!isMaintaining) {
+                    targetHeading = currentHeading;
+                    isMaintaining = true;
+                    maintainPID.reset();
+                }
+                calculatedTurn = maintainPID.calculate(currentHeading, targetHeading, dt);
+            } else {
+                calculatedTurn = 0;
             }
-            calculatedTurn = maintainPID.calculate(currentHeading, targetHeading, dt);
         } else {
+            headingLockTimer = 0;
             isMaintaining = false;
             calculatedTurn = dturn;
         }

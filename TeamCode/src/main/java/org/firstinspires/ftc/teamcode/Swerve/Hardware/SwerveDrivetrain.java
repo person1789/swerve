@@ -4,6 +4,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveAuditor;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
@@ -15,18 +16,16 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
 /**
  * SwerveDrivetrain
  * 
- * Central coordinator for the swerve drive system. Manages the high-level 
- * control pipeline: Velocity Smoothing -> Kinematics -> Optimization -> Hardware.
+ * Central coordinator for the swerve drive system. Manages the high-level
+ * control pipeline: Velocity Smoothing -> Kinematics -> Optimization ->
+ * Hardware.
  */
 public class SwerveDrivetrain {
 
-    /**
-     * Drivetrain physical states for autonomous and teleop logic.
-     */
     public enum States {
-        DRIVING,          // Actively pursuing a velocity target.
-        WAITING_TO_LOCK,  // Decelerating to a stop, preparing for X-stance.
-        LOCKED            // Modules in X-stance to prevent external movement.
+        DRIVING, // Actively pursuing a velocity target.
+        WAITING_TO_LOCK, // Decelerating to a stop, preparing for X-stance.
+        LOCKED // Modules in X-stance to prevent external movement.
     }
 
     public final SwerveModule frontLeftModule;
@@ -46,7 +45,7 @@ public class SwerveDrivetrain {
     private final Logger logger;
 
     /**
-     * @param hwMap Hardware mapping wrapper for motor/servo references.
+     * @param hwMap  Hardware mapping wrapper for motor/servo references.
      * @param logger Telemetry wrapper for diagnostic logging.
      */
     public SwerveDrivetrain(HWMap hwMap, Logger logger) {
@@ -75,31 +74,23 @@ public class SwerveDrivetrain {
     }
 
     /**
-     * Processes chassis velocity commands through the control pipeline to update hardware.
+     * Processes driver intent through the control pipeline to update hardware.
      * 
-     * @param chassisSpeeds Requested robot velocity Vector (vx, vy, omega).
-     * @param dt            Time since last update.
+     * @param driverTarget Requested robot velocity Vector (vx, vy, omega).
+     * @param dt           Time since last update.
      */
-    public void setVelocity(Vector chassisSpeeds, double dt) {
+    public void setVelocity(Vector driverTarget, double dt) {
         // Update velocity estimate from wheel feedback
         velocityObserver.update(modules);
 
-        boolean hasInput = chassisSpeeds.magnitude() > 0.01;
+        boolean hasInput = driverTarget.magnitude() > 0.01;
 
-        // 1. Kinematic Desaturation: Ensure the requested velocity is physically possible
-        SwerveModuleState[] rawStates = kinematics.inverseKinematics(chassisSpeeds);
-        double maxFound = 0.0;
-        for (SwerveModuleState s : rawStates) maxFound = Math.max(maxFound, Math.abs(s.speedMetersPerSecond));
-        
-        double scalingFactor = (maxFound > SwerveConfig.MAX_SPEED_MPS) ? SwerveConfig.MAX_SPEED_MPS / maxFound : 1.0;
-        Vector systemLimit = chassisSpeeds.scale(scalingFactor);
-
-        // 2. Apply S-Curve Motion Smoothing (Sole authority for ramps)
-        Vector smoothedVelocity = smoother.smooth(systemLimit, dt);
+        // 1. Apply S-Curve Motion Smoothing (Sole authority for ramps)
+        Vector chassisVelocity = smoother.smooth(driverTarget, dt);
 
         switch (state) {
             case DRIVING:
-                driveWithPipeline(smoothedVelocity, dt);
+                driveWithPipeline(chassisVelocity, dt);
                 if (!hasInput) {
                     lockTimer.reset();
                     state = States.WAITING_TO_LOCK;
@@ -107,14 +98,21 @@ public class SwerveDrivetrain {
                 break;
 
             case WAITING_TO_LOCK:
-                driveWithPipeline(new Vector(0, 0, 0), dt);
-                if (hasInput) state = States.DRIVING;
-                else if (lockTimer.milliseconds() > SwerveConfig.LOCK_DELAY_MS) state = States.LOCKED;
+                // Don't command zero — let the smoother drain to zero naturally.
+                driveWithPipeline(chassisVelocity, dt);
+                if (hasInput) {
+                    state = States.DRIVING;
+                } else if (lockTimer.milliseconds() > SwerveConfig.LOCK_DELAY_MS
+                        && chassisVelocity.magnitude() < 0.01) {
+                    // Only lock when the robot has actually stopped
+                    state = States.LOCKED;
+                }
                 break;
 
             case LOCKED:
                 applyXStance(dt);
-                if (hasInput) state = States.DRIVING;
+                if (hasInput)
+                    state = States.DRIVING;
                 break;
         }
 
@@ -127,16 +125,19 @@ public class SwerveDrivetrain {
     private void driveWithPipeline(Vector velocity, double dt) {
         SwerveModuleState[] raw = kinematics.inverseKinematics(velocity);
         double[] currentAngles = new double[4];
-        for (int i = 0; i < 4; i++) currentAngles[i] = modules[i].getCurrentRotation();
+        for (int i = 0; i < 4; i++)
+            currentAngles[i] = modules[i].getCurrentRotation();
 
         SwerveModuleState[] optimized = auditor.optimize(raw, currentAngles);
 
-        for (int i = 0; i < 4; i++) modules[i].update(optimized[i], dt);
+        for (int i = 0; i < 4; i++)
+            modules[i].update(optimized[i], dt);
     }
 
     private void applyXStance(double dt) {
         double[] xAngles = { Math.toRadians(45), Math.toRadians(-45), Math.toRadians(45), Math.toRadians(-45) };
-        for (int i = 0; i < 4; i++) modules[i].update(xAngles[i], 0.0, dt);
+        for (int i = 0; i < 4; i++)
+            modules[i].update(xAngles[i], 0.0, dt);
     }
 
     private void performHealthSystemScan() {
@@ -148,7 +149,8 @@ public class SwerveDrivetrain {
     }
 
     public void log() {
-        for (int i = 0; i < 4; i++) modules[i].log(i);
+        for (int i = 0; i < 4; i++)
+            modules[i].log(i);
         Vector actual = velocityObserver.getVelocity();
         logger.log("ObsV_X", actual.x(), Logger.LogLevels.PRODUCTION);
         logger.log("ObsV_Y", actual.y(), Logger.LogLevels.PRODUCTION);
@@ -168,6 +170,11 @@ public class SwerveDrivetrain {
         }
     }
 
-    public Vector getActualVelocity() { return velocityObserver.getVelocity(); }
-    public States getState() { return state; }
+    public Vector getActualVelocity() {
+        return velocityObserver.getVelocity();
+    }
+
+    public States getState() {
+        return state;
+    }
 }
