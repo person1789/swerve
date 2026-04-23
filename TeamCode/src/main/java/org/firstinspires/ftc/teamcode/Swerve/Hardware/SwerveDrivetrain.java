@@ -39,6 +39,10 @@ public class SwerveDrivetrain {
 
     private States state = States.DRIVING;
     private double lockTimerMs = 0.0;
+    private Vector lastDriverTarget = new Vector(0, 0, 0);
+    private Vector lastSmoothedVelocity = new Vector(0, 0, 0);
+    private SwerveModuleState[] lastRawStates = zeroStates();
+    private SwerveModuleState[] lastOptimizedStates = zeroStates();
 
     public SwerveDrivetrain(HWMap hwMap, Logger logger) {
         this(new SwerveModule[] {
@@ -75,9 +79,11 @@ public class SwerveDrivetrain {
 
     public void setVelocity(Vector driverTarget, double dt) {
         velocityObserver.update(modules);
+        lastDriverTarget = driverTarget;
 
         boolean hasInput = driverTarget.magnitude() > 0.01;
         Vector chassisVelocity = smoother.smooth(driverTarget, dt);
+        lastSmoothedVelocity = chassisVelocity;
 
         if (!SwerveConfig.ENABLE_IDLE_X_STANCE) {
             state = States.DRIVING;
@@ -123,12 +129,14 @@ public class SwerveDrivetrain {
 
     private void driveWithPipeline(Vector velocity, double dt) {
         SwerveModuleState[] raw = kinematics.inverseKinematics(velocity);
+        lastRawStates = copyStates(raw);
         double[] currentAngles = new double[4];
         for (int i = 0; i < 4; i++) {
             currentAngles[i] = modules[i].getCurrentRotation();
         }
 
         SwerveModuleState[] optimized = auditor.optimize(raw, currentAngles);
+        lastOptimizedStates = copyStates(optimized);
         for (int i = 0; i < 4; i++) {
             modules[i].update(optimized[i], dt);
         }
@@ -136,9 +144,13 @@ public class SwerveDrivetrain {
 
     private void applyXStance(double dt) {
         double[] xAngles = { Math.toRadians(45), Math.toRadians(-45), Math.toRadians(45), Math.toRadians(-45) };
+        SwerveModuleState[] xStates = new SwerveModuleState[4];
         for (int i = 0; i < 4; i++) {
+            xStates[i] = new SwerveModuleState(0.0, xAngles[i]);
             modules[i].update(xAngles[i], 0.0, dt);
         }
+        lastRawStates = copyStates(xStates);
+        lastOptimizedStates = copyStates(xStates);
     }
 
     private void performHealthSystemScan() {
@@ -172,6 +184,12 @@ public class SwerveDrivetrain {
         }
     }
 
+    public void setInversions(boolean[] inversions) {
+        for (int i = 0; i < 4 && i < inversions.length; i++) {
+            modules[i].setInversion(inversions[i]);
+        }
+    }
+
     public void setMotorScaling(double[] scalars) {
         for (int i = 0; i < 4 && i < scalars.length; i++) {
             modules[i].setMotorScaling(scalars[i]);
@@ -182,11 +200,48 @@ public class SwerveDrivetrain {
         return velocityObserver.getVelocity();
     }
 
+    public Vector getLastDriverTarget() {
+        return lastDriverTarget;
+    }
+
+    public Vector getLastSmoothedVelocity() {
+        return lastSmoothedVelocity;
+    }
+
+    public SwerveModuleState[] getLastRawStates() {
+        return copyStates(lastRawStates);
+    }
+
+    public SwerveModuleState[] getLastOptimizedStates() {
+        return copyStates(lastOptimizedStates);
+    }
+
+    public double getBatteryVoltage() {
+        return batteryVoltageSupplier.getAsDouble();
+    }
+
     public States getState() {
         return state;
     }
 
     public void resetSmoother() {
         smoother.reset();
+    }
+
+    private static SwerveModuleState[] copyStates(SwerveModuleState[] states) {
+        SwerveModuleState[] copy = new SwerveModuleState[states.length];
+        for (int i = 0; i < states.length; i++) {
+            copy[i] = states[i].copy();
+        }
+        return copy;
+    }
+
+    private static SwerveModuleState[] zeroStates() {
+        return new SwerveModuleState[] {
+                new SwerveModuleState(),
+                new SwerveModuleState(),
+                new SwerveModuleState(),
+                new SwerveModuleState()
+        };
     }
 }

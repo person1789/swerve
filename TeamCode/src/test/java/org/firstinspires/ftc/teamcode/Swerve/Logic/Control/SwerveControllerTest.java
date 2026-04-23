@@ -12,10 +12,18 @@ import org.junit.jupiter.api.Test;
 class SwerveControllerTest {
 
     private final double originalDelay = SwerveConfig.HEADING_LOCK_DELAY_S;
+    private final double originalHeadingP = SwerveConfig.HEADING_P;
+    private final double originalHeadingD = SwerveConfig.HEADING_D;
+    private final double originalSnapP = SwerveConfig.SNAP_P;
+    private final double originalSnapD = SwerveConfig.SNAP_D;
 
     @AfterEach
     void restoreConfig() {
         SwerveConfig.HEADING_LOCK_DELAY_S = originalDelay;
+        SwerveConfig.HEADING_P = originalHeadingP;
+        SwerveConfig.HEADING_D = originalHeadingD;
+        SwerveConfig.SNAP_P = originalSnapP;
+        SwerveConfig.SNAP_D = originalSnapD;
     }
 
     @Test
@@ -33,6 +41,8 @@ class SwerveControllerTest {
     void headingLockWaitsForConfiguredDelayBeforeActivating() {
         // Passes if heading hold remains off before the delay elapses and turns on once continuous translation exceeds the delay.
         SwerveConfig.HEADING_LOCK_DELAY_S = 0.1;
+        SwerveConfig.HEADING_P = 1.0;
+        SwerveConfig.HEADING_D = 0.0;
         SwerveController controller = new SwerveController();
 
         controller.update(0.4, 0.0, 0.0, 0.2, 0.05);
@@ -45,6 +55,8 @@ class SwerveControllerTest {
     @Test
     void snapModeCommandsRotationTowardTargetHeading() {
         // Passes if a positive heading error relative to the snap target produces corrective rotation in the negative direction.
+        SwerveConfig.SNAP_P = 2.0;
+        SwerveConfig.SNAP_D = 0.0;
         SwerveController controller = new SwerveController();
         controller.setSnapTarget(0.0);
 

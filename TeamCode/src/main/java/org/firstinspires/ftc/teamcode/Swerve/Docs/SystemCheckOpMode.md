@@ -4,9 +4,9 @@
 
 "If I command a known chassis vector, what do the modules and chassis estimate actually do?"
 
-That sounds simple, but it is exactly the layer you want when the robot feels wrong and `MainTeleOp` is too busy to tell you why.
+That is the right layer to inspect when the robot feels wrong and `MainTeleOp` is too busy to show why.
 
-This guide assumes you are using a REV-based FTC control system. If you have a REV Control Hub, the CSV extraction steps below are written for that setup first. If you are using an Expansion Hub with a separate Robot Controller phone, there is a section for that too.
+This guide assumes you are using a REV Control Hub and that CSV files will be retrieved over a USB cable.
 
 ## What this OpMode is for
 
@@ -22,7 +22,7 @@ Use `SwerveSystemCheck` when you want to verify:
 - whether one corner is fighting the other three
 - whether stall or current behavior looks suspicious
 
-Use it before a first drive, after rewiring, after changing offsets, after touching kinematics, or whenever teleop behavior feels "kind of wrong" but not obviously broken.
+Use it before a first drive, after rewiring, after changing offsets, after touching kinematics, or whenever teleop behavior feels wrong but not obviously broken.
 
 ## What this OpMode is not for
 
@@ -33,7 +33,7 @@ It is not a replacement for full teleop testing. It deliberately strips away a l
 - no autonomous logic
 - no normal driver-intent interpretation
 
-That is a feature, not a limitation. The point is to isolate the drivetrain.
+That is intentional. The point is to isolate the drivetrain.
 
 ## Controls
 
@@ -45,6 +45,13 @@ Current controls in `SwerveSystemCheck`:
 - `DPAD DOWN`: decrease command scale by 0.05
 - `A`: hold to actively run the selected canned command
 - `B`: stop the motion and reset the smoother
+
+FTC Dashboard calibration values exposed by the OpMode:
+
+- `dashboardOffsets`
+- `dashboardInversions`
+
+Those arrays are applied live while the OpMode runs.
 
 ## Current canned tests
 
@@ -58,7 +65,7 @@ The OpMode currently includes:
 - `Rotate CCW`
 - `Rotate CW`
 
-Those tests are intentionally enough to expose most direction, offset, and convention problems without turning the OpMode into a tuning lab.
+These tests are enough to expose most direction, offset, and convention problems without turning the OpMode into a large tuning workflow.
 
 ## Before you run it
 
@@ -120,6 +127,65 @@ Run this order:
 
 Do that once on blocks, then repeat on the floor at low scale.
 
+## Live module calibration in FTC Dashboard
+
+`SwerveSystemCheck` is set up as a live calibration OpMode, not just a read-only diagnostic.
+
+While the OpMode is running, FTC Dashboard exposes:
+
+- `dashboardOffsets`
+- `dashboardInversions`
+
+Those values are pushed into the drivetrain continuously, so you can:
+
+1. leave the OpMode running
+2. edit one module offset or inversion in FTC Dashboard
+3. immediately observe the effect on module target/current angle behavior
+4. keep iterating without exiting the OpMode
+
+### Recommended workflow for offsets
+
+1. Put the robot on blocks.
+2. Start `SwerveSystemCheck`.
+3. Select `Forward` at a small command scale.
+4. Hold `A`.
+5. Watch whether all four modules settle into the same forward-facing direction.
+6. Adjust one entry in `dashboardOffsets` at a time until that module agrees with the others.
+
+Repeat the same logic with:
+
+- `Backward`
+- `Strafe Left`
+- `Strafe Right`
+
+If a module is close but consistently mirrored, the issue may be inversion rather than offset.
+
+### Recommended workflow for inversion flags
+
+Use `dashboardInversions` when:
+
+- one module angle response looks mirrored
+- one pod always seems to choose the wrong side of the circle
+- changing the offset alone never gets the module to agree with the others
+
+Flip only one module at a time, then re-check:
+
+- `Forward`
+- `Strafe`
+- `Rotate`
+
+### Important note
+
+The dashboard values are temporary live values for the running OpMode.
+
+If you find values that work:
+
+1. copy them back into `SwerveConfig.OFFSETS`
+2. copy them back into `SwerveConfig.INVERSIONS`
+3. rebuild or redeploy as needed
+
+The CSV log also records the live offset and inversion values used during the run, so you can recover the good set later.
+
 ## What telemetry it provides
 
 The OpMode sends telemetry to the Driver Station, and if dashboard telemetry is enabled it also appears in FTC Dashboard.
@@ -145,13 +211,21 @@ The OpMode sends telemetry to the Driver Station, and if dashboard telemetry is 
 - observed `x` velocity in inches/second
 - observed `y` velocity in inches/second
 - observed angular velocity in radians/second
+- smoothed chassis `x`, `y`, and `omega`
 - drivetrain state
+- battery voltage
 - configured max linear speed, acceleration, and jerk
+
+The observed chassis values come from the drivetrain velocity observer. The smoothed values are the motion-smoother output between the commanded chassis target and the kinematics layer.
 
 ### Per-module telemetry
 
 For each module:
 
+- raw kinematics target angle in degrees
+- raw kinematics target speed in inches/second
+- post-auditor target angle in degrees
+- post-auditor target speed in inches/second
 - target steering angle in degrees
 - current steering angle in degrees
 - steering error in degrees
@@ -162,7 +236,16 @@ For each module:
 - current draw in amps
 - stall flag
 
-That is enough to diagnose most real drivetrain issues without adding another special-purpose logger.
+The raw target values show the direct inverse-kinematics result. The post-auditor values show the same command after the auditor chooses the shorter steering path and wheel-direction flip. The final target/current fields show what each module actually received and how close it got.
+
+That gives you a full record of the command path for each loop:
+
+1. commanded chassis target
+2. smoothed chassis target
+3. raw kinematics module states
+4. post-auditor module states
+5. observed chassis response from the velocity observer
+6. final per-module electrical and motion behavior
 
 ## How to read the telemetry
 
@@ -220,6 +303,7 @@ This OpMode is especially strong at catching:
 - one flipped motor direction
 - one flipped servo direction
 - unit mistakes in wheel-speed conversion
+- raw kinematics that look reasonable but optimized states that are clipping or flipping in an unexpected way
 - chassis-axis convention mismatches
 
 ## CSV logging
@@ -236,8 +320,12 @@ The CSV includes:
 - whether the command was actively running
 - command scale
 - commanded chassis values
-- observed chassis values
+- smoothed chassis values
+- observed chassis values from the velocity observer
 - drivetrain state
+- battery voltage
+- raw kinematics targets
+- post-auditor targets
 - per-module target angle
 - per-module current angle
 - per-module angle error
@@ -247,48 +335,75 @@ The CSV includes:
 - per-module steer power
 - per-module current draw
 - per-module stall flag
+- live dashboard offset values
+- live dashboard inversion values
 
-This is the best record of the run if you want to compare sessions or graph behavior.
+This is the best record of the run if you want to compare sessions or graph behavior, because it captures the full chain from command to observer output.
 
-## How to extract the CSV on a REV Control Hub
+## How to extract the CSV on a REV Control Hub over USB
 
-If you are using a REV Control Hub, there are two realistic ways to pull the CSV.
+This is the documented retrieval workflow for this robot.
 
-### Method 1: Robot Controller Console over Wi-Fi
+### What you need
 
-Use this when you want the simplest no-cable workflow.
+- the robot powered by battery
+- a USB-C data cable
+- a Windows laptop
 
-1. Connect your laptop to the Control Hub network.
-2. Open the Robot Controller Console in a browser.
-3. Go to the management area of the Control Hub interface.
-4. Open the files or settings-file management area.
-5. Find the newest file named like `SwerveSystemCheck-...csv`.
-6. Download it to your laptop.
+### Before you unplug anything
 
-Use this right after the test session, while the latest file is still obvious.
+1. Release `A` so the test command is no longer running.
+2. Wait about one second.
+3. Stop the OpMode normally on the Driver Station.
 
-### Method 2: USB-C direct file access from a PC
+Do that first so the CSV writer flushes and closes the file cleanly.
 
-Use this when you want the most direct file access path.
+### Physical connection steps
 
-1. Leave the Control Hub powered from the robot battery.
-2. Plug a USB-C cable into the Control Hub top board and your computer.
-3. On Windows, browse the Control Hub storage from `This PC`.
-4. Open the internal shared storage.
-5. Look for the `FIRST` area and the newest `SwerveSystemCheck-...csv` file.
-6. Copy it to your computer.
+1. Leave the Control Hub powered by the robot battery.
+2. Plug a USB-C data cable into the Control Hub.
+3. Plug the other end into your laptop.
+4. Wait for Windows to detect the Control Hub storage.
 
-This method is especially useful if Wi-Fi is inconvenient or if you want to pull several files at once.
+### Finding the file in Windows
 
-## If you are using a REV Expansion Hub plus a Robot Controller phone
+1. Open `This PC`.
+2. Open the device storage for the Control Hub.
+3. Open the internal shared storage.
+4. Open the `FIRST` folder.
+5. Open the `settings` folder.
+6. Look for the newest file named like `SwerveSystemCheck-<timestamp>.csv`.
 
-The OpMode still works the same way, but the CSV lives on the Robot Controller Android device rather than inside a Control Hub Android board.
+The OpMode uses the FTC settings-file path, so `FIRST/settings` is the place to check first.
 
-Practical extraction methods:
+### Copying the file
 
-1. Use Android Studio Device File Explorer.
-2. Use normal Android file access over USB if supported by that phone.
-3. Pull the newest `SwerveSystemCheck-...csv` from the app's settings/storage area.
+1. Copy the newest `SwerveSystemCheck-...csv` file to your laptop.
+2. Rename it immediately with something meaningful.
+
+Good examples:
+
+- `2026-04-23-blocks-forward-offset-check.csv`
+- `2026-04-23-floor-rotate-ccw-scale035.csv`
+
+### If you do not see the file
+
+Check these in order:
+
+1. make sure `csvLoggingEnabled` was true in the OpMode
+2. make sure you stopped the OpMode cleanly before connecting the cable
+3. refresh the folder view in Windows
+4. sort by modified time and look again in `FIRST/settings`
+5. run a very short new test, stop it cleanly, and check for the newest timestamped file
+
+### Recommended team workflow
+
+1. run one short diagnostic session
+2. stop the OpMode cleanly
+3. connect the USB-C cable
+4. pull the CSV from `FIRST/settings`
+5. rename it with date, surface, test type, and command scale
+6. only then start another major round of changes
 
 ## Important note about stopping the OpMode
 
@@ -360,4 +475,4 @@ Look at:
 
 ## Bottom line
 
-For a REV-based FTC robot, `SwerveSystemCheck` is one of the highest-value debugging tools in this repo. It gives you a clean, repeatable drivetrain test, live telemetry in FTC Dashboard, and a CSV trail you can pull off the hub afterward and analyze like an adult instead of arguing with vibes.
+For this robot, `SwerveSystemCheck` gives you a repeatable drivetrain test, live telemetry in FTC Dashboard, and a CSV trail you can pull off the Control Hub over USB afterward.

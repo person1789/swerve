@@ -1,4 +1,4 @@
-# Advanced Swerve Settings Guide
+# Swerve Config Guide
 
 This guide documents the settings that matter for the current robot and how they fit together.
 
@@ -37,7 +37,7 @@ These should match the physical robot before you do any tuning:
 
 If these are wrong, PID tuning usually turns into expensive lying.
 
-## 2. Drive architecture
+## 2. Drive architecture settings
 
 The drivetrain currently uses:
 
@@ -54,7 +54,7 @@ The wheel motors run in `RUN_WITHOUT_ENCODER` on purpose. That means:
 
 That is the intended design right now.
 
-## 3. Motion shaping
+## 3. Motion shaping settings
 
 `MotionSmoother` is the main "feel" layer.
 
@@ -79,7 +79,7 @@ When to touch them:
 - If the robot feels twitchy around stick center, look at the input curve values.
 - If the robot feels unstable at high command changes, reduce aggressiveness before touching PID.
 
-## 4. Heading behavior
+## 4. Heading settings
 
 `SwerveController` currently provides:
 
@@ -93,7 +93,14 @@ Primary tunables:
 - `SNAP_P`, `SNAP_I`, `SNAP_D`
 - `HEADING_LOCK_DELAY_S`
 
-Important note:
+Current default state:
+
+- `HEADING_P = 0.0`
+- `HEADING_D = 0.0`
+- `SNAP_P = 0.0`
+- `SNAP_D = 0.0`
+
+That is intentional. Heading maintain and snap are left effectively disabled until they are tuned on the real robot.
 
 Do not tune heading hold until:
 
@@ -101,7 +108,7 @@ Do not tune heading hold until:
 - odometry and hub orientation are correct
 - forward and strafe both make sense in `SwerveSystemCheck`
 
-## 5. Kinematics and observer
+## 5. Kinematics and observer settings
 
 The drivetrain uses second-order kinematics plus an observed chassis velocity estimate.
 

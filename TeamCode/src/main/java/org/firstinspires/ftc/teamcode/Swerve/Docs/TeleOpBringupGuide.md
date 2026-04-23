@@ -1,22 +1,22 @@
 # TeleOp Bring-Up Guide
 
-This guide is for running `MainTeleOp` only. It does not require autonomous.
+This guide is for running `MainTeleOp` only. You do not need autonomous for this workflow.
 
 ## Is the code ready to run?
 
-Yes, it is ready for a teleop field test in the sense that:
+Yes. It is ready for a teleop field test in the basic sense that:
 
 - `MainTeleOp` compiles
 - the local unit tests pass
 - the recent teleop reset and pose-handoff fixes are in place
 
-That said, FTC code is only truly "ready" after a short hardware smoke test. Before a full drive, you still need to verify:
+Before a full drive, still verify:
 
 1. hardware names in the configuration match `HWMap.java`
 2. module offsets in `SwerveConfig.java` are close
 3. hub orientation in `SwerveConfig.java` matches the real hub mounting
 4. the robot really uses a 49 mm diameter wheel if you keep the current wheel-radius constant
-5. the new inch-based motion limits feel sane on the floor:
+5. the inch-based motion limits feel sane on the floor:
    - max linear speed: `72 in/s`
    - max linear acceleration: `72 in/s^2`
    - max linear jerk: `360 in/s^3`
@@ -60,7 +60,7 @@ Current robot-specific values:
 - `ODO_X_OFFSET_MM = -127.6669`
 - `ODO_Y_OFFSET_MM = -52.23`
 
-Offsets do not need to be perfect for a first smoke test, but they do need to be close enough that modules do not fight themselves immediately.
+Offsets do not need to be perfect for a first smoke test, but they do need to be close enough that modules do not fight each other immediately.
 
 ### 2. Put the robot in a safe starting position
 
@@ -72,8 +72,8 @@ For teleop-only testing:
 
 Practical recommendation:
 
-- Point the robot away from the driver station before starting.
-- That makes the first field-centric test easier to read.
+- point the robot away from the driver station before starting
+- that makes the first field-centric check easier to read
 
 ### 3. Initialize and start `MainTeleOp`
 
@@ -89,11 +89,11 @@ If you want to redefine heading after start, tap the gamepad `START` button. The
 - the controller heading target
 - the drivetrain smoother state
 
-So the heading reset now behaves cleanly for teleop.
+That keeps heading reset behavior clean during teleop.
 
 ## First test sequence
 
-Do these in order.
+Run these in order.
 
 ### Test 1: Wheels off the floor
 
@@ -156,7 +156,7 @@ From `MainTeleOp.java`:
 
 ## What can still bite you on the real robot
 
-Even with passing tests, these are still the most likely real-world issues:
+Even with passing tests, these are still the most likely real-world issues.
 
 ### Module offsets are off
 
@@ -189,7 +189,7 @@ Symptoms:
 
 ## Fast rollback plan during testing
 
-If the first floor test looks sketchy:
+If the first floor test looks bad:
 
 1. stop driving
 2. put the robot back on blocks
@@ -199,4 +199,4 @@ If the first floor test looks sketchy:
 
 ## Recommended next step
 
-After the first successful teleop drive, use `SwerveSystemCheck` to validate each canned forward, strafe, and rotate command before pushing speed or retuning offsets.
+After the first successful teleop drive, use `SwerveSystemCheck` to validate canned forward, strafe, and rotate commands before pushing speed or retuning offsets.

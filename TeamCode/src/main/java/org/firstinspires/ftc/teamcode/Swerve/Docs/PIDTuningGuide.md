@@ -13,6 +13,13 @@ Do not jump into pathing or autonomous follower gains until the drivetrain is al
 - `MainTeleOp`
 - `SwerveSystemCheck`
 
+Current default note:
+
+- heading maintain is disabled by default
+- heading snap is disabled by default
+
+That is intentional. Tune steering and module calibration first, then enable and tune heading behavior.
+
 Tune in this order:
 
 1. Steering module PID

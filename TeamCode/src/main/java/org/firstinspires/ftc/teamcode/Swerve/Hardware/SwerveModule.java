@@ -165,6 +165,11 @@ public class SwerveModule {
         io.setCalibration(offset, inverse);
     }
 
+    public void setInversion(boolean inverse) {
+        this.inverse = inverse;
+        io.setCalibration(offset, inverse);
+    }
+
     public void setMode(DcMotor.RunMode mode) {
         io.setDriveMode(mode);
     }

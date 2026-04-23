@@ -14,6 +14,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveModule;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -25,6 +26,8 @@ public class SwerveSystemCheck extends LinearOpMode {
 
     public static double commandScale = 0.35;
     public static boolean csvLoggingEnabled = true;
+    public static double[] dashboardOffsets = new double[] { -0.2, 3.9, 1.4, 3.0 };
+    public static boolean[] dashboardInversions = new boolean[] { false, false, false, false };
 
     private enum TestCase {
         STOP("Stop", new Vector(0.0, 0.0, 0.0)),
@@ -73,12 +76,14 @@ public class SwerveSystemCheck extends LinearOpMode {
         telemetry.addLine("A: hold to run selected test");
         telemetry.addLine("DPAD UP/DOWN: adjust command scale");
         telemetry.addLine("B: stop and reset smoother");
+        telemetry.addLine("Dashboard arrays: dashboardOffsets and dashboardInversions");
         telemetry.addLine("CSV logging writes to the FTC settings folder");
         telemetry.update();
 
         waitForStart();
         loopTimer.reset();
         runtimeTimer.reset();
+        copyConfigCalibrationIntoDashboard();
         startCsvLogging();
 
         try {
@@ -115,9 +120,14 @@ public class SwerveSystemCheck extends LinearOpMode {
 
                 TestCase selected = TestCase.values()[selectedIndex];
                 Vector commanded = gamepad1.a ? selected.normalizedCommand.scale(commandScale) : TestCase.STOP.normalizedCommand;
+                drivetrain.setOffsets(dashboardOffsets);
+                drivetrain.setInversions(dashboardInversions);
                 drivetrain.setVelocity(commanded, dt);
 
                 Vector observedVelocity = drivetrain.getActualVelocity();
+                Vector smoothedVelocity = drivetrain.getLastSmoothedVelocity();
+                SwerveModuleState[] rawStates = drivetrain.getLastRawStates();
+                SwerveModuleState[] optimizedStates = drivetrain.getLastOptimizedStates();
                 double runtimeSec = runtimeTimer.seconds();
                 double maxLinearSpeedMps = SwerveConfig.getMaxLinearSpeedMetersPerSecond();
 
@@ -127,6 +137,7 @@ public class SwerveSystemCheck extends LinearOpMode {
                 telemetry.addData("Loop Dt (ms)", dt * 1000.0);
                 telemetry.addData("CSV Enabled", csvLoggingEnabled);
                 telemetry.addData("CSV File", csvFile != null ? csvFile.getName() : "disabled");
+                telemetry.addData("Copy Winning Values To", "SwerveConfig.OFFSETS / INVERSIONS");
 
                 telemetry.addLine();
                 telemetry.addData("Command Scale", commandScale);
@@ -142,9 +153,21 @@ public class SwerveSystemCheck extends LinearOpMode {
                 telemetry.addData("Obs Y (in/s)", metersToInches(observedVelocity.y()));
                 telemetry.addData("Obs W (rad/s)", observedVelocity.omega());
                 telemetry.addData("Drive State", drivetrain.getState());
+                telemetry.addData("Battery (V)", drivetrain.getBatteryVoltage());
                 telemetry.addData("Max Linear Speed (in/s)", SwerveConfig.MAX_LINEAR_SPEED_IN_S);
                 telemetry.addData("Max Accel (in/s^2)", SwerveConfig.MAX_LINEAR_ACCEL_IN_S2);
                 telemetry.addData("Max Jerk (in/s^3)", SwerveConfig.MAX_LINEAR_JERK_IN_S3);
+
+                telemetry.addLine();
+                telemetry.addData("Smooth X (in/s)", metersToInches(smoothedVelocity.x()));
+                telemetry.addData("Smooth Y (in/s)", metersToInches(smoothedVelocity.y()));
+                telemetry.addData("Smooth W (rad/s)", smoothedVelocity.omega());
+
+                telemetry.addLine();
+                for (int i = 0; i < 4; i++) {
+                    telemetry.addData("Cal M" + i + " OffsetRad", dashboardOffsets[i]);
+                    telemetry.addData("Cal M" + i + " Inverted", dashboardInversions[i]);
+                }
 
                 for (int i = 0; i < drivetrain.modules.length; i++) {
                     SwerveModule module = drivetrain.modules[i];
@@ -158,6 +181,10 @@ public class SwerveSystemCheck extends LinearOpMode {
                     telemetry.addData("M" + i + " SteerPower", module.getLastSteeringPower());
                     telemetry.addData("M" + i + " Current (A)", module.getCurrentAmps());
                     telemetry.addData("M" + i + " Stalled", module.isStalled());
+                    telemetry.addData("M" + i + " RawTargetDeg", rawStates[i].getAngleDegrees());
+                    telemetry.addData("M" + i + " RawTarget (in/s)", metersToInches(rawStates[i].speedMetersPerSecond));
+                    telemetry.addData("M" + i + " OptTargetDeg", optimizedStates[i].getAngleDegrees());
+                    telemetry.addData("M" + i + " OptTarget (in/s)", metersToInches(optimizedStates[i].speedMetersPerSecond));
                 }
 
                 appendCsvRow(runtimeSec, dt, selected, gamepad1.a, commanded, observedVelocity, drivetrain);
@@ -204,14 +231,35 @@ public class SwerveSystemCheck extends LinearOpMode {
                 .append(metersToInches(commanded.x() * maxLinearSpeedMps)).append(',')
                 .append(metersToInches(commanded.y() * maxLinearSpeedMps)).append(',')
                 .append(commanded.omega() * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S).append(',')
+                .append(metersToInches(drivetrain.getLastSmoothedVelocity().x())).append(',')
+                .append(metersToInches(drivetrain.getLastSmoothedVelocity().y())).append(',')
+                .append(drivetrain.getLastSmoothedVelocity().omega()).append(',')
                 .append(metersToInches(observedVelocity.x())).append(',')
                 .append(metersToInches(observedVelocity.y())).append(',')
                 .append(observedVelocity.omega()).append(',')
-                .append(drivetrain.getState());
+                .append(drivetrain.getState()).append(',')
+                .append(drivetrain.getBatteryVoltage());
 
+        for (int i = 0; i < 4; i++) {
+            row.append(',')
+                    .append(dashboardOffsets[i])
+                    .append(',')
+                    .append(dashboardInversions[i]);
+        }
+
+        SwerveModuleState[] rawStates = drivetrain.getLastRawStates();
+        SwerveModuleState[] optimizedStates = drivetrain.getLastOptimizedStates();
         for (int i = 0; i < drivetrain.modules.length; i++) {
             SwerveModule module = drivetrain.modules[i];
             row.append(',')
+                    .append(Math.toDegrees(rawStates[i].angleRadians))
+                    .append(',')
+                    .append(metersToInches(rawStates[i].speedMetersPerSecond))
+                    .append(',')
+                    .append(Math.toDegrees(optimizedStates[i].angleRadians))
+                    .append(',')
+                    .append(metersToInches(optimizedStates[i].speedMetersPerSecond))
+                    .append(',')
                     .append(Math.toDegrees(module.getLastTargetAngleRad()))
                     .append(',')
                     .append(Math.toDegrees(module.getCurrentRotation()))
@@ -259,8 +307,17 @@ public class SwerveSystemCheck extends LinearOpMode {
     private String csvHeader() {
         StringBuilder header = new StringBuilder("runtime_sec,dt_sec,test_name,running,command_scale,");
         header.append("cmd_x_norm,cmd_y_norm,cmd_w_norm,cmd_x_in_s,cmd_y_in_s,cmd_w_rad_s,");
-        header.append("obs_x_in_s,obs_y_in_s,obs_w_rad_s,drive_state");
+        header.append("smooth_x_in_s,smooth_y_in_s,smooth_w_rad_s,");
+        header.append("obs_x_in_s,obs_y_in_s,obs_w_rad_s,drive_state,battery_v");
         for (int i = 0; i < 4; i++) {
+            header.append(",cal_m").append(i).append("_offset_rad");
+            header.append(",cal_m").append(i).append("_inverted");
+        }
+        for (int i = 0; i < 4; i++) {
+            header.append(",m").append(i).append("_raw_target_deg");
+            header.append(",m").append(i).append("_raw_target_in_s");
+            header.append(",m").append(i).append("_opt_target_deg");
+            header.append(",m").append(i).append("_opt_target_in_s");
             header.append(",m").append(i).append("_target_deg");
             header.append(",m").append(i).append("_current_deg");
             header.append(",m").append(i).append("_error_deg");
@@ -276,5 +333,10 @@ public class SwerveSystemCheck extends LinearOpMode {
 
     private double metersToInches(double meters) {
         return meters / 0.0254;
+    }
+
+    private void copyConfigCalibrationIntoDashboard() {
+        dashboardOffsets = SwerveConfig.OFFSETS.clone();
+        dashboardInversions = SwerveConfig.INVERSIONS.clone();
     }
 }

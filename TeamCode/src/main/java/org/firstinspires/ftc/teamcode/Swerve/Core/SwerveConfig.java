@@ -72,15 +72,17 @@ public class SwerveConfig {
     public static double DRIVE_D = 0.0;
 
     // Heading Retention (Maintain Heading)
-    public static double HEADING_P = 1.0;
+    // Disabled by default until tuned on the real robot.
+    public static double HEADING_P = 0.0;
     public static double HEADING_I = 0.0;
-    public static double HEADING_D = 0.05;
+    public static double HEADING_D = 0.0;
     public static double HEADING_LOCK_DELAY_S = 0.1;
 
     // Heading Snap (Intentional Target)
-    public static double SNAP_P = 2.0;
+    // Disabled by default until tuned on the real robot.
+    public static double SNAP_P = 0.0;
     public static double SNAP_I = 0.0;
-    public static double SNAP_D = 0.1;
+    public static double SNAP_D = 0.0;
 
     // ─────────────────────────────────────────────────────────────────────────
     // 6. Hardware Specs & Calibration

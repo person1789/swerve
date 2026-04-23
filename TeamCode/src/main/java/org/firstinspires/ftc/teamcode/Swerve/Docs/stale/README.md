@@ -18,7 +18,8 @@ These files were moved here because they are one or more of:
 
 - `../TeleOpBringupGuide.md`
 - `../SystemCheckOpMode.md`
-- `../AdvancedSettingsGuide.md`
+- `../SwerveConfigGuide.md`
+- `../ArchitectureGuide.md`
 - `../PIDTuningGuide.md`
 - `../LocalTestingGuide.md`
 - `../UnitTestingGuide.md`

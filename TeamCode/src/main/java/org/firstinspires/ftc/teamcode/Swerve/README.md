@@ -1,6 +1,6 @@
-# Superior Swerve Control System
+# Swerve Control System
 
-A high-performance swerve drivetrain library for the FTC control loop.
+A swerve drivetrain library for the FTC control loop.
 
 ## Current focus
 
@@ -29,8 +29,9 @@ Simulator and historical design notes still exist, but they are no longer the ma
 3. Set the odometry offsets and REV hub orientation in `SwerveConfig.java` to match the robot.
 4. Read `docs/TeleOpBringupGuide.md` before the first teleop-only run.
 5. Use `docs/SystemCheckOpMode.md` before pushing speed or blaming PID.
-6. Read `docs/AdvancedSettingsGuide.md` for the current control assumptions.
-7. Read `docs/PIDTuningGuide.md` before tuning any closed-loop behavior.
+6. Read `docs/SwerveConfigGuide.md` for the current configuration assumptions.
+7. Read `docs/ArchitectureGuide.md` for the current control-path layout.
+8. Read `docs/PIDTuningGuide.md` before tuning any closed-loop behavior.
 
 ## Testing and verification
 

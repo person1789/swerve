@@ -13,7 +13,8 @@ If you are trying to get the robot driving, tuning, or diagnosed on real hardwar
 
 ### For configuration and control assumptions
 
-- `AdvancedSettingsGuide.md`
+- `SwerveConfigGuide.md`
+- `ArchitectureGuide.md`
 - `PIDTuningGuide.md`
 
 ### For local development and tests
@@ -54,7 +55,15 @@ Use `SystemCheckOpMode.md` to:
 - run canned forward, strafe, and rotate tests
 - inspect FTC Dashboard telemetry
 - log CSV output
-- pull the CSV off a REV Control Hub or phone-based RC
+- pull the CSV off a REV Control Hub over USB
+
+### Configuration review
+
+Use `SwerveConfigGuide.md` and `ArchitectureGuide.md` to:
+
+- understand which values must match the robot
+- understand the current control path
+- know what to fix before touching PID
 
 ### Tuning
 
