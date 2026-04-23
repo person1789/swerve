@@ -16,6 +16,7 @@ public class Logger {
 
     private Telemetry telemetry;
     private LogLevels state;
+    private boolean previousTogglePressed;
 
     public Logger(Telemetry telemetry) {
         if (SwerveConfig.DASHBOARD_ENABLED) {
@@ -26,6 +27,7 @@ public class Logger {
         this.telemetry.setDisplayFormat(Telemetry.DisplayFormat.HTML);
         this.telemetry.setMsTransmissionInterval(100);
         state = LogLevels.PRODUCTION;
+        previousTogglePressed = false;
     }
 
     public void log(String caption, Object data, LogLevels logLevel) {
@@ -50,7 +52,10 @@ public class Logger {
     }
 
     public void updateLoggingLevel(boolean D_Pad_Right) {
-        if (D_Pad_Right) {
+        boolean togglePressed = D_Pad_Right && !previousTogglePressed;
+        previousTogglePressed = D_Pad_Right;
+
+        if (togglePressed) {
             if (state == LogLevels.PRODUCTION) {
                 state = LogLevels.DEBUG;
                 telemetry.addData("CURRENT LOGGER STATE", state);
@@ -65,6 +70,10 @@ public class Logger {
 
     public void print() {
         telemetry.update();
+    }
+
+    public LogLevels getState() {
+        return state;
     }
 
     public boolean DEBUG() {

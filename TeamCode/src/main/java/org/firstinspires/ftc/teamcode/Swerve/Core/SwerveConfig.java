@@ -100,6 +100,9 @@ public class SwerveConfig {
     /** Time in ms with no input before locking (X-stance). */
     public static double LOCK_DELAY_MS = 200.0;
 
+    /** Whether the drivetrain should automatically enter X-stance while idle. */
+    public static boolean ENABLE_IDLE_X_STANCE = false;
+
     /** Hub Orientation for fallback IMU. */
     public static RevHubOrientationOnRobot.LogoFacingDirection HUB_LOGO_DIR = 
             RevHubOrientationOnRobot.LogoFacingDirection.UP;

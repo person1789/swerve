@@ -30,14 +30,16 @@ public class SwerveAuditor {
 
         for (int i = 0; i < 4; i++) {
             SwerveModuleState state = desiredStates[i].copy();
-            double cosineScale = Math.cos(MathUtil.angleError(currentAnglesRad[i], state.angleRadians));
-            state.speedMetersPerSecond *= Math.max(0, cosineScale);
             double error = MathUtil.angleError(currentAnglesRad[i], state.angleRadians);
 
             if (Math.abs(error) > SwerveConfig.FLIP_THRESHOLD) {
                 state.speedMetersPerSecond *= -1.0;
                 state.angleRadians = MathUtil.normalizeAngle(state.angleRadians + Math.PI);
+                error = MathUtil.angleError(currentAnglesRad[i], state.angleRadians);
             }
+
+            double cosineScale = Math.cos(error);
+            state.speedMetersPerSecond *= Math.max(0, cosineScale);
 
             optimized[i] = state;
             maxFound = Math.max(maxFound, Math.abs(state.speedMetersPerSecond));

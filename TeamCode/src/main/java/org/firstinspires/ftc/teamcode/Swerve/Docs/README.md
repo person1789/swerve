@@ -1,37 +1,43 @@
 # Swerve Library Overview
 
-Welcome to the refactored Swerve codebase. This library provides a high-performance, unit-aware architecture designed for the most demanding FTC game challenges.
+Welcome to the refactored swerve codebase. The architecture is designed to keep drivetrain logic modular, testable, and easier to tune.
 
-## 🚀 Core Features
-- **Unified Vector Math**: All geometry and dynamics use a single, robust `Vector` class.
-- **Fail-Safe Localization**: Triple-redundant fusion of GoBILDA Pinpoint, Internal IMU, and Forward Kinematics.
-- **Unit-Aware Control**: Everything speaks in meters, radians, and seconds—no more "normalized power" guesswork.
-- **Centralized Tuning**: `SwerveConfig` allows real-time tuning of every PID gain and limit via FTC Dashboard.
+## Core Features
 
-## 🕹️ Quick Start for Drivers
+- Unified vector math through `Vector`
+- Pinpoint-plus-IMU-plus-observer localization architecture
+- Centralized tuning in `SwerveConfig`
+- Local JVM tests for pure logic
+- A thin mocked-hardware simulator for drivetrain behavior
+
+## Quick Start For Drivers
 
 ### 1. Heading Calibration
-Press the **Options/Start** button to reset the field-centric heading. "Forward" will now be pointing away from you.
+
+Press the `Options/Start` button to reset the field-centric heading.
 
 ### 2. Cardinal Snapping
-Use the **D-Pad** to snap the robot's heading to 0°, 90°, 180°, or 270° instantly.
+
+Use the D-pad to snap the robot heading to the configured cardinal targets.
 
 ### 3. Precision Control
-The joysticks use non-linear cubic scaling. Use the center of the stick for fine adjustments and the edges for maximum speed.
 
-## 🛠️ Developer Guide
+The input pipeline uses non-linear shaping plus motion smoothing for finer low-speed control.
 
-### Where is the "Brain"?
-- **`SwerveController`**: Handles the logic of what the robot *wants* to do (Heading Hold, Snapping).
-- **`MotionSmoother`**: Handles the physics of how the robot *moves* (Scaling, Accel/Jerk limits).
-- **`SwerveDrivetrain`**: Orchestrates the hardware execution.
+## Developer Guide
 
-### How do I tune?
-Open `Swerve/Core/SwerveConfig.java`. It is organized into:
-- **Geometry**: Wheelbase and trackwidth.
-- **Limits**: Max speed, accel, and jerk.
-- **PID Gains**: Steering and Heading coefficients.
-- **Hardware**: Pinpoint offsets and motor inversions.
+### Where is the brain?
+
+- `SwerveController` handles heading-maintain and snapping decisions.
+- `MotionSmoother` shapes requested motion.
+- `SwerveDrivetrain` coordinates the hardware-facing pipeline.
+
+### What should I read first?
+
+- `AdvancedSettingsGuide.md` for scope and drivetrain assumptions
+- `PIDTuningGuide.md` for loop-by-loop tuning order
+- `UnitTestingGuide.md` for local tests and Gradle tasks
+- `CodebaseAudit.md` for known issues and stale areas
 
 ---
-*Built for performance. Refactored for precision.*
+Built for iteration, tuning, and competition use.

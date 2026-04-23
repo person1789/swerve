@@ -37,11 +37,10 @@ public class SwerveController {
      */
     public Vector update(double vx, double vy, double turn, double currentHeading, double dt) {
 
-        // 1. Apply Component-wise Deadband (on the 3D input vector)
-        Vector input = MathUtil.applyDeadband(new Vector(vx, vy, turn), SwerveConfig.INPUT_DEADBAND);
-        double dvx = input.x();
-        double dvy = input.y();
-        double dturn = input.omega();
+        // 1. Apply Component-wise Deadband without allocating a temporary vector.
+        double dvx = Math.abs(vx) < SwerveConfig.INPUT_DEADBAND ? 0.0 : vx;
+        double dvy = Math.abs(vy) < SwerveConfig.INPUT_DEADBAND ? 0.0 : vy;
+        double dturn = Math.abs(turn) < SwerveConfig.INPUT_DEADBAND ? 0.0 : turn;
 
         if (Math.abs(dturn) > 1e-6) {
             isSnapping = false;
@@ -49,7 +48,7 @@ public class SwerveController {
         }
 
         // 2. Heading Retention Logic
-        boolean isMoving = input.magnitude() > 1e-6;
+        boolean isMoving = (dvx * dvx) + (dvy * dvy) + (dturn * dturn) > 1e-12;
         boolean isTurning = Math.abs(dturn) > 1e-6;
 
         double calculatedTurn;

@@ -54,10 +54,13 @@ public class SwerveLocalizer {
             y = pos.getY(DistanceUnit.INCH);
             headingOffset = masterPose.omega() - imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
         } else {
+            if (pinpointPreviouslyHealthy) {
+                headingOffset = masterPose.omega() - imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            }
             heading = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS) + headingOffset;
             Vector worldVelocity = observedVelocity.rotate(masterPose.omega());
-            x = masterPose.x() + worldVelocity.x() * dt;
-            y = masterPose.y() + worldVelocity.y() * dt;
+            x = masterPose.x() + metersToInches(worldVelocity.x()) * dt;
+            y = masterPose.y() + metersToInches(worldVelocity.y()) * dt;
         }
 
         masterPose = new Vector(x, y, heading);
@@ -73,10 +76,20 @@ public class SwerveLocalizer {
     }
 
     public void resetHeading() {
-        odo.resetPosAndIMU();
+        Pose2D currentPos = odo.getPosition();
+        double x = masterPose.x();
+        double y = masterPose.y();
+
+        if (currentPos != null) {
+            x = currentPos.getX(DistanceUnit.INCH);
+            y = currentPos.getY(DistanceUnit.INCH);
+        }
+
         imu.resetYaw();
+        odo.setPosition(new Pose2D(DistanceUnit.INCH, x, y, AngleUnit.RADIANS, 0.0));
         headingOffset = 0.0;
-        masterPose = new Vector(masterPose.x(), masterPose.y(), 0);
+        masterPose = new Vector(x, y, 0.0);
+        pinpointPreviouslyHealthy = (odo.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY);
     }
 
     public void setPose(Vector pose) {
@@ -85,5 +98,9 @@ public class SwerveLocalizer {
         odo.setPosition(new Pose2D(DistanceUnit.INCH, pose.x(), pose.y(), AngleUnit.RADIANS, pose.omega()));
         // Note: IMU doesn't support setting an arbitrary yaw, only resetting to 0.
         // The masterPose will track the offset internally.
+    }
+
+    private double metersToInches(double meters) {
+        return meters / 0.0254;
     }
 }

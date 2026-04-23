@@ -1,6 +1,6 @@
 # Swerve System Architecture
 
-This library follows a strict **Input -> Brain -> Pipeline -> Hardware** abstraction hierarchy. The entire system is built on a unified **Vector domain language**, ensuring that every component speaks the same mathematical "language" (m/s, rad/s) without unit conversion errors.
+This library follows a strict **Input -> Brain -> Pipeline -> Hardware** abstraction hierarchy. The system is designed around a unified **Vector domain language** to reduce unit conversion mistakes and keep drivetrain logic modular.
 
 ## 1. Input Layer (`Swerve.Input`)
 - **Responsibility**: Processes raw driver intent into physically achievable velocity commands.

@@ -11,6 +11,8 @@ import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveModule;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Control.SwerveController;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 
 class SwerveSimulator {
     private static final double TRACK_WIDTH_METERS = SwerveConfig.TRACK_WIDTH_IN * 0.0254;
@@ -20,9 +22,11 @@ class SwerveSimulator {
     private final SwerveModule[] modules;
     private final SwerveDrivetrain drivetrain;
     private final SwerveController controller;
+    private final SwerveKinematics kinematics;
 
     private final BrowserGamepadState gamepadState = new BrowserGamepadState();
     private Vector pose = new Vector(0.0, 0.0, 0.0);
+    private Vector actualVelocity = new Vector(0.0, 0.0, 0.0);
     private boolean lastResetHeading;
     private String activeSnap = "none";
 
@@ -46,6 +50,7 @@ class SwerveSimulator {
 
         drivetrain = new SwerveDrivetrain(modules, () -> 12.4, null);
         controller = new SwerveController();
+        kinematics = new SwerveKinematics();
     }
 
     synchronized void updateInput(BrowserGamepadState incoming) {
@@ -68,19 +73,23 @@ class SwerveSimulator {
         applyHeadingReset();
 
         double heading = pose.omega();
-        double vx = -gamepadState.leftY * SwerveConfig.MAX_SPEED_MPS;
-        double vy = -gamepadState.leftX * SwerveConfig.MAX_SPEED_MPS;
-        double turn = -gamepadState.rightX * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S;
+        double vx = -gamepadState.leftY;
+        double vy = -gamepadState.leftX;
+        double turn = -gamepadState.rightX;
 
-        Vector rawTranslation = new Vector(vx, vy).rotate(-heading);
-        Vector chassisSpeeds = controller.update(rawTranslation.x(), rawTranslation.y(), turn, heading, dtSeconds);
+        double cos = Math.cos(-heading);
+        double sin = Math.sin(-heading);
+        double rawTranslationX = vx * cos - vy * sin;
+        double rawTranslationY = vx * sin + vy * cos;
+
+        Vector chassisSpeeds = controller.update(rawTranslationX, rawTranslationY, turn, heading, dtSeconds);
         drivetrain.setVelocity(chassisSpeeds, dtSeconds);
 
         for (MockSwerveModuleIO io : moduleIo) {
             io.step(dtSeconds);
         }
 
-        Vector actualVelocity = drivetrain.getActualVelocity();
+        actualVelocity = currentVelocityFromModules();
         Vector worldVelocity = new Vector(actualVelocity.x(), actualVelocity.y()).rotate(heading);
         pose = new Vector(
                 pose.x() + worldVelocity.x() * dtSeconds,
@@ -97,7 +106,7 @@ class SwerveSimulator {
         state.put("snapTargetRadians", controller.getTargetHeading());
         state.put("activeSnap", activeSnap);
         state.put("gamepadConnected", gamepadState.connected);
-        state.put("actualVelocity", velocityMap(drivetrain.getActualVelocity()));
+        state.put("actualVelocity", velocityMap(actualVelocity));
         state.put("modules", moduleMaps());
         return state;
     }
@@ -144,6 +153,14 @@ class SwerveSimulator {
         velocityMap.put("omega", velocity.omega());
         velocityMap.put("linearSpeed", Math.hypot(velocity.x(), velocity.y()));
         return velocityMap;
+    }
+
+    private Vector currentVelocityFromModules() {
+        SwerveModuleState[] currentStates = new SwerveModuleState[modules.length];
+        for (int i = 0; i < modules.length; i++) {
+            currentStates[i] = modules[i].getCurrentState();
+        }
+        return kinematics.forwardKinematics(currentStates);
     }
 
     private List<Map<String, Object>> moduleMaps() {

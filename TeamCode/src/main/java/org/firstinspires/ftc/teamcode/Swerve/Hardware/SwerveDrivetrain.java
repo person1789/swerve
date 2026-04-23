@@ -79,6 +79,14 @@ public class SwerveDrivetrain {
         boolean hasInput = driverTarget.magnitude() > 0.01;
         Vector chassisVelocity = smoother.smooth(driverTarget, dt);
 
+        if (!SwerveConfig.ENABLE_IDLE_X_STANCE) {
+            state = States.DRIVING;
+            lockTimerMs = 0.0;
+            driveWithPipeline(chassisVelocity, dt);
+            performHealthSystemScan();
+            return;
+        }
+
         switch (state) {
             case DRIVING:
                 driveWithPipeline(chassisVelocity, dt);
@@ -176,5 +184,9 @@ public class SwerveDrivetrain {
 
     public States getState() {
         return state;
+    }
+
+    public void resetSmoother() {
+        smoother.reset();
     }
 }

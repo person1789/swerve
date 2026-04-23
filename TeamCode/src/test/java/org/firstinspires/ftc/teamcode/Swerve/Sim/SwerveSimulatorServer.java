@@ -7,11 +7,10 @@ import fi.iki.elonen.NanoHTTPD;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -64,10 +63,34 @@ public class SwerveSimulatorServer extends NanoHTTPD {
     }
 
     private byte[] readRequestBody(IHTTPSession session) throws Exception {
-        Map<String, String> files = new HashMap<>();
-        session.parseBody(files);
-        String path = files.get("postData");
-        return path == null ? new byte[0] : Files.readAllBytes(Paths.get(path));
+        int contentLength = 0;
+        String header = session.getHeaders().get("content-length");
+        if (header != null) {
+            try {
+                contentLength = Integer.parseInt(header);
+            } catch (NumberFormatException ignored) {
+                contentLength = 0;
+            }
+        }
+
+        if (contentLength <= 0) {
+            return new byte[0];
+        }
+
+        byte[] body = new byte[contentLength];
+        InputStream input = session.getInputStream();
+        int offset = 0;
+        while (offset < contentLength) {
+            int read = input.read(body, offset, contentLength - offset);
+            if (read < 0) {
+                break;
+            }
+            offset += read;
+        }
+        if (offset == body.length) {
+            return body;
+        }
+        return new String(body, 0, offset, StandardCharsets.UTF_8).getBytes(StandardCharsets.UTF_8);
     }
 
     private byte[] loadIndexHtml() throws IOException {

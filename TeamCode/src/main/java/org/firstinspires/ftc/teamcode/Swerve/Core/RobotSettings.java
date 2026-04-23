@@ -16,11 +16,22 @@ import java.io.IOException;
 
 @Config
 public class RobotSettings {
-    public enum Alliance{
-        RED(new Pose2D(DistanceUnit.METER, 131, 128, AngleUnit.DEGREES, 136.4)),
-        BLUE (new Pose2D(DistanceUnit.METER, 131, 128, AngleUnit.DEGREES, 136.4));
+    private static final double FIELD_SIZE_IN = 144.0;
+    private static final double RED_GOAL_X_IN = 131.0;
+    private static final double RED_GOAL_Y_IN = 128.0;
+    private static final double RED_GOAL_HEADING_DEG = 136.4;
+    private static final double CLOSE_RED_X_IN = 120.0;
+    private static final double CLOSE_RED_Y_IN = 127.87;
+    private static final double CLOSE_RED_HEADING_DEG = 319.6;
+    private static final double FAR_RED_X_IN = 89.0;
+    private static final double FAR_RED_Y_IN = 8.0;
+    private static final double FAR_RED_HEADING_DEG = 0.0;
 
-        private Pose2D pose2D;
+    public enum Alliance{
+        RED(poseInches(RED_GOAL_X_IN, RED_GOAL_Y_IN, RED_GOAL_HEADING_DEG)),
+        BLUE(mirrorAcrossFieldY(RED_GOAL_X_IN, RED_GOAL_Y_IN, RED_GOAL_HEADING_DEG));
+
+        private final Pose2D pose2D;
 
         Alliance(Pose2D pos) {
             this.pose2D = pos;
@@ -32,12 +43,12 @@ public class RobotSettings {
     }
 
     public enum StartPos{
-        CLOSE_RED (new Pose2D(DistanceUnit.INCH,120 ,127.87, AngleUnit.DEGREES, 319.6)),
-        FAR_RED (new Pose2D(DistanceUnit.INCH, 89, 8, AngleUnit.DEGREES, 0)),
-        CLOSE_BLUE (new Pose2D(DistanceUnit.INCH, -1.419,-1.224, AngleUnit.DEGREES, 319.6)),
-        FAR_BLUE((new Pose2D(DistanceUnit.INCH, 89, 8, AngleUnit.DEGREES, 0)));
+        CLOSE_RED(poseInches(CLOSE_RED_X_IN, CLOSE_RED_Y_IN, CLOSE_RED_HEADING_DEG)),
+        FAR_RED(poseInches(FAR_RED_X_IN, FAR_RED_Y_IN, FAR_RED_HEADING_DEG)),
+        CLOSE_BLUE(mirrorAcrossFieldY(CLOSE_RED_X_IN, CLOSE_RED_Y_IN, CLOSE_RED_HEADING_DEG)),
+        FAR_BLUE(mirrorAcrossFieldY(FAR_RED_X_IN, FAR_RED_Y_IN, FAR_RED_HEADING_DEG));
 
-        private Pose2D pose2D;
+        private final Pose2D pose2D;
 
         StartPos(Pose2D pos) {
             this.pose2D = pos;
@@ -70,7 +81,8 @@ public class RobotSettings {
         File file = AppUtil.getInstance().getSettingsFile(FILENAME);
         Gson gson = new Gson();
         try (FileReader reader = new FileReader(file)) {
-            return gson.fromJson(reader, RobotSettings.class);
+            RobotSettings loaded = gson.fromJson(reader, RobotSettings.class);
+            return sanitize(loaded);
         } catch (IOException e) {
             // If file not found or error, return default settings
             return new RobotSettings();
@@ -80,6 +92,36 @@ public class RobotSettings {
     public RobotSettings () {
         alliance = Alliance.RED;
         startPosState = StartPos.CLOSE_RED;
+    }
+
+    private static Pose2D poseInches(double x, double y, double headingDeg) {
+        return new Pose2D(DistanceUnit.INCH, x, y, AngleUnit.DEGREES, headingDeg);
+    }
+
+    private static Pose2D mirrorAcrossFieldY(double x, double y, double headingDeg) {
+        return poseInches(x, FIELD_SIZE_IN - y, mirrorHeadingDegrees(headingDeg));
+    }
+
+    private static double mirrorHeadingDegrees(double headingDeg) {
+        double mirrored = -headingDeg;
+        while (mirrored <= -180.0) {
+            mirrored += 360.0;
+        }
+        while (mirrored > 180.0) {
+            mirrored -= 360.0;
+        }
+        return mirrored;
+    }
+
+    private static RobotSettings sanitize(RobotSettings loaded) {
+        RobotSettings safe = loaded != null ? loaded : new RobotSettings();
+        if (safe.alliance == null) {
+            safe.alliance = Alliance.RED;
+        }
+        if (safe.startPosState == null) {
+            safe.startPosState = StartPos.CLOSE_RED;
+        }
+        return safe;
     }
 
 }

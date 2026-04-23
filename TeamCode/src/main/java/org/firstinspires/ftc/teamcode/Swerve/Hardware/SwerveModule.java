@@ -139,17 +139,17 @@ public class SwerveModule {
         String prefix = "Mod" + index + " ";
 
         // Steering Performance
-        logger.log(prefix + "TargetDeg", Math.toDegrees(lastTargetAngleRad), Logger.LogLevels.PRODUCTION);
-        logger.log(prefix + "CurrentDeg", Math.toDegrees(getCurrentRotation()), Logger.LogLevels.PRODUCTION);
+        logger.log(prefix + "TargetDeg", Math.toDegrees(lastTargetAngleRad), Logger.LogLevels.DEBUG);
+        logger.log(prefix + "CurrentDeg", Math.toDegrees(getCurrentRotation()), Logger.LogLevels.DEBUG);
 
         // Drive Performance
-        logger.log(prefix + "TargetVelMps", lastTargetVelocityMps, Logger.LogLevels.PRODUCTION);
-        logger.log(prefix + "ActualVelMps", getVelocityMps(), Logger.LogLevels.PRODUCTION);
-        logger.log(prefix + "DrivePower", lastDrivePower, Logger.LogLevels.PRODUCTION);
+        logger.log(prefix + "TargetVelMps", lastTargetVelocityMps, Logger.LogLevels.DEBUG);
+        logger.log(prefix + "ActualVelMps", getVelocityMps(), Logger.LogLevels.DEBUG);
+        logger.log(prefix + "DrivePower", lastDrivePower, Logger.LogLevels.DEBUG);
         logger.log(prefix + "SteerPower", lastSteeringPower, Logger.LogLevels.DEBUG);
 
         // Hardware Health & Calibration
-        logger.log(prefix + "CurrentAmps", getCurrentAmps(), Logger.LogLevels.PRODUCTION);
+        logger.log(prefix + "CurrentAmps", getCurrentAmps(), Logger.LogLevels.DEBUG);
 
         if (isStalled())
             logger.log(prefix + "HEALTH_ALARM", 1.0, Logger.LogLevels.PRODUCTION);

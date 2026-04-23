@@ -15,18 +15,14 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
 @Autonomous
 public class Auto extends LinearOpMode {
     private Follower follower;
-    private Timer pathTimer, actionTimer, opmodeTimer;
+    private Timer pathTimer, opmodeTimer;
 
     private int pathState;
 
-    private final Pose startPose = new Pose(13, 131, Math.toRadians(0)); //TODO: What is the length of the robot
-    private final Pose scorePose = new Pose(13, 85, Math.toRadians(0)); // Scoring Pose of our robot. It is facing the goal at a 135 degree angle.
-    private final Pose pickup1Pose = new Pose(37, 121, Math.toRadians(0)); // Highest (First Set) of Artifacts from the Spike Mark.
-    private final Pose pickup2Pose = new Pose(43, 130, Math.toRadians(0)); // Middle (Second Set) of Artifacts from the Spike Mark.
-    private final Pose pickup3Pose = new Pose(49, 135, Math.toRadians(0)); // Lowest (Third Set) of Artifacts from the Spike Mark.
+    private final Pose startPose = new Pose(13, 131, Math.toRadians(0));
+    private final Pose scorePose = new Pose(13, 85, Math.toRadians(0));
 
     private Path scorePreload;
-    private PathChain grabPickup1, scorePickup1, grabPickup2, scorePickup2, grabPickup3, scorePickup3;
 
     public void buildPaths() {
         scorePreload = new Path(new BezierLine(startPose, scorePose));
@@ -73,7 +69,7 @@ public class Auto extends LinearOpMode {
             telemetry.update();
         }
 
-        PoseStorage.currentPose = follower.getPose();
+        PoseStorage.setFromPedroPose(follower.getPose());
     }
 }
 

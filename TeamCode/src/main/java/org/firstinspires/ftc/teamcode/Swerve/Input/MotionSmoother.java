@@ -31,14 +31,14 @@ public class MotionSmoother {
     public Vector smooth(Vector target, double dt) {
         if (dt <= 0) return currentVelocity;
 
-        // 1. Apply Non-Linear Input Curves (Sensitivity Tuning)
-        Vector curvedTarget = applyInputCurves(target);
+        // 1. Shape normalized driver input, then convert into physical chassis targets.
+        Vector physicalTarget = toPhysicalTarget(applyInputCurves(target));
 
         double[] nextVel = new double[3];
         double[] nextAccel = new double[3];
 
         for (int i = 0; i < 3; i++) {
-            double targetVal = curvedTarget.get(i);
+            double targetVal = physicalTarget.get(i);
             double lastTargetVal = lastTarget.get(i);
             double currentVel = currentVelocity.get(i);
             double currentAccelVal = currentAcceleration.get(i);
@@ -66,7 +66,7 @@ public class MotionSmoother {
 
         currentVelocity = new Vector(nextVel);
         currentAcceleration = new Vector(nextAccel);
-        lastTarget = curvedTarget;
+        lastTarget = physicalTarget;
 
         return currentVelocity;
     }
@@ -88,6 +88,13 @@ public class MotionSmoother {
         } else {
             return new Vector(0, 0, scaleValue(raw.omega()));
         }
+    }
+
+    private Vector toPhysicalTarget(Vector normalizedTarget) {
+        return new Vector(
+                normalizedTarget.x() * SwerveConfig.MAX_SPEED_MPS,
+                normalizedTarget.y() * SwerveConfig.MAX_SPEED_MPS,
+                normalizedTarget.omega() * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S);
     }
 
     private double scaleValue(double input) {

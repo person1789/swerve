@@ -1,30 +1,36 @@
 # Superior Swerve Control System
 
-A high-performance, high-fidelity swerve drivetrain library optimized for the 20ms FTC control loop. 
+A high-performance swerve drivetrain library for the FTC control loop.
 
-## 🚀 Key Features
-- **Second-Order Discretization**: Advanced kinematics that account for curved paths during high-speed rotation-translation.
-- **Physics Feedforward**: Full $V = kS + kV \cdot v + kA \cdot a$ modeling for precise voltage-based motor response.
-- **Hardware Health Monitoring**: Real-time current sensing and stall detection to protect motors and sensors.
-- **Velocity Observer**: Fused encoder feedback providing a secondary source of truth for chassis velocity.
-- **S-Curve Motion Smoothing**: Jerk-limited acceleration profiles for premium, vibration-free robot motion.
+## Key Features
 
-## 📁 System Architecture
-- **[Hardware](Hardware/)**: Drivers for GoBILDA motors, Pinpoint odometry, and absolute encoders.
-- **[Logic](Logic/)**: Core mathematical engines for kinematics, localization, and feedback observers.
-- **[Geometry](Geometry/)**: Native vector and pose representations optimized for planar geometry.
-- **[Input](Input/)**: Joystick scaling, deadbanding, and temporal filtering (LPF).
-- **[Docs](Docs/)**: Comprehensive guides for tuning, diagnostics, and testing.
+- Second-order kinematics for combined translation and rotation
+- Open-loop drive power with encoder-based velocity observation
+- Local steering PID at each module
+- Jerk-limited motion smoothing
+- Browser-based mocked-hardware simulator for drivetrain logic
 
-## 🛠️ Getting Started
-1. **Initialize Hardware**: Map your motors and servos in `HWMap.java`.
-2. **Calibrate Offsets**: Set your absolute encoder zero-points in `SwerveConfig.java`.
-3. **Tuning**: Follow the [Advanced Settings Guide](Docs/AdvancedSettingsGuide.md) to tune your Physics Feedforward and LPF gains.
+## System Architecture
 
-## 🧪 Testing and Verification
-The system includes a robust JUnit test suite located in `src/test/java`.
-- Run `AdvancedSystemTest.java` to verify kinematics and physics math.
-- Run `FinalPolishTest.java` to verify basic logic stability.
+- `Hardware/`: motors, encoders, Pinpoint, and drivetrain orchestration
+- `Logic/`: control, kinematics, localization, and observers
+- `Geometry/`: vector and pose math types
+- `Input/`: driver input shaping and smoothing
+- `docs/`: tuning, simulation, testing, and audit docs
+
+## Getting Started
+
+1. Initialize hardware in `HWMap.java`.
+2. Calibrate module offsets in `SwerveConfig.java`.
+3. Read `docs/AdvancedSettingsGuide.md` for the current control-scope assumptions.
+4. Read `docs/PIDTuningGuide.md` before tuning any closed-loop behavior.
+
+## Testing And Verification
+
+The repo includes local JVM tests under `src/test/java`.
+
+- Use `docs/UnitTestingGuide.md` for test structure and Gradle details.
+- Use `docs/Simulator.md` to run the mocked-hardware drivetrain simulator.
 
 ---
-*Built for excellence in competition robotics.*
+Built for competition robotics and ongoing iteration.

@@ -78,4 +78,22 @@ class SwerveKinematicsAndAuditorTest {
         assertEquals(0.0, optimized[0].angleRadians, 1e-9);
         assertEquals(0.0, optimized[1].speedMetersPerSecond, 1e-9);
     }
+
+    @Test
+    void auditorFlipPreservesDriveIntentByInvertingSpeed() {
+        // Passes if a near-180-degree steering request becomes a negative wheel-speed command at the shorter steering angle instead of collapsing to zero speed.
+        SwerveAuditor auditor = new SwerveAuditor();
+        SwerveModuleState[] desired = {
+                new SwerveModuleState(1.0, Math.PI),
+                new SwerveModuleState(1.0, 0.0),
+                new SwerveModuleState(1.0, 0.0),
+                new SwerveModuleState(1.0, 0.0)
+        };
+        double[] currentAngles = {0.0, 0.0, 0.0, 0.0};
+
+        SwerveModuleState[] optimized = auditor.optimize(desired, currentAngles);
+
+        assertEquals(0.0, optimized[0].angleRadians, 1e-9);
+        assertEquals(-1.0, optimized[0].speedMetersPerSecond, 1e-9);
+    }
 }

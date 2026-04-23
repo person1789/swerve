@@ -9,6 +9,15 @@ import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
 import org.firstinspires.ftc.teamcode.Swerve.Core.RobotSettings;
 
 @Config
+@Deprecated
+/**
+ * Legacy Pinpoint wrapper retained for older experiments.
+ *
+ * The active teleop/localization path uses {@code SwerveLocalizer} directly.
+ * This class is therefore redundant for the current driver-control stack and
+ * should not be used for new code without first reconciling its unit and reset
+ * semantics.
+ */
 public class Pinpoint {
 
     GoBildaPinpointDriver odo;
@@ -45,7 +54,7 @@ public class Pinpoint {
 
     public void updateHeadingOnly() {
         odo.update(GoBildaPinpointDriver.ReadData.ONLY_UPDATE_HEADING);
-        heading = Math.toDegrees(odo.getHeading(AngleUnit.DEGREES));
+        heading = odo.getHeading(AngleUnit.DEGREES);
     }
 
     public Pose2D getPos() {
@@ -67,12 +76,18 @@ public class Pinpoint {
     }
 
     public void resetIMU() {
-        odo.setPosition(new Pose2D(DistanceUnit.INCH, 89, 8, AngleUnit.DEGREES, 0));
+        Pose2D current = pos != null ? pos : odo.getPosition();
+        double currentX = current != null ? current.getX(DistanceUnit.INCH) : x;
+        double currentY = current != null ? current.getY(DistanceUnit.INCH) : y;
+        odo.setPosition(new Pose2D(DistanceUnit.INCH, currentX, currentY, AngleUnit.DEGREES, 0));
+        heading = 0.0;
+        x = currentX;
+        y = currentY;
     }
 
 
     public double getGoalDistance() {
-        return Math.sqrt(Math.pow((robotSettings.alliance.getGoalPos().getX(DistanceUnit.METER) - x), 2) + Math.pow((robotSettings.alliance.getGoalPos().getY(DistanceUnit.METER) - y), 2));
+        return distanceToGoalInches(x, y, robotSettings.alliance.getGoalPos());
     }
 
     public void setPosition(Pose2D pose2D) {
@@ -82,18 +97,26 @@ public class Pinpoint {
 
 
     public double getHeadingErrorTrig() {
-        double targetAngle;
-        targetAngle = Math.toDegrees(Math.atan2((robotSettings.alliance.getGoalPos().getY(DistanceUnit.METER) - y), (robotSettings.alliance.getGoalPos().getX(DistanceUnit.METER) - x)));
+        return headingErrorToGoalDegrees(x, y, heading, robotSettings.alliance.getGoalPos());
+    }
 
-        double error = targetAngle - heading;
+    static double distanceToGoalInches(double robotXInches, double robotYInches, Pose2D goalPose) {
+        double dx = goalPose.getX(DistanceUnit.INCH) - robotXInches;
+        double dy = goalPose.getY(DistanceUnit.INCH) - robotYInches;
+        return Math.hypot(dx, dy);
+    }
 
-        if(error <= -180) {
+    static double headingErrorToGoalDegrees(double robotXInches, double robotYInches, double robotHeadingDegrees, Pose2D goalPose) {
+        double targetAngle = Math.toDegrees(Math.atan2(
+                goalPose.getY(DistanceUnit.INCH) - robotYInches,
+                goalPose.getX(DistanceUnit.INCH) - robotXInches));
+
+        double error = targetAngle - robotHeadingDegrees;
+        if (error <= -180) {
             error += 360;
-        }
-        else if (error >= 180) {
+        } else if (error >= 180) {
             error -= 360;
         }
-
         return error;
     }
 

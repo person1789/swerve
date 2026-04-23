@@ -12,6 +12,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
 import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Control.SwerveController;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Localization.SwerveLocalizer;
@@ -29,6 +30,7 @@ public class MainTeleOp extends LinearOpMode {
     private HWMap hwMap;
     private GamepadEx gamepadE1;
     private ElapsedTime timer = new ElapsedTime();
+    private boolean previousStartPressed;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -44,15 +46,14 @@ public class MainTeleOp extends LinearOpMode {
         swerveDrivetrain = new SwerveDrivetrain(hwMap, logger);
         swerveController = new SwerveController();
 
-        if (PoseStorage.currentPose != null) {
-            localizer.setPose(new Vector(
-                    PoseStorage.currentPose.getX(),
-                    PoseStorage.currentPose.getY(),
-                    PoseStorage.currentPose.getHeading()));
+        Pose storedPose = PoseStorage.getCurrentPose();
+        if (storedPose != null) {
+            localizer.setPose(storedPose.toVector());
         }
 
         waitForStart();
         timer.reset();
+        previousStartPressed = false;
 
         while (opModeIsActive()) {
             double dt = timer.seconds();
@@ -60,9 +61,11 @@ public class MainTeleOp extends LinearOpMode {
 
             // 1. Update Input Handling
             logger.updateLoggingLevel(gamepadE1.getButton(GamepadKeys.Button.LEFT_BUMPER));
-            if (gamepadE1.getButton(GamepadKeys.Button.START)) {
+            boolean startPressed = gamepadE1.getButton(GamepadKeys.Button.START);
+            if (startPressed && !previousStartPressed) {
                 localizer.resetHeading();
             }
+            previousStartPressed = startPressed;
 
             // 2. Localization (Fail-Safe Fusion)
             localizer.update(swerveDrivetrain.getActualVelocity(), dt);
@@ -77,12 +80,15 @@ public class MainTeleOp extends LinearOpMode {
             double turn = -gamepad1.right_stick_x;
 
             // Rotate translation to be field-centric
-            Vector rawTranslation = new Vector(vx, vy).rotate(-heading);
+            double cos = Math.cos(-heading);
+            double sin = Math.sin(-heading);
+            double rawTranslationX = vx * cos - vy * sin;
+            double rawTranslationY = vx * sin + vy * cos;
 
             // 4. Run Control Brain (Heading Hold / Snap)
             Vector chassisSpeeds = swerveController.update(
-                    rawTranslation.x(),
-                    rawTranslation.y(),
+                    rawTranslationX,
+                    rawTranslationY,
                     turn,
                     heading,
                     dt);

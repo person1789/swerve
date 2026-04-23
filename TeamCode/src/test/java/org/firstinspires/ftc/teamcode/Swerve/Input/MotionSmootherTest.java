@@ -3,10 +3,21 @@ package org.firstinspires.ftc.teamcode.Swerve.Input;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class MotionSmootherTest {
+
+    private final double originalMaxSpeed = SwerveConfig.MAX_SPEED_MPS;
+    private final double originalMaxOmega = SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S;
+
+    @AfterEach
+    void restoreConfig() {
+        SwerveConfig.MAX_SPEED_MPS = originalMaxSpeed;
+        SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S = originalMaxOmega;
+    }
 
     @Test
     void setLimitsConstrainsAccelerationDuringRampUp() {
@@ -59,5 +70,20 @@ class MotionSmootherTest {
         assertEquals(0.0, result.x(), 1e-9);
         assertEquals(0.0, result.y(), 1e-9);
         assertTrue(result.omega() > 0.0);
+    }
+
+    @Test
+    void fullScaleInputMapsToConfiguredPhysicalLimits() {
+        // Passes if full stick commands are converted into the configured physical translation and rotation limits before smoothing.
+        SwerveConfig.MAX_SPEED_MPS = 2.0;
+        SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S = 5.0;
+        MotionSmoother smoother = new MotionSmoother();
+        smoother.setLimits(1000.0, 1000.0);
+
+        Vector result = smoother.smooth(new Vector(1.0, 0.0, 1.0), 0.1);
+
+        assertEquals(2.0, result.x(), 1e-9);
+        assertEquals(0.0, result.y(), 1e-9);
+        assertEquals(5.0, result.omega(), 1e-9);
     }
 }
