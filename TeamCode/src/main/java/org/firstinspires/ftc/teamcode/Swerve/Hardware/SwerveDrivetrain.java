@@ -80,6 +80,7 @@ public class SwerveDrivetrain {
     public void setVelocity(Vector driverTarget, double dt) {
         velocityObserver.update(modules);
         lastDriverTarget = driverTarget;
+        kinematics.setLoopTimeSec(dt);
 
         boolean hasInput = driverTarget.magnitude() > 0.01;
         Vector chassisVelocity = smoother.smooth(driverTarget, dt);

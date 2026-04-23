@@ -11,6 +11,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
+import org.firstinspires.ftc.teamcode.Swerve.Core.LoopTimeEstimator;
 import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
@@ -30,6 +31,7 @@ public class MainTeleOp extends LinearOpMode {
     private HWMap hwMap;
     private GamepadEx gamepadE1;
     private ElapsedTime timer = new ElapsedTime();
+    private final LoopTimeEstimator loopTimeEstimator = new LoopTimeEstimator();
     private boolean previousStartPressed;
 
     @Override
@@ -54,11 +56,13 @@ public class MainTeleOp extends LinearOpMode {
 
         waitForStart();
         timer.reset();
+        loopTimeEstimator.reset();
         previousStartPressed = false;
 
         while (opModeIsActive()) {
-            double dt = timer.seconds();
+            double measuredDt = timer.seconds();
             timer.reset();
+            double dt = loopTimeEstimator.update(measuredDt);
 
             // 1. Update Input Handling
             logger.updateLoggingLevel(gamepadE1.getButton(GamepadKeys.Button.LEFT_BUMPER));

@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.internal.system.AppUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
+import org.firstinspires.ftc.teamcode.Swerve.Core.LoopTimeEstimator;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
@@ -49,6 +50,7 @@ public class SwerveSystemCheck extends LinearOpMode {
 
     private final ElapsedTime loopTimer = new ElapsedTime();
     private final ElapsedTime runtimeTimer = new ElapsedTime();
+    private final LoopTimeEstimator loopTimeEstimator = new LoopTimeEstimator();
 
     private int selectedIndex = 0;
     private boolean previousLeftBumper;
@@ -83,16 +85,15 @@ public class SwerveSystemCheck extends LinearOpMode {
         waitForStart();
         loopTimer.reset();
         runtimeTimer.reset();
+        loopTimeEstimator.reset();
         copyConfigCalibrationIntoDashboard();
         startCsvLogging();
 
         try {
             while (opModeIsActive()) {
-                double dt = loopTimer.seconds();
+                double measuredDt = loopTimer.seconds();
                 loopTimer.reset();
-                if (dt <= 0.0) {
-                    dt = 0.02;
-                }
+                double dt = loopTimeEstimator.update(measuredDt);
 
                 if (gamepad1.left_bumper && !previousLeftBumper) {
                     selectedIndex = (selectedIndex - 1 + TestCase.values().length) % TestCase.values().length;
