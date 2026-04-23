@@ -49,8 +49,28 @@ dependencies {
     testImplementation "org.mockito:mockito-core:5.13.0"
     testRuntimeOnly "org.junit.jupiter:junit-jupiter-engine:${junitVersion}"
     testImplementation 'org.java-websocket:Java-WebSocket:1.6.0'
+    testImplementation 'org.nanohttpd:nanohttpd:2.3.1'
     implementation 'org.ftclib.ftclib:core:2.1.1' // core
     annotationProcessor files('lib/OpModeAnnotationProcessor.jar')
     implementation 'com.fasterxml.jackson.core:jackson-databind:2.12.7'
     implementation 'org.jetbrains.kotlin:kotlin-stdlib:1.4.21'
+}
+
+tasks.register("runSwerveSimulator", JavaExec) {
+    dependsOn("compileDebugJavaWithJavac", "compileDebugUnitTestJavaWithJavac", "processDebugUnitTestJavaRes")
+    mainClass = "org.firstinspires.ftc.teamcode.Swerve.Sim.SwerveSimulatorServer"
+    doFirst {
+        def compileTask = tasks.named("compileDebugUnitTestJavaWithJavac").get()
+        def compileClasspath = []
+        if (compileTask.hasProperty("classpath") && compileTask.classpath != null) {
+            compileClasspath = compileTask.classpath.files
+        }
+        setClasspath(project.files(
+                compileClasspath,
+                "$buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
+                "$buildDir/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes",
+                "$buildDir/intermediates/java_res/debug/processDebugJavaRes/out",
+                "$buildDir/intermediates/java_res/debugUnitTest/processDebugUnitTestJavaRes/out"
+        ))
+    }
 }

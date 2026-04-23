@@ -21,9 +21,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
  */
 public class SwerveModule {
 
-    private final DcMotorEx driveMotor;
-    private final CRServo steerServo;
-    private final AnalogInput encoder;
+    private final SwerveModuleIO io;
     private final Logger logger;
 
     private double offset;
@@ -32,6 +30,7 @@ public class SwerveModule {
     private double lastTargetAngleRad = 0.0;
     private double lastTargetVelocityMps = 0.0;
     private double lastDrivePower = 0.0;
+    private double lastSteeringPower = 0.0;
 
     private final PIDController rotationController;
     private double motorScaling = 1.0;
@@ -46,15 +45,17 @@ public class SwerveModule {
      */
     public SwerveModule(DcMotorEx driveMotor, CRServo steerServo, AnalogInput encoder,
             double offset, boolean inverse, Logger logger) {
-        this.driveMotor = driveMotor;
-        this.steerServo = steerServo;
-        this.encoder = encoder;
+        this(new FtcSwerveModuleIO(driveMotor, steerServo, encoder), offset, inverse, logger);
+    }
+
+    public SwerveModule(SwerveModuleIO io, double offset, boolean inverse, Logger logger) {
+        this.io = io;
         this.offset = offset;
         this.inverse = inverse;
         this.logger = logger;
 
         this.rotationController = new PIDController(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
-        this.driveMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        this.io.setCalibration(offset, inverse);
     }
 
     /**
@@ -85,9 +86,10 @@ public class SwerveModule {
         lastTargetAngleRad = targetAngle;
         lastTargetVelocityMps = driveSpeedMps;
         lastDrivePower = drivePower;
+        lastSteeringPower = steeringPower;
 
-        steerServo.setPower(steeringPower);
-        driveMotor.setPower(Range.clip(drivePower * motorScaling, -1.0, 1.0));
+        io.setSteerPower(steeringPower);
+        io.setDrivePower(Range.clip(drivePower * motorScaling, -1.0, 1.0));
     }
 
     public void update(SwerveModuleState state, double dt) {
@@ -98,26 +100,23 @@ public class SwerveModule {
      * Resolves the absolute module rotation using the analog encoder and offset.
      */
     public double getCurrentRotation() {
-        double voltage = encoder.getVoltage();
-        double angle = (voltage / 3.3) * 2.0 * Math.PI;
-        double result = MathUtil.normalizeAngle(angle - offset);
-        return inverse ? -result : result;
+        return io.getCurrentRotationRadians();
     }
 
     /**
      * Computes the current wheel velocity in meters per second.
+     * This remains encoder-derived even when the drive motor is commanded in
+     * RUN_WITHOUT_ENCODER mode.
      */
     public double getVelocityMps() {
-        double tps = driveMotor.getVelocity();
-        double wheelRps = (tps / SwerveConfig.DRIVE_TICKS_PER_REV) / SwerveConfig.DRIVE_GEAR_RATIO;
-        return wheelRps * (2 * Math.PI * SwerveConfig.WHEEL_RADIUS_METERS);
+        return io.getDriveVelocityMetersPerSecond();
     }
 
     /**
      * Returns the instantaneous current draw of the drive motor.
      */
     public double getCurrentAmps() {
-        return driveMotor.getCurrent(CurrentUnit.AMPS);
+        return io.getDriveCurrentAmps();
     }
 
     /**
@@ -147,10 +146,10 @@ public class SwerveModule {
         logger.log(prefix + "TargetVelMps", lastTargetVelocityMps, Logger.LogLevels.PRODUCTION);
         logger.log(prefix + "ActualVelMps", getVelocityMps(), Logger.LogLevels.PRODUCTION);
         logger.log(prefix + "DrivePower", lastDrivePower, Logger.LogLevels.PRODUCTION);
+        logger.log(prefix + "SteerPower", lastSteeringPower, Logger.LogLevels.DEBUG);
 
         // Hardware Health & Calibration
         logger.log(prefix + "CurrentAmps", getCurrentAmps(), Logger.LogLevels.PRODUCTION);
-        logger.log(prefix + "EncoderVolt", encoder.getVoltage(), Logger.LogLevels.DEBUG);
 
         if (isStalled())
             logger.log(prefix + "HEALTH_ALARM", 1.0, Logger.LogLevels.PRODUCTION);
@@ -158,13 +157,86 @@ public class SwerveModule {
 
     public void setOffset(double offset) {
         this.offset = offset;
+        io.setCalibration(offset, inverse);
     }
 
     public void setMode(DcMotor.RunMode mode) {
-        driveMotor.setMode(mode);
+        io.setDriveMode(mode);
     }
 
     public void setMotorScaling(double scalar) {
         this.motorScaling = MathUtil.clamp(scalar, 0.0, 1.0);
+    }
+
+    public double getLastTargetAngleRad() {
+        return lastTargetAngleRad;
+    }
+
+    public double getLastTargetVelocityMps() {
+        return lastTargetVelocityMps;
+    }
+
+    public double getLastDrivePower() {
+        return lastDrivePower;
+    }
+
+    public double getLastSteeringPower() {
+        return lastSteeringPower;
+    }
+
+    private static class FtcSwerveModuleIO implements SwerveModuleIO {
+        private final DcMotorEx driveMotor;
+        private final CRServo steerServo;
+        private final AnalogInput encoder;
+        private double offset;
+        private boolean inverse;
+
+        FtcSwerveModuleIO(DcMotorEx driveMotor, CRServo steerServo, AnalogInput encoder) {
+            this.driveMotor = driveMotor;
+            this.steerServo = steerServo;
+            this.encoder = encoder;
+            this.driveMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        }
+
+        @Override
+        public double getCurrentRotationRadians() {
+            double voltage = encoder.getVoltage();
+            double angle = (voltage / 3.3) * 2.0 * Math.PI;
+            double result = MathUtil.normalizeAngle(angle - offset);
+            return inverse ? -result : result;
+        }
+
+        @Override
+        public double getDriveVelocityMetersPerSecond() {
+            double tps = driveMotor.getVelocity();
+            double wheelRps = (tps / SwerveConfig.DRIVE_TICKS_PER_REV) / SwerveConfig.DRIVE_GEAR_RATIO;
+            return wheelRps * (2 * Math.PI * SwerveConfig.WHEEL_RADIUS_METERS);
+        }
+
+        @Override
+        public double getDriveCurrentAmps() {
+            return driveMotor.getCurrent(CurrentUnit.AMPS);
+        }
+
+        @Override
+        public void setDrivePower(double power) {
+            driveMotor.setPower(power);
+        }
+
+        @Override
+        public void setSteerPower(double power) {
+            steerServo.setPower(power);
+        }
+
+        @Override
+        public void setDriveMode(DcMotor.RunMode mode) {
+            driveMotor.setMode(mode);
+        }
+
+        @Override
+        public void setCalibration(double offsetRadians, boolean inverse) {
+            this.offset = offsetRadians;
+            this.inverse = inverse;
+        }
     }
 }

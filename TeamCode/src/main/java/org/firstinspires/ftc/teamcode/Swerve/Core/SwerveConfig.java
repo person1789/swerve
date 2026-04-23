@@ -109,11 +109,6 @@ public class SwerveConfig {
     /** Angle error threshold in radians before flipping module direction. */
     public static double FLIP_THRESHOLD = Math.PI / 2.0;
 
-    // Feedforward Constants
-    public static double DRIVE_KS = 1.05;
-    public static double DRIVE_KV = 4.2;
-    public static double DRIVE_KA = 0.45;
-
     // ─────────────────────────────────────────────────────────────────────────
     // 7. Filters & Observer
     // ─────────────────────────────────────────────────────────────────────────

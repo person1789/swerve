@@ -1,29 +1,85 @@
 # Advanced Swerve Settings Guide
 
-This guide explains the high-fidelity control features implemented in the "Superior" Swerve Control System.
+This guide documents the advanced control features that are actually in scope for this FTC swerve implementation.
 
-## 1. Physics Feedforward ($kS, kV, kA$)
-While the FTC SDK uses a normalized "Power" scale ($[-1, 1]$), our control system uses a **Voltage-Compensated Motor Model**. This ensures that "1.0 Volt" of force feels the same whether your battery is at 14V or 11V.
+## 1. Open-Loop Drive Power With Encoder Observation
 
-*   **$kS$ (Static Friction)**: The voltage needed to overcome static friction. Recommended: ~1.0V.
-*   **$kV$ (Velocity Constant)**: Volts required per meter/second. Link this to your gear ratio.
-*   **$kA$ (Acceleration Constant)**: Volts required for initial acceleration bursts.
+The drivetrain drives the wheel motors in `RUN_WITHOUT_ENCODER` mode on purpose.
 
-**How it works**:
-We measure the actual battery voltage every loop. The required voltage ($V_{target}$) is calculated, and the power sent to the motor is:
-`power = V_target / actualBatteryVoltage`
+That means:
 
-**Tuning Logic**:
-1. Increase $kS$ until the wheels barely turn at minimal input.
-2. Adjust $kV$ so `Observed Velocity` matches `Target Velocity` in a steady state.
-3. Add $kA$ to sharpen the "kick" when starting from a standstill.
+- motor output is open-loop power
+- the REV hub is not running its built-in drive velocity loop
+- the software still reads encoder-derived velocity through `DcMotorEx.getVelocity()` for the observer
 
-## 2. Second-Order Kinematics (Discretization)
-Standard swerve math assumes modules move in straight lines. During high-speed rotation, this causes "rotation-translation skew."
-*   **The Fix**: Our system "discretizes" the velocity by integrating the desired motion over the upcoming loop window. 
-*   **Result**: The robot remains perfectly centered during aggressive "spin-strafing" maneuvers.
+That is the intended pairing for the current design:
 
-## 3. Temporal Input Filtering (LPF)
-To prevent joystick jitter from vibrating the modules, we use separate **Low-Pass Filters** for translation and rotation.
-*   **Translation Gain**: Typically 0.20 for smooth driving.
-*   **Rotation Gain**: Typically 0.25 for snappy heading snap response.
+- custom Java logic owns the drive behavior
+- motor encoders still provide wheel speed feedback
+- the observer can estimate chassis velocity from real wheel motion
+
+## 2. Second-Order Kinematics
+
+The kinematics layer discretizes chassis motion over the loop interval before resolving module states.
+
+Result:
+
+- better translation accuracy during simultaneous rotation
+- less spin-strafe skew at high angular velocity
+
+## 3. Motion Smoothing
+
+`MotionSmoother` is the single authority for shaping requested chassis velocity.
+
+The current implementation includes:
+
+- non-linear input shaping
+- acceleration limiting
+- jerk limiting during ramp-up
+- immediate snap-down when the driver brakes or reverses intent
+
+Primary tunables:
+
+- `MAX_ACCEL`
+- `MAX_JERK`
+- `INPUT_INTERCEPT`
+- `INPUT_SPLINE_POINT`
+- `INPUT_SLOPE`
+
+## 4. Heading Hold And Snap
+
+`SwerveController` provides:
+
+- manual turn passthrough
+- delayed heading maintenance while translating
+- heading snap targets
+
+Primary tunables:
+
+- `HEADING_P`, `HEADING_I`, `HEADING_D`
+- `SNAP_P`, `SNAP_I`, `SNAP_D`
+- `HEADING_LOCK_DELAY_S`
+
+## 5. Observer Filtering
+
+The wheel-speed observer estimates chassis velocity from module states and then smooths that estimate with a low-pass blend.
+
+Primary tuning value:
+
+- `OBSERVER_LPF_GAIN`
+
+Higher values react faster but pass more noise. Lower values are smoother but lag more.
+
+## 6. Intentionally Out Of Scope
+
+The following are intentionally not part of the current FTC implementation:
+
+- voltage-compensated feedforward using `kS`, `kV`, and `kA`
+- direct voltage targeting at the motor layer
+- using `RUN_USING_ENCODER` as a second drive controller underneath the custom pipeline
+
+That keeps control authority in one place and avoids stacking:
+
+- custom swerve logic
+- hub closed-loop velocity control
+- a separate feedforward voltage model
