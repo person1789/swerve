@@ -130,7 +130,7 @@ public class SwerveSystemCheck extends LinearOpMode {
                 SwerveModuleState[] rawStates = drivetrain.getLastRawStates();
                 SwerveModuleState[] optimizedStates = drivetrain.getLastOptimizedStates();
                 double runtimeSec = runtimeTimer.seconds();
-                double maxLinearSpeedMps = SwerveConfig.getMaxLinearSpeedMetersPerSecond();
+                double maxLinearSpeedMps = SwerveConfig.getMaxLinearSpeedMPS();
 
                 telemetry.addData("Selected Test", selected.label);
                 telemetry.addData("Running", gamepad1.a);
@@ -219,7 +219,7 @@ public class SwerveSystemCheck extends LinearOpMode {
             return;
         }
 
-        double maxLinearSpeedMps = SwerveConfig.getMaxLinearSpeedMetersPerSecond();
+        double maxLinearSpeedMps = SwerveConfig.getMaxLinearSpeedMPS();
         StringBuilder row = new StringBuilder();
         row.append(runtimeSec).append(',')
                 .append(dt).append(',')

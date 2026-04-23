@@ -141,7 +141,7 @@ public class SwerveConfig {
     // ─────────────────────────────────────────────────────────────────────────
 
     /** Encoder ticks per revolution of the drive motor shaft. */
-    public static double DRIVE_TICKS_PER_REV = 28.0; // GoBILDA 6000 RPM Yellow Jacket
+    public static double DRIVE_TICKS_PER_REV = 28.0; // Gobilda 6000 RPM Yellow Jacket
 
     /** Gear reduction between drive motor and wheel. */
     public static double DRIVE_GEAR_RATIO = 7.43; // Reduction
@@ -152,15 +152,15 @@ public class SwerveConfig {
     /** Current draw threshold in amps above which a stall is declared. */
     public static double DRIVE_CURRENT_THRESHOLD = 7.0;
 
-    public static double getMaxLinearSpeedMetersPerSecond() {
+    public static double getMaxLinearSpeedMPS() {
         return inchesToMeters(MAX_LINEAR_SPEED_IN_S);
     }
 
-    public static double getMaxLinearAccelMetersPerSecondSquared() {
+    public static double getMaxLinearAccelMPS2() {
         return inchesToMeters(MAX_LINEAR_ACCEL_IN_S2);
     }
 
-    public static double getMaxLinearJerkMetersPerSecondCubed() {
+    public static double getMaxLinearJerkMPS3() {
         return inchesToMeters(MAX_LINEAR_JERK_IN_S3);
     }
 

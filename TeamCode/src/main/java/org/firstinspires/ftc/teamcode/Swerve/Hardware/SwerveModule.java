@@ -69,7 +69,7 @@ public class SwerveModule {
         double currentAngle = getCurrentRotation();
         double error = MathUtil.angleError(currentAngle, targetAngle);
 
-        double drivePower = (driveSpeedMps / SwerveConfig.getMaxLinearSpeedMetersPerSecond());
+        double drivePower = (driveSpeedMps / SwerveConfig.getMaxLinearSpeedMPS());
 
         rotationController.setPID(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
         rotationController.setSetpoint(0.0);

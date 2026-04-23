@@ -53,7 +53,7 @@ class MockSwerveModuleIO implements SwerveModuleIO {
         currentRotationRadians = MathUtil.normalizeAngle(
                 currentRotationRadians + steerPower * MAX_STEER_RATE_RAD_PER_SEC * dtSeconds);
 
-        double targetVelocity = drivePower * SwerveConfig.getMaxLinearSpeedMetersPerSecond();
+        double targetVelocity = drivePower * SwerveConfig.getMaxLinearSpeedMPS();
         double blend = MathUtil.clamp(DRIVE_RESPONSE_GAIN * dtSeconds, 0.0, 1.0);
         driveVelocityMetersPerSecond += (targetVelocity - driveVelocityMetersPerSecond) * blend;
         driveCurrentAmps = Math.abs(drivePower) * 6.0
