@@ -54,12 +54,30 @@ public class SwerveConfig {
         // ─────────────────────────────────────────────────────────────────────────
 
         /** Max linear acceleration in inches/second^2. */
-        public static double MAX_LINEAR_ACCEL_IN_S2 = 72.0;
+        public static double MAX_LINEAR_ACCEL_IN_S2 = 400.0;
 
         /**
-         * Max linear jerk in inches/second^3. Reaches max accel in about 0.2 seconds.
+         * Max linear jerk in inches/second^3.
          */
-        public static double MAX_LINEAR_JERK_IN_S3 = 360.0;
+        public static double MAX_LINEAR_JERK_IN_S3 = 4000.0;
+
+        /** Translation angle change above this enters redirect braking mode. */
+        public static double TRANSLATION_REDIRECT_ANGLE_RAD = Math.toRadians(55.0);
+
+        /** Exit redirect mode once translation speed falls below this fraction of max speed. */
+        public static double TRANSLATION_REDIRECT_RELEASE_SPEED_FRACTION = 0.08;
+
+        /** Extra braking authority used while redirecting between large translation angles. */
+        public static double TRANSLATION_REDIRECT_DECEL_MULTIPLIER = 2.25;
+
+        /** Enable current-angle feasibility scaling for translation during steering transitions. */
+        public static boolean FEASIBLE_TRANSLATION_FILTER_ENABLED = true;
+
+        /** Penalty strength used when projecting desired chassis velocity onto current wheel geometry. */
+        public static double FEASIBLE_TRANSLATION_PENALTY = 18.0;
+
+        /** Minimum translation authority allowed while the feasible-translation filter is active. */
+        public static double FEASIBLE_TRANSLATION_MIN_AUTHORITY = 0.05;
 
         // ─────────────────────────────────────────────────────────────────────────
         // 4. Input Conditioning (Driver Feel)
@@ -128,6 +146,18 @@ public class SwerveConfig {
         /** Angle error threshold in radians before flipping module direction. */
         public static double FLIP_THRESHOLD = Math.PI / 2.0;
 
+        /** Diagnostic gate: hold drive speed at zero until pods reach steering targets. */
+        public static boolean REQUIRE_STEER_READY_FOR_DRIVE = false;
+
+        /** Steering-ready tolerance for allowing drive motion. */
+        public static double STEER_READY_ANGLE_TOLERANCE_RAD = Math.toRadians(8.0);
+
+        /** Below this steer error, drive authority is left untouched. */
+        public static double STEER_DRIVE_FULL_AUTHORITY_RAD = Math.toRadians(6.0);
+
+        /** Above this steer error, drive is fully cut unless the diagnostic gate is disabled. */
+        public static double STEER_DRIVE_HARD_CUTOFF_RAD = Math.toRadians(22.0);
+
         // ─────────────────────────────────────────────────────────────────────────
         // 7. Filters & Observer
         // ─────────────────────────────────────────────────────────────────────────
@@ -153,6 +183,12 @@ public class SwerveConfig {
 
         /** Current draw threshold in amps above which a stall is declared. */
         public static double DRIVE_CURRENT_THRESHOLD = 7.0;
+
+        /**
+         * Simulated steering max rate in rad/s.
+         * Based on a 0.10 s / 60 deg steering spec at full command.
+         */
+        public static double SIM_MAX_STEER_RATE_RAD_PER_SEC = Math.toRadians(600.0);
 
         public static double getMaxLinearSpeedMPS() {
                 return inchesToMeters(MAX_LINEAR_SPEED_IN_S);

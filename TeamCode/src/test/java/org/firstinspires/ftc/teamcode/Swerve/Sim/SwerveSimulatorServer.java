@@ -26,6 +26,11 @@ public class SwerveSimulatorServer extends NanoWSD {
         this.simulator = new SwerveSimulator();
         this.opModeRegistry = new SimOpModeRegistry(simulator);
         this.executor = Executors.newSingleThreadScheduledExecutor();
+
+        // Ensure NaN and Infinity don't break JSON parsing in the browser.
+        // They will be serialized as strings "NaN", "Infinity", etc.
+        OBJECT_MAPPER.configure(com.fasterxml.jackson.core.JsonGenerator.Feature.QUOTE_NON_NUMERIC_NUMBERS, true);
+
         this.executor.scheduleAtFixedRate(this::tick, 0, 20, TimeUnit.MILLISECONDS);
     }
 
@@ -64,8 +69,13 @@ public class SwerveSimulatorServer extends NanoWSD {
                 message.put("data", state);
                 String payload = OBJECT_MAPPER.writeValueAsString(message);
                 for (SwerveWebSocket ws : connections) {
-                    if (ws.isOpen()) {
-                        ws.send(payload);
+                    try {
+                        if (ws.isOpen()) {
+                            ws.send(payload);
+                        }
+                    } catch (IOException e) {
+                        System.err.println("Failed to send state to client: " + e.getMessage());
+                        connections.remove(ws);
                     }
                 }
             } catch (Exception e) {

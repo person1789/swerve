@@ -40,6 +40,7 @@ public class SwerveAuditor {
 
             double cosineScale = Math.cos(error);
             state.speedMetersPerSecond *= Math.max(0, cosineScale);
+            state.speedMetersPerSecond *= steerDriveScale(Math.abs(error));
 
             optimized[i] = state;
             maxFound = Math.max(maxFound, Math.abs(state.speedMetersPerSecond));
@@ -54,5 +55,18 @@ public class SwerveAuditor {
         }
 
         return optimized;
+    }
+
+    private double steerDriveScale(double absErrorRad) {
+        if (absErrorRad <= SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD) {
+            return 1.0;
+        }
+        if (absErrorRad >= SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD) {
+            return 0.0;
+        }
+
+        double range = SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD - SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD;
+        double normalized = (SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD - absErrorRad) / range;
+        return normalized * normalized * (3.0 - 2.0 * normalized);
     }
 }

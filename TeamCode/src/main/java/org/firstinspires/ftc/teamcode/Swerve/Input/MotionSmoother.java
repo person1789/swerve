@@ -11,6 +11,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
  * Handles non-linear joystick scaling, responsive braking, and S-curve smoothing.
  */
 public class MotionSmoother {
+    private static final double EPSILON = 1e-6;
 
     private Vector currentVelocity = new Vector(0, 0, 0);
     private Vector currentAcceleration = new Vector(0, 0, 0);
@@ -33,42 +34,89 @@ public class MotionSmoother {
 
         // 1. Shape normalized driver input, then convert into physical chassis targets.
         Vector physicalTarget = toPhysicalTarget(applyInputCurves(target));
+        TranslationResult translation = smoothTranslation(physicalTarget, dt);
+        double[] omegaState = smoothScalar(
+                physicalTarget.omega(),
+                currentVelocity.omega(),
+                currentAcceleration.omega(),
+                maxAccel,
+                maxJerk,
+                dt);
 
-        double[] nextVel = new double[3];
-        double[] nextAccel = new double[3];
-
-        for (int i = 0; i < 3; i++) {
-            double targetVal = physicalTarget.get(i);
-            double lastTargetVal = lastTarget.get(i);
-            double currentVel = currentVelocity.get(i);
-            double currentAccelVal = currentAcceleration.get(i);
-
-            boolean isBraking = Math.signum(targetVal) != Math.signum(lastTargetVal)
-                    || Math.abs(targetVal) < Math.abs(lastTargetVal) - 1e-4;
-
-            if (isBraking) {
-                nextAccel[i] = (targetVal - currentVel) / dt;
-                nextVel[i] = targetVal;
-            } else {
-                double targetAccel = MathUtil.clamp((targetVal - currentVel) / dt, -maxAccel, maxAccel);
-                double jerk = MathUtil.clamp((targetAccel - currentAccelVal) / dt, -maxJerk, maxJerk);
-                double newAccel = MathUtil.clamp(currentAccelVal + jerk * dt, -maxAccel, maxAccel);
-
-                nextAccel[i] = newAccel;
-                double nextValue = currentVel + (newAccel * dt);
-                if ((targetVal - currentVel) * (targetVal - nextValue) < 0) {
-                    nextValue = targetVal;
-                    nextAccel[i] = (nextValue - currentVel) / dt;
-                }
-                nextVel[i] = nextValue;
-            }
-        }
-
-        currentVelocity = new Vector(nextVel);
-        currentAcceleration = new Vector(nextAccel);
+        currentVelocity = new Vector(translation.velocity.x(), translation.velocity.y(), omegaState[0]);
+        currentAcceleration = new Vector(translation.acceleration.x(), translation.acceleration.y(), omegaState[1]);
         lastTarget = physicalTarget;
 
         return currentVelocity;
+    }
+
+    private TranslationResult smoothTranslation(Vector physicalTarget, double dt) {
+        Vector currentTranslation = new Vector(currentVelocity.x(), currentVelocity.y());
+        Vector targetTranslation = new Vector(physicalTarget.x(), physicalTarget.y());
+        Vector currentTranslationAcceleration = new Vector(currentAcceleration.x(), currentAcceleration.y());
+
+        double currentSpeed = currentTranslation.magnitude();
+        double targetSpeed = targetTranslation.magnitude();
+        double releaseSpeed = SwerveConfig.getMaxLinearSpeedMPS()
+                * SwerveConfig.TRANSLATION_REDIRECT_RELEASE_SPEED_FRACTION;
+
+        Vector currentDirection = unitOrFallback(currentTranslation, lastTarget);
+        Vector targetDirection = unitOrFallback(targetTranslation, currentTranslation);
+
+        double directionDot = currentDirection.dot(targetDirection);
+        boolean redirecting = currentSpeed > releaseSpeed
+                && targetSpeed > EPSILON
+                && directionDot < Math.cos(SwerveConfig.TRANSLATION_REDIRECT_ANGLE_RAD);
+
+        Vector desiredDirection = redirecting ? currentDirection : targetDirection;
+        double desiredSpeed = redirecting ? 0.0 : targetSpeed;
+        double accelLimit = redirecting
+                ? maxAccel * SwerveConfig.TRANSLATION_REDIRECT_DECEL_MULTIPLIER
+                : maxAccel;
+        double jerkLimit = redirecting
+                ? maxJerk * SwerveConfig.TRANSLATION_REDIRECT_DECEL_MULTIPLIER
+                : maxJerk;
+
+        double currentAccelAlong = currentTranslationAcceleration.dot(desiredDirection);
+        double[] speedState = smoothScalar(
+                desiredSpeed,
+                currentSpeed,
+                currentAccelAlong,
+                accelLimit,
+                jerkLimit,
+                dt);
+
+        Vector nextVelocity = desiredDirection.scale(speedState[0]);
+        Vector nextAcceleration = desiredDirection.scale(speedState[1]);
+        return new TranslationResult(nextVelocity, nextAcceleration);
+    }
+
+    private double[] smoothScalar(double targetVal, double currentVal, double currentAccelVal,
+            double accelLimit, double jerkLimit, double dt) {
+        double targetAccel = (targetVal - currentVal) / dt;
+        double jerk = MathUtil.clamp((targetAccel - currentAccelVal) / dt, -jerkLimit, jerkLimit);
+        double newAccel = MathUtil.clamp(currentAccelVal + jerk * dt, -accelLimit, accelLimit);
+        double nextValue = currentVal + (newAccel * dt);
+
+        if ((targetVal - currentVal) * (targetVal - nextValue) < 0) {
+            nextValue = targetVal;
+            newAccel = 0.0;
+        }
+
+        return new double[] { nextValue, newAccel };
+    }
+
+    private Vector unitOrFallback(Vector preferred, Vector fallbackSource) {
+        if (preferred.magnitude() > EPSILON) {
+            return preferred.scale(1.0 / preferred.magnitude());
+        }
+
+        Vector fallback = new Vector(fallbackSource.x(), fallbackSource.y());
+        if (fallback.magnitude() > EPSILON) {
+            return fallback.scale(1.0 / fallback.magnitude());
+        }
+
+        return new Vector(1.0, 0.0);
     }
 
     /**
@@ -118,7 +166,15 @@ public class MotionSmoother {
         currentVelocity = new Vector(0, 0, 0);
         currentAcceleration = new Vector(0, 0, 0);
         lastTarget = new Vector(0, 0, 0);
-        maxAccel = SwerveConfig.getMaxLinearAccelMPS2();
-        maxJerk = SwerveConfig.getMaxLinearJerkMPS3();
+    }
+
+    private static class TranslationResult {
+        final Vector velocity;
+        final Vector acceleration;
+
+        TranslationResult(Vector velocity, Vector acceleration) {
+            this.velocity = velocity;
+            this.acceleration = acceleration;
+        }
     }
 }

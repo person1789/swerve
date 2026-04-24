@@ -12,11 +12,17 @@ class MotionSmootherTest {
 
     private final double originalMaxSpeed = SwerveConfig.MAX_LINEAR_SPEED_IN_S;
     private final double originalMaxOmega = SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S;
+    private final double originalRedirectAngle = SwerveConfig.TRANSLATION_REDIRECT_ANGLE_RAD;
+    private final double originalRedirectRelease = SwerveConfig.TRANSLATION_REDIRECT_RELEASE_SPEED_FRACTION;
+    private final double originalRedirectMultiplier = SwerveConfig.TRANSLATION_REDIRECT_DECEL_MULTIPLIER;
 
     @AfterEach
     void restoreConfig() {
         SwerveConfig.MAX_LINEAR_SPEED_IN_S = originalMaxSpeed;
         SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S = originalMaxOmega;
+        SwerveConfig.TRANSLATION_REDIRECT_ANGLE_RAD = originalRedirectAngle;
+        SwerveConfig.TRANSLATION_REDIRECT_RELEASE_SPEED_FRACTION = originalRedirectRelease;
+        SwerveConfig.TRANSLATION_REDIRECT_DECEL_MULTIPLIER = originalRedirectMultiplier;
     }
 
     @Test
@@ -85,5 +91,22 @@ class MotionSmootherTest {
         assertEquals(2.0, result.x(), 1e-9);
         assertEquals(0.0, result.y(), 1e-9);
         assertEquals(5.0, result.omega(), 1e-9);
+    }
+
+    @Test
+    void largeTranslationDirectionChangesBrakeBeforeRedirecting() {
+        SwerveConfig.MAX_LINEAR_SPEED_IN_S = 1.0 / 0.0254;
+        SwerveConfig.TRANSLATION_REDIRECT_ANGLE_RAD = Math.toRadians(45.0);
+        SwerveConfig.TRANSLATION_REDIRECT_RELEASE_SPEED_FRACTION = 0.05;
+        SwerveConfig.TRANSLATION_REDIRECT_DECEL_MULTIPLIER = 2.0;
+
+        MotionSmoother smoother = new MotionSmoother();
+        smoother.setLimits(1.0, 1000.0);
+
+        smoother.smooth(new Vector(1.0, 0.0, 0.0), 0.1);
+        Vector redirected = smoother.smooth(new Vector(0.0, 1.0, 0.0), 0.1);
+
+        assertEquals(0.0, redirected.y(), 1e-9);
+        assertTrue(redirected.x() < 0.11);
     }
 }

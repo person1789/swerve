@@ -5,6 +5,7 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import java.util.function.DoubleSupplier;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
+import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Input.MotionSmoother;
@@ -41,8 +42,10 @@ public class SwerveDrivetrain {
     private double lockTimerMs = 0.0;
     private Vector lastDriverTarget = new Vector(0, 0, 0);
     private Vector lastSmoothedVelocity = new Vector(0, 0, 0);
+    private double lastTranslationAuthority = 1.0;
     private SwerveModuleState[] lastRawStates = zeroStates();
     private SwerveModuleState[] lastOptimizedStates = zeroStates();
+    private boolean steerReadyForDrive = true;
 
     public SwerveDrivetrain(HWMap hwMap, Logger logger) {
         this(new SwerveModule[] {
@@ -86,14 +89,6 @@ public class SwerveDrivetrain {
         Vector chassisVelocity = smoother.smooth(driverTarget, dt);
         lastSmoothedVelocity = chassisVelocity;
 
-        if (!SwerveConfig.ENABLE_IDLE_X_STANCE) {
-            state = States.DRIVING;
-            lockTimerMs = 0.0;
-            driveWithPipeline(chassisVelocity, dt);
-            performHealthSystemScan();
-            return;
-        }
-
         switch (state) {
             case DRIVING:
                 driveWithPipeline(chassisVelocity, dt);
@@ -117,7 +112,11 @@ public class SwerveDrivetrain {
                 break;
 
             case LOCKED:
-                applyXStance(dt);
+                if (SwerveConfig.ENABLE_IDLE_X_STANCE) {
+                    applyXStance(dt);
+                } else {
+                    driveWithPipeline(chassisVelocity, dt);
+                }
                 if (hasInput) {
                     lockTimerMs = 0.0;
                     state = States.DRIVING;
@@ -129,17 +128,22 @@ public class SwerveDrivetrain {
     }
 
     private void driveWithPipeline(Vector velocity, double dt) {
-        SwerveModuleState[] raw = kinematics.inverseKinematics(velocity);
-        lastRawStates = copyStates(raw);
         double[] currentAngles = new double[4];
         for (int i = 0; i < 4; i++) {
             currentAngles[i] = modules[i].getCurrentRotation();
         }
 
+        Vector commandedVelocity = applyFeasibleTranslationFilter(velocity, currentAngles);
+        SwerveModuleState[] raw = kinematics.inverseKinematics(commandedVelocity);
+        lastRawStates = copyStates(raw);
         SwerveModuleState[] optimized = auditor.optimize(raw, currentAngles);
         lastOptimizedStates = copyStates(optimized);
+        steerReadyForDrive = areModulesReadyForDrive(optimized, currentAngles);
+        SwerveModuleState[] commandedStates = (SwerveConfig.REQUIRE_STEER_READY_FOR_DRIVE && !steerReadyForDrive)
+                ? zeroDriveSpeeds(optimized)
+                : optimized;
         for (int i = 0; i < 4; i++) {
-            modules[i].update(optimized[i], dt);
+            modules[i].update(commandedStates[i], dt);
         }
     }
 
@@ -152,6 +156,7 @@ public class SwerveDrivetrain {
         }
         lastRawStates = copyStates(xStates);
         lastOptimizedStates = copyStates(xStates);
+        steerReadyForDrive = true;
     }
 
     private void performHealthSystemScan() {
@@ -221,6 +226,14 @@ public class SwerveDrivetrain {
         return batteryVoltageSupplier.getAsDouble();
     }
 
+    public boolean isSteerReadyForDrive() {
+        return steerReadyForDrive;
+    }
+
+    public double getLastTranslationAuthority() {
+        return lastTranslationAuthority;
+    }
+
     public States getState() {
         return state;
     }
@@ -244,5 +257,57 @@ public class SwerveDrivetrain {
                 new SwerveModuleState(),
                 new SwerveModuleState()
         };
+    }
+
+    private boolean areModulesReadyForDrive(SwerveModuleState[] states, double[] currentAngles) {
+        if (!SwerveConfig.REQUIRE_STEER_READY_FOR_DRIVE) {
+            return true;
+        }
+
+        for (int i = 0; i < states.length; i++) {
+            double error = Math.abs(MathUtil.angleError(currentAngles[i], states[i].angleRadians));
+            if (error > SwerveConfig.STEER_READY_ANGLE_TOLERANCE_RAD) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static SwerveModuleState[] zeroDriveSpeeds(SwerveModuleState[] states) {
+        SwerveModuleState[] gated = new SwerveModuleState[states.length];
+        for (int i = 0; i < states.length; i++) {
+            gated[i] = new SwerveModuleState(0.0, states[i].angleRadians);
+        }
+        return gated;
+    }
+
+    private Vector applyFeasibleTranslationFilter(Vector velocity, double[] currentAngles) {
+        if (!SwerveConfig.FEASIBLE_TRANSLATION_FILTER_ENABLED) {
+            lastTranslationAuthority = 1.0;
+            return velocity;
+        }
+
+        double desiredTranslationMag = Math.hypot(velocity.x(), velocity.y());
+        if (desiredTranslationMag < 1e-6) {
+            lastTranslationAuthority = 1.0;
+            return velocity;
+        }
+
+        Vector feasibleVelocity = kinematics.projectToCurrentAngleFeasibleVelocity(
+                velocity,
+                currentAngles,
+                SwerveConfig.FEASIBLE_TRANSLATION_PENALTY);
+        Vector desiredDirection = new Vector(velocity.x(), velocity.y()).scale(1.0 / desiredTranslationMag);
+        double feasibleAlongDesired = feasibleVelocity.x() * desiredDirection.x() + feasibleVelocity.y() * desiredDirection.y();
+        double authority = MathUtil.clamp(
+                feasibleAlongDesired / desiredTranslationMag,
+                SwerveConfig.FEASIBLE_TRANSLATION_MIN_AUTHORITY,
+                1.0);
+
+        lastTranslationAuthority = authority;
+        return new Vector(
+                velocity.x() * authority,
+                velocity.y() * authority,
+                velocity.omega());
     }
 }

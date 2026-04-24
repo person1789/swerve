@@ -76,7 +76,7 @@ public class SimOpModeRegistry {
         }
     }
 
-    public synchronized Map<String, String> getTelemetry() {
+    public synchronized Map<String, Map<String, String>> getTelemetry() {
         if (activeOpMode != null) {
             return activeOpMode.getTelemetry();
         }

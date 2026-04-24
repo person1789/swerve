@@ -28,53 +28,41 @@ const WIDGETS: Record<string, { label: string, render: (props: PanelManagerProps
 };
 
 function WidgetWrapper({ initialWidget, props }: { initialWidget: string, props: PanelManagerProps }) {
-  const [activeWidget, setActiveWidget] = useState(initialWidget);
-
+  const [active, setActive] = useState(initialWidget);
+  
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', padding: '0.5rem' }}>
-      <div className="glass-panel" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-        {/* Header with Dropdown */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 1rem', borderBottom: '1px solid rgba(255,255,255,0.05)', backgroundColor: 'rgba(0,0,0,0.2)' }}>
-          <select 
-            value={activeWidget} 
-            onChange={(e) => setActiveWidget(e.target.value)}
-            style={{ backgroundColor: 'transparent', border: 'none', color: 'rgba(255,255,255,0.8)', fontSize: '0.75rem', fontWeight: 'bold', textTransform: 'uppercase', outline: 'none', cursor: 'pointer' }}
-          >
-            {Object.entries(WIDGETS).map(([key, w]) => (
-              <option key={key} value={key} style={{ color: 'black' }}>{w.label}</option>
-            ))}
-          </select>
-        </div>
-        {/* Content */}
-        <div style={{ flex: 1, position: 'relative', overflow: 'hidden', padding: '0.5rem' }}>
-          {WIDGETS[activeWidget]?.render(props)}
-        </div>
+    <div className="glass-panel" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      <div className="panel-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <select 
+          value={active} 
+          onChange={(e) => setActive(e.target.value)}
+          style={{ background: 'none', border: 'none', color: 'inherit', fontSize: 'inherit', fontWeight: 'inherit', cursor: 'pointer', outline: 'none' }}
+        >
+          {Object.entries(WIDGETS).map(([id, w]) => (
+            <option key={id} value={id} style={{ backgroundColor: 'var(--bg-primary)' }}>{w.label}</option>
+          ))}
+        </select>
+      </div>
+      <div style={{ flex: 1, minHeight: 0, padding: '0.5rem' }}>
+        {WIDGETS[active].render(props)}
       </div>
     </div>
   );
 }
 
-function ResizeHandle() {
-  return (
-    <Separator style={{ width: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'col-resize' }}>
-      <div style={{ width: '2px', height: '24px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '2px' }} />
-    </Separator>
-  );
-}
+const ResizeHandle = () => (
+  <Separator style={{ width: '6px', margin: '0 -3px', zIndex: 10, cursor: 'col-resize', transition: 'background 0.2s' }} />
+);
 
-function VResizeHandle() {
-  return (
-    <Separator style={{ height: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'row-resize' }}>
-      <div style={{ height: '2px', width: '24px', backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: '2px' }} />
-    </Separator>
-  );
-}
+const VResizeHandle = () => (
+  <Separator style={{ height: '6px', margin: '-3px 0', zIndex: 10, cursor: 'row-resize', transition: 'background 0.2s' }} />
+);
 
 export function PanelManager(props: PanelManagerProps) {
   return (
-    <Group direction="horizontal">
+    <Group orientation="horizontal" style={{ width: '100%', height: '100%', display: 'flex' }}>
       <Panel defaultSize={60} minSize={30}>
-        <Group direction="vertical">
+        <Group orientation="vertical">
           <Panel defaultSize={65} minSize={20}>
             <WidgetWrapper initialWidget="field" props={props} />
           </Panel>
@@ -88,7 +76,7 @@ export function PanelManager(props: PanelManagerProps) {
       <ResizeHandle />
       
       <Panel defaultSize={40} minSize={30}>
-        <Group direction="vertical">
+        <Group orientation="vertical">
           <Panel defaultSize={50} minSize={20}>
             <WidgetWrapper initialWidget="gauges" props={props} />
           </Panel>
@@ -101,3 +89,4 @@ export function PanelManager(props: PanelManagerProps) {
     </Group>
   );
 }
+

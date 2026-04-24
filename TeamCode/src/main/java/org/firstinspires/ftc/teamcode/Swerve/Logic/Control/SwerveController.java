@@ -37,9 +37,16 @@ public class SwerveController {
      */
     public Vector update(double vx, double vy, double turn, double currentHeading, double dt) {
 
-        // 1. Apply Component-wise Deadband without allocating a temporary vector.
-        double dvx = Math.abs(vx) < SwerveConfig.INPUT_DEADBAND ? 0.0 : vx;
-        double dvy = Math.abs(vy) < SwerveConfig.INPUT_DEADBAND ? 0.0 : vy;
+        // 1. Apply Radial Deadband for translation to preserve direction.
+        double transMag = Math.hypot(vx, vy);
+        double dvx = 0, dvy = 0;
+        if (transMag > SwerveConfig.INPUT_DEADBAND) {
+            double scalar = (transMag - SwerveConfig.INPUT_DEADBAND) / (1.0 - SwerveConfig.INPUT_DEADBAND);
+            dvx = (vx / transMag) * scalar;
+            dvy = (vy / transMag) * scalar;
+        }
+
+        // Rotation remains independent as it's a separate control axis.
         double dturn = Math.abs(turn) < SwerveConfig.INPUT_DEADBAND ? 0.0 : turn;
 
         if (Math.abs(dturn) > 1e-6) {

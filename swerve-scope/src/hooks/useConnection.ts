@@ -28,19 +28,27 @@ async function detectMode(): Promise<'robot' | 'sim'> {
 export function useConnection(
   onMessage: (msg: Record<string, unknown>) => void
 ): ConnectionState {
-  const [mode, setMode] = useState<ConnectionMode>('disconnected');
+  const [mode, setMode] = useState<ConnectionMode>(() => {
+    return (localStorage.getItem('swervescope_connection_mode') as ConnectionMode) || 'disconnected';
+  });
   const [ws, setWs] = useState<WebSocket | null>(null);
   const [connected, setConnected] = useState(false);
 
   const onMessageRef = useRef(onMessage);
   onMessageRef.current = onMessage;
 
-  const manualMode = useRef<'sim' | 'robot' | null>(null);
+  const manualMode = useRef<ConnectionMode>((() => {
+    return (localStorage.getItem('swervescope_connection_mode') as ConnectionMode) || 'sim';
+  })());
+  
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<number>(0);
   const isMounted = useRef(true);
+  const isConnecting = useRef(false);
 
   const connect = useCallback(() => {
+    if (isConnecting.current) return;
+
     // Clean up any existing connection first
     if (wsRef.current) {
       wsRef.current.onopen = null;
@@ -56,48 +64,64 @@ export function useConnection(
 
     const doConnect = async () => {
       if (!isMounted.current) return;
+      isConnecting.current = true;
 
-      const detected = manualMode.current || await detectMode();
-      const host = detected === 'robot' ? ROBOT_IP : SIM_IP;
-
-      if (!isMounted.current) return;
-
-      const socket = new WebSocket(`ws://${host}:${PORT}/ws`);
-      wsRef.current = socket;
-
-      socket.onopen = () => {
-        if (!isMounted.current) return;
-        setMode(detected);
-        setConnected(true);
-        setWs(socket);
-      };
-
-      socket.onclose = () => {
-        if (!isMounted.current) return;
-        setConnected(false);
-        setMode('disconnected');
-        setWs(null);
-        wsRef.current = null;
-
-        // Auto-reconnect after 3s
-        clearTimeout(reconnectTimer.current);
-        reconnectTimer.current = window.setTimeout(() => {
-          if (isMounted.current) connect();
-        }, 3000);
-      };
-
-      socket.onerror = () => {
-        // onclose will fire after this, which handles reconnect
-      };
-
-      socket.onmessage = (event) => {
-        try {
-          const msg = JSON.parse(event.data);
-          onMessageRef.current(msg);
-        } catch (e) {
-          console.error('WS parse error', e);
+      try {
+        let targetMode = manualMode.current;
+        
+        // Only run discovery if we haven't explicitly set a mode or we are in 'disconnected' state
+        if (targetMode === 'disconnected') {
+          targetMode = await detectMode();
         }
-      };
+
+        if (!isMounted.current) return;
+
+        const host = targetMode === 'robot' ? ROBOT_IP : SIM_IP;
+        const socket = new WebSocket(`ws://${host}:${PORT}/ws`);
+        wsRef.current = socket;
+
+        socket.onopen = () => {
+          if (!isMounted.current) return;
+          isConnecting.current = false;
+          setMode(targetMode);
+          setConnected(true);
+          setWs(socket);
+          localStorage.setItem('swervescope_connection_mode', targetMode);
+        };
+
+        socket.onclose = (event) => {
+          if (!isMounted.current) return;
+          isConnecting.current = false;
+          setConnected(false);
+          setWs(null);
+          wsRef.current = null;
+
+          // If it was a clean close by unmount, don't reconnect
+          if (event.wasClean && !isMounted.current) return;
+
+          // Auto-reconnect after 3s
+          clearTimeout(reconnectTimer.current);
+          reconnectTimer.current = window.setTimeout(() => {
+            if (isMounted.current) connect();
+          }, 3000);
+        };
+
+        socket.onerror = () => {
+          isConnecting.current = false;
+        };
+
+        socket.onmessage = (event) => {
+          try {
+            const msg = JSON.parse(event.data);
+            onMessageRef.current(msg);
+          } catch (e) {
+            console.error('WS parse error', e);
+          }
+        };
+      } catch (err) {
+        isConnecting.current = false;
+        console.error('Connection failed', err);
+      }
     };
 
     doConnect();
@@ -123,7 +147,10 @@ export function useConnection(
 
   const setManualMode = useCallback((m: 'sim' | 'robot') => {
     manualMode.current = m;
+    localStorage.setItem('swervescope_connection_mode', m);
+    setMode(m); // Optimistic update
     clearTimeout(reconnectTimer.current);
+    isConnecting.current = false;
     connect();
   }, [connect]);
 

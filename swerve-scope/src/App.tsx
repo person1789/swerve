@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
-import { MonitorPlay, Wifi, WifiOff, Monitor, Radio, ChevronDown, ChevronRight, Settings2, Plus, X, GripVertical, Download } from 'lucide-react';
+import { MonitorPlay, Wifi, WifiOff, Monitor, Radio, ChevronDown, ChevronRight, Settings2, X, Download } from 'lucide-react';
 import { useConnection } from './hooks/useConnection';
 import { useGamepad } from './hooks/useGamepad';
 import { FieldView } from './components/FieldView';

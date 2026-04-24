@@ -101,7 +101,82 @@ public class SwerveKinematics {
         return Pose.from(forwardKinematics(states));
     }
 
+    public Vector projectToCurrentAngleFeasibleVelocity(Vector desiredVelocity, double[] currentAnglesRad, double penalty) {
+        double[][] normal = {
+                {1.0, 0.0, 0.0},
+                {0.0, 1.0, 0.0},
+                {0.0, 0.0, 1.0}
+        };
+        double[] rhs = {desiredVelocity.x(), desiredVelocity.y(), desiredVelocity.omega()};
+
+        for (int i = 0; i < 4; i++) {
+            Vector offset = moduleOffsets[i];
+            double theta = currentAnglesRad[i];
+            double sin = Math.sin(theta);
+            double cos = Math.cos(theta);
+
+            double[] row = {
+                    -sin,
+                    cos,
+                    sin * offset.y() + cos * offset.x()
+            };
+
+            for (int r = 0; r < 3; r++) {
+                for (int c = 0; c < 3; c++) {
+                    normal[r][c] += penalty * row[r] * row[c];
+                }
+            }
+        }
+
+        double[] solution = solve3x3(normal, rhs);
+        return new Vector(solution[0], solution[1], solution[2]);
+    }
+
     public void setLoopTimeSec(double loopTimeSec) {
         this.loopTimeSec = loopTimeSec;
+    }
+
+    private double[] solve3x3(double[][] a, double[] b) {
+        double[][] m = new double[3][4];
+        for (int r = 0; r < 3; r++) {
+            System.arraycopy(a[r], 0, m[r], 0, 3);
+            m[r][3] = b[r];
+        }
+
+        for (int pivot = 0; pivot < 3; pivot++) {
+            int bestRow = pivot;
+            for (int row = pivot + 1; row < 3; row++) {
+                if (Math.abs(m[row][pivot]) > Math.abs(m[bestRow][pivot])) {
+                    bestRow = row;
+                }
+            }
+
+            if (Math.abs(m[bestRow][pivot]) < 1e-9) {
+                return new double[] {0.0, 0.0, 0.0};
+            }
+
+            if (bestRow != pivot) {
+                double[] tmp = m[pivot];
+                m[pivot] = m[bestRow];
+                m[bestRow] = tmp;
+            }
+
+            double scale = m[pivot][pivot];
+            for (int c = pivot; c < 4; c++) {
+                m[pivot][c] /= scale;
+            }
+
+            for (int row = 0; row < 3; row++) {
+                if (row == pivot) {
+                    continue;
+                }
+                double factor = m[row][pivot];
+                for (int c = pivot; c < 4; c++) {
+                    m[row][c] -= factor * m[pivot][c];
+                }
+            }
+        }
+
+        return new double[] {m[0][3], m[1][3], m[2][3]};
     }
 }

@@ -154,10 +154,17 @@ public class SwerveSystemCheck extends LinearOpMode {
                 telemetry.addData("Obs Y (in/s)", metersToInches(observedVelocity.y()));
                 telemetry.addData("Obs W (rad/s)", observedVelocity.omega());
                 telemetry.addData("Drive State", drivetrain.getState());
+                telemetry.addData("Steer Ready", drivetrain.isSteerReadyForDrive());
+                telemetry.addData("Steer Gate Enabled", SwerveConfig.REQUIRE_STEER_READY_FOR_DRIVE);
+                telemetry.addData("Trans Authority", drivetrain.getLastTranslationAuthority());
                 telemetry.addData("Battery (V)", drivetrain.getBatteryVoltage());
                 telemetry.addData("Max Linear Speed (in/s)", SwerveConfig.MAX_LINEAR_SPEED_IN_S);
                 telemetry.addData("Max Accel (in/s^2)", SwerveConfig.MAX_LINEAR_ACCEL_IN_S2);
                 telemetry.addData("Max Jerk (in/s^3)", SwerveConfig.MAX_LINEAR_JERK_IN_S3);
+                telemetry.addData("Steer Ready Tol (deg)", Math.toDegrees(SwerveConfig.STEER_READY_ANGLE_TOLERANCE_RAD));
+                telemetry.addData("Steer Full Auth (deg)", Math.toDegrees(SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD));
+                telemetry.addData("Steer Hard Cut (deg)", Math.toDegrees(SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD));
+                telemetry.addData("Feasible Filter", SwerveConfig.FEASIBLE_TRANSLATION_FILTER_ENABLED);
 
                 telemetry.addLine();
                 telemetry.addData("Smooth X (in/s)", metersToInches(smoothedVelocity.x()));
@@ -239,6 +246,8 @@ public class SwerveSystemCheck extends LinearOpMode {
                 .append(metersToInches(observedVelocity.y())).append(',')
                 .append(observedVelocity.omega()).append(',')
                 .append(drivetrain.getState()).append(',')
+                .append(drivetrain.isSteerReadyForDrive()).append(',')
+                .append(drivetrain.getLastTranslationAuthority()).append(',')
                 .append(drivetrain.getBatteryVoltage());
 
         for (int i = 0; i < 4; i++) {
@@ -309,7 +318,7 @@ public class SwerveSystemCheck extends LinearOpMode {
         StringBuilder header = new StringBuilder("runtime_sec,dt_sec,test_name,running,command_scale,");
         header.append("cmd_x_norm,cmd_y_norm,cmd_w_norm,cmd_x_in_s,cmd_y_in_s,cmd_w_rad_s,");
         header.append("smooth_x_in_s,smooth_y_in_s,smooth_w_rad_s,");
-        header.append("obs_x_in_s,obs_y_in_s,obs_w_rad_s,drive_state,battery_v");
+        header.append("obs_x_in_s,obs_y_in_s,obs_w_rad_s,drive_state,steer_ready,translation_authority,battery_v");
         for (int i = 0; i < 4; i++) {
             header.append(",cal_m").append(i).append("_offset_rad");
             header.append(",cal_m").append(i).append("_inverted");

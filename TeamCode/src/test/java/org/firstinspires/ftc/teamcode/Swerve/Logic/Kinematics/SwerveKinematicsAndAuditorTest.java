@@ -3,11 +3,22 @@ package org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 class SwerveKinematicsAndAuditorTest {
+
+    private final double originalFullAuthority = SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD;
+    private final double originalHardCutoff = SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD;
+
+    @AfterEach
+    void restoreConfig() {
+        SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = originalFullAuthority;
+        SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = originalHardCutoff;
+    }
 
     @Test
     void pureTranslationProducesMatchingModuleStatesAndRoundTrips() {
@@ -96,5 +107,34 @@ class SwerveKinematicsAndAuditorTest {
 
         assertEquals(0.0, optimized[0].angleRadians, 1e-9);
         assertEquals(-1.0, optimized[0].speedMetersPerSecond, 1e-9);
+    }
+
+    @Test
+    void auditorCutsDriveAuthorityAtLargeSteerErrors() {
+        SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = Math.toRadians(5.0);
+        SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = Math.toRadians(25.0);
+        SwerveAuditor auditor = new SwerveAuditor();
+        SwerveModuleState[] desired = {
+                new SwerveModuleState(1.0, Math.toRadians(30.0)),
+                new SwerveModuleState(1.0, 0.0),
+                new SwerveModuleState(1.0, 0.0),
+                new SwerveModuleState(1.0, 0.0)
+        };
+
+        SwerveModuleState[] optimized = auditor.optimize(desired, new double[] {0.0, 0.0, 0.0, 0.0});
+
+        assertEquals(0.0, optimized[0].speedMetersPerSecond, 1e-9);
+    }
+
+    @Test
+    void feasibleProjectionReducesUnsupportedStrafeWhenAllModulesPointForward() {
+        SwerveKinematics kinematics = new SwerveKinematics();
+
+        Vector feasible = kinematics.projectToCurrentAngleFeasibleVelocity(
+                new Vector(0.0, 1.0, 0.0),
+                new double[] {0.0, 0.0, 0.0, 0.0},
+                12.0);
+
+        assertTrue(Math.abs(feasible.y()) < 0.25);
     }
 }

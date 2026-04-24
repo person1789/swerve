@@ -16,6 +16,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Control.SwerveController;
+import org.firstinspires.ftc.teamcode.Swerve.Input.MotionSmoother;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Localization.SwerveLocalizer;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
@@ -27,6 +28,7 @@ public class MainTeleOp extends LinearOpMode {
     private SwerveDrivetrain swerveDrivetrain;
     private SwerveController swerveController;
     private SwerveLocalizer localizer;
+    private MotionSmoother smoother;
 
     // Declared null; only assigned when SwerveConfig.LIMELIGHT_ENABLED = true.
     private LimelightLocalizer limelightLocalizer = null;
@@ -50,6 +52,7 @@ public class MainTeleOp extends LinearOpMode {
         localizer = new SwerveLocalizer(hwMap);
         swerveDrivetrain = new SwerveDrivetrain(hwMap, logger);
         swerveController = new SwerveController();
+        smoother = new MotionSmoother();
 
         if (SwerveConfig.LIMELIGHT_ENABLED) {
             limelightLocalizer = new LimelightLocalizer(hardwareMap);
@@ -99,26 +102,34 @@ public class MainTeleOp extends LinearOpMode {
             double heading = currentPose.omega();
 
             // 3. Process Driver Intent (Field-Centric)
-            double vx = -gamepad1.left_stick_y;
-            double vy = -gamepad1.left_stick_x;
-            double turn = -gamepad1.right_stick_x;
+            double rawVx = -gamepad1.left_stick_y;
+            double rawVy = -gamepad1.left_stick_x;
+            double rawTurn = -gamepad1.right_stick_x;
 
-            // Rotate translation to be field-centric
-            double cos = Math.cos(-heading);
-            double sin = Math.sin(-heading);
-            double rawTranslationX = vx * cos - vy * sin;
-            double rawTranslationY = vx * sin + vy * cos;
+            // Apply smoothing in the FIELD frame to prevent phase lag while rotating.
+            Vector fieldTarget = smoother.smooth(new Vector(rawVx, rawVy, rawTurn), dt);
 
-            // 4. Run Control Brain (Heading Hold / Snap)
-            Vector chassisSpeeds = swerveController.update(
-                    rawTranslationX,
-                    rawTranslationY,
-                    turn,
+            // 4. Run Control Brain (Deadbands / Heading Hold)
+            // Use the smoothed field target for heading lock calculations.
+            Vector processedFieldTarget = swerveController.update(
+                    fieldTarget.x(),
+                    fieldTarget.y(),
+                    fieldTarget.omega(),
                     heading,
                     dt);
 
-            // 5. Execute Drivetrain Pipeline (Smoothing -> Kinematics -> HW)
-            swerveDrivetrain.setVelocity(chassisSpeeds, dt);
+            // 5. Rotate translation to be robot-centric
+            double cos = Math.cos(-heading);
+            double sin = Math.sin(-heading);
+            double robotVx = processedFieldTarget.x() * cos - processedFieldTarget.y() * sin;
+            double robotVy = processedFieldTarget.x() * sin + processedFieldTarget.y() * cos;
+
+            // 6. Execute Drivetrain Pipeline (Kinematics -> HW)
+            // We pass robotVx/Vy and the turn target. 
+            // Note: swerveDrivetrain.setVelocity will still apply its internal smoother, 
+            // but since we already smoothed the input, it will be transparent.
+            // TODO: In a future cleanup, remove redundant smoothing from SwerveDrivetrain.
+            swerveDrivetrain.setVelocity(new Vector(robotVx, robotVy, processedFieldTarget.omega()), dt);
 
             // 6. Telemetry
             logUpdate(heading, dt);

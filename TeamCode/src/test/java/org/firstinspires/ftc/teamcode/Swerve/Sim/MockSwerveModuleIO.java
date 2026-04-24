@@ -5,7 +5,6 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveModuleIO;
 
 class MockSwerveModuleIO implements SwerveModuleIO {
-    private static final double MAX_STEER_RATE_RAD_PER_SEC = Math.PI * 1.6;
     private static final double DRIVE_RESPONSE_GAIN = 10.0;
 
     private final String name;
@@ -51,7 +50,7 @@ class MockSwerveModuleIO implements SwerveModuleIO {
 
     void step(double dtSeconds) {
         currentRotationRadians = MathUtil.normalizeAngle(
-                currentRotationRadians + steerPower * MAX_STEER_RATE_RAD_PER_SEC * dtSeconds);
+                currentRotationRadians + steerPower * SwerveConfig.SIM_MAX_STEER_RATE_RAD_PER_SEC * dtSeconds);
 
         double targetVelocity = drivePower * SwerveConfig.getMaxLinearSpeedMPS();
         double blend = MathUtil.clamp(DRIVE_RESPONSE_GAIN * dtSeconds, 0.0, 1.0);

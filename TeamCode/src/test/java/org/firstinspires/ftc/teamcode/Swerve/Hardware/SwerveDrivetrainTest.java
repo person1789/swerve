@@ -1,7 +1,7 @@
 package org.firstinspires.ftc.teamcode.Swerve.Hardware;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 
@@ -14,22 +14,33 @@ class SwerveDrivetrainTest {
 
     private final boolean originalEnableIdleXStance = SwerveConfig.ENABLE_IDLE_X_STANCE;
     private final double originalLockDelay = SwerveConfig.LOCK_DELAY_MS;
+    private final boolean originalRequireSteerReadyForDrive = SwerveConfig.REQUIRE_STEER_READY_FOR_DRIVE;
+    private final double originalSteerReadyTolerance = SwerveConfig.STEER_READY_ANGLE_TOLERANCE_RAD;
+    private final double originalSteerDriveFullAuthority = SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD;
+    private final double originalSteerDriveHardCutoff = SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD;
 
     @AfterEach
     void restoreConfig() {
         SwerveConfig.ENABLE_IDLE_X_STANCE = originalEnableIdleXStance;
         SwerveConfig.LOCK_DELAY_MS = originalLockDelay;
+        SwerveConfig.REQUIRE_STEER_READY_FOR_DRIVE = originalRequireSteerReadyForDrive;
+        SwerveConfig.STEER_READY_ANGLE_TOLERANCE_RAD = originalSteerReadyTolerance;
+        SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = originalSteerDriveFullAuthority;
+        SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = originalSteerDriveHardCutoff;
     }
 
     @Test
-    void idleXStanceCanBeDisabledToPreserveNeutralDriverIntent() {
-        // Passes if zero input keeps the drivetrain in normal driving state when idle X-stance is disabled.
+    void drivetrainStateStillTransitionsWhenIdleXStanceIsDisabled() {
+        // Passes if the drivetrain can still report an idle/settled state even when X-stance is disabled.
         SwerveConfig.ENABLE_IDLE_X_STANCE = false;
+        SwerveConfig.LOCK_DELAY_MS = 20.0;
         SwerveDrivetrain drivetrain = new SwerveDrivetrain(createModules(), () -> 12.0, null);
 
-        drivetrain.setVelocity(new Vector(0.0, 0.0, 0.0), 0.05);
+        drivetrain.setVelocity(new Vector(0.0, 0.0, 0.0), 0.01);
+        drivetrain.setVelocity(new Vector(0.0, 0.0, 0.0), 0.02);
+        drivetrain.setVelocity(new Vector(0.0, 0.0, 0.0), 0.02);
 
-        assertEquals(SwerveDrivetrain.States.DRIVING, drivetrain.getState());
+        assertEquals(SwerveDrivetrain.States.LOCKED, drivetrain.getState());
     }
 
     @Test
@@ -60,6 +71,41 @@ class SwerveDrivetrainTest {
         }
     }
 
+    @Test
+    void driveIsHeldUntilAllModulesReachSteeringTargets() {
+        SwerveConfig.REQUIRE_STEER_READY_FOR_DRIVE = true;
+        SwerveConfig.STEER_READY_ANGLE_TOLERANCE_RAD = Math.toRadians(5.0);
+        TestModuleIO[] ios = {
+                new TestModuleIO(), new TestModuleIO(), new TestModuleIO(), new TestModuleIO()
+        };
+        ios[0].currentRotationRadians = Math.toRadians(30.0);
+        SwerveDrivetrain drivetrain = new SwerveDrivetrain(createModules(ios), () -> 12.0, null);
+
+        drivetrain.setVelocity(new Vector(1.0, 0.0, 0.0), 0.02);
+
+        assertEquals(false, drivetrain.isSteerReadyForDrive());
+        for (TestModuleIO io : ios) {
+            assertEquals(0.0, io.drivePower, 1e-9);
+        }
+    }
+
+    @Test
+    void driveIsStronglyReducedAtLargeSteerErrorWithoutFullGate() {
+        SwerveConfig.REQUIRE_STEER_READY_FOR_DRIVE = false;
+        SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = Math.toRadians(5.0);
+        SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = Math.toRadians(35.0);
+        TestModuleIO[] ios = {
+                new TestModuleIO(), new TestModuleIO(), new TestModuleIO(), new TestModuleIO()
+        };
+        ios[0].currentRotationRadians = Math.toRadians(25.0);
+        SwerveDrivetrain drivetrain = new SwerveDrivetrain(createModules(ios), () -> 12.0, null);
+
+        drivetrain.setVelocity(new Vector(1.0, 0.0, 0.0), 0.02);
+
+        assertEquals(false, drivetrain.isSteerReadyForDrive());
+        assertTrue(Math.abs(ios[0].drivePower) < 0.2);
+    }
+
     private SwerveModule[] createModules() {
         return createModules(new TestModuleIO(), new TestModuleIO(), new TestModuleIO(), new TestModuleIO());
     }
@@ -76,10 +122,11 @@ class SwerveDrivetrainTest {
     private static class TestModuleIO implements SwerveModuleIO {
         private DcMotor.RunMode lastMode;
         private double drivePower;
+        private double currentRotationRadians;
 
         @Override
         public double getCurrentRotationRadians() {
-            return 0.0;
+            return currentRotationRadians;
         }
 
         @Override
