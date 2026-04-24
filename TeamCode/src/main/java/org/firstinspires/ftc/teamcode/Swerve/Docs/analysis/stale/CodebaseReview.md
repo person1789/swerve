@@ -1,3 +1,4 @@
+@depreciatted
 # TeamCode Non-Simulator Code Review
 
 Reviewed on 2026-04-23 with simulator code intentionally excluded.

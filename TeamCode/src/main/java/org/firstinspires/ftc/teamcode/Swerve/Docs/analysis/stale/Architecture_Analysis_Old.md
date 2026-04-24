@@ -1,4 +1,5 @@
-# Swerve System Architecture
+@depreciatted
+# Architecture Guide
 
 This library follows a strict **Input -> Brain -> Pipeline -> Hardware** abstraction hierarchy. The system is designed around a unified **Vector domain language** to reduce unit conversion mistakes and keep drivetrain logic modular.
 

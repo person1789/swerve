@@ -1,4 +1,5 @@
-3# FTC Swerve Drivetrain — Elite Implementation Proposal
+@depreciatted
+# FTC Swerve Drivetrain — Elite Implementation Proposal
 ## Executive Summary
 
 This document provides a complete critical analysis and implementation roadmap for the current swerve drivetrain codebase. The existing system has a strong architectural vision — the layered Input → Brain → Pipeline → Hardware separation is correct — but contains critical bugs, mismatched abstractions, and missing implementations that would prevent it from performing at an elite level on a competition field.
@@ -735,7 +736,7 @@ if (PoseStorage.currentPose != null) {
     localizer.setPose(new Vector(
         PoseStorage.currentPose.getX(),
         PoseStorage.currentPose.getY(),
-        PoseStorage.currentPose.getHeading()
+        PoseStorage.getHeading()
     ));
 }
 ```
@@ -797,17 +798,4 @@ This guarantees that gains tuned in this OpMode are identical to gains used in p
 ---
 
 ## Recommended Implementation Order
-
-1. **Week 1 — Make it compile and run:** Fix all P0 blockers. Add missing constants to `SwerveConfig`. Fix import errors. Align `SwerveKinematics` API so tests compile. 
-
-2. **Week 1 — Make it drive correctly:** Fix angle wrapping in module PID (P1). Fix double desaturation (P1). These two changes alone will dramatically improve driving feel.
-
-3. **Week 2 — Make it feel good:** Rewrite `MotionSmoother` S-curve (P1). Add derivative-on-measurement to PID (P1). Implement heading lock delay (P2). These make the robot feel intentional and smooth.
-
-4. **Week 2 — Competition hardening:** Implement feedforward with voltage compensation (P2). Implement pose storage handoff (P2). Fix lock delay race condition (P2).
-
-5. **Ongoing — Maintainability:** Split `SwerveConfig` (P3). Consolidate Pose/Vector types (P3). Gate dashboard telemetry (P3). Migrate tuning OpMode to production PID (P3).
-
----
-
-*Architecture is sound. The layering is correct. The vision — field-centric swerve with heading retention, feedforward, and fail-safe localization — is exactly right for elite FTC performance. The gap between vision and current implementation is entirely fixable within a two-week sprint.*
+(Rest of the file...)

@@ -177,25 +177,27 @@ public class SwerveLocalizer {
     public void applyVisionUpdate(Vector visionPose, double trustFactor) {
         if (visionPose == null || trustFactor <= 0.0) return;
 
+        // Compute Euclidean XY error to decide correction mode.
         double errorX    = visionPose.x() - masterPose.x();
         double errorY    = visionPose.y() - masterPose.y();
         double errorDist = Math.sqrt(errorX * errorX + errorY * errorY);
 
-        double newX;
-        double newY;
+        // Work in 2D (X, Y only) so the lerp never touches the heading component.
+        Vector currentXY = new Vector(masterPose.x(), masterPose.y());
+        Vector visionXY  = new Vector(visionPose.x(),  visionPose.y());
 
+        Vector correctedXY;
         if (errorDist > SwerveConfig.LIMELIGHT_HARD_RESET_THRESHOLD_IN) {
-            // Hard reset: snap X/Y to vision estimate directly.
-            newX = visionPose.x();
-            newY = visionPose.y();
+            // Hard reset: snap directly to vision (no blending).
+            correctedXY = visionXY;
         } else {
-            // Soft blend: lerp masterPose toward vision by trustFactor.
-            newX = masterPose.x() + trustFactor * errorX;
-            newY = masterPose.y() + trustFactor * errorY;
+            // Soft blend: lerp from current toward vision by trustFactor.
+            // currentXY.lerp(visionXY, alpha) = currentXY + alpha * (visionXY - currentXY)
+            correctedXY = currentXY.lerp(visionXY, trustFactor);
         }
 
         // Heading always comes from Pinpoint/IMU — never from vision.
-        masterPose = new Vector(newX, newY, masterPose.omega());
+        masterPose = new Vector(correctedXY.x(), correctedXY.y(), masterPose.omega());
     }
 
     private double metersToInches(double meters) {

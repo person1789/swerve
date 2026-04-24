@@ -1,3 +1,4 @@
+@depreciatted
 # Analysis: Particle Filters for FTC Localization
 
 The user requested an analysis of implementing a Particle Filter (PF) as a potentially "next-level" localization strategy for the Swerve Drivetrain.

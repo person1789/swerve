@@ -1,3 +1,4 @@
+@depreciatted
 # 🏎️ Movement Logic: Units, Curves, and Smoothing
 
 This system treats the robot as a physical entity with mass and momentum, rather than just a collection of motors. All logic operates in **Standard Units** (m/s, rad/s).

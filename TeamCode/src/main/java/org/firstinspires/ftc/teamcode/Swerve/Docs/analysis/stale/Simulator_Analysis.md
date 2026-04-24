@@ -1,3 +1,4 @@
+@depreciatted
 # Swerve Simulation Guide
 
 This repo includes a simple browser-based simulator that drives mocked module hardware through the current Java drivetrain pipeline. The sim is intentionally thin: it reads a browser gamepad, sends those inputs to a local Java server, and renders the outputs from mocked module hardware as four blocks on a chassis.

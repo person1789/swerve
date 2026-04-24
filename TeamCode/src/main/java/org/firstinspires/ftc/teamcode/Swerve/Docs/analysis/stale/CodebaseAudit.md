@@ -1,3 +1,4 @@
+@depreciatted
 # Codebase Audit
 
 This document now serves as a resolved-audit record for the current swerve and `pedroPathing` codebase.

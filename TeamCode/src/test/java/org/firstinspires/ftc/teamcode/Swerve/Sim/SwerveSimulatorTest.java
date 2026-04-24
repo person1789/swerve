@@ -32,4 +32,14 @@ class SwerveSimulatorTest {
 
         assertTrue(anyMoving);
     }
+
+    @Test
+    void runServerTemporarily() throws Exception {
+        SwerveSimulatorServer server = new SwerveSimulatorServer();
+        server.start(10000, false);
+        System.out.println("Server started for testing...");
+        // Run for 15 seconds to allow UI testing
+        Thread.sleep(15000);
+        server.stop();
+    }
 }

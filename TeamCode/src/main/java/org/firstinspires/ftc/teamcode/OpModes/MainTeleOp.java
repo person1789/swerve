@@ -29,7 +29,6 @@ public class MainTeleOp extends LinearOpMode {
     private SwerveLocalizer localizer;
 
     // Declared null; only assigned when SwerveConfig.LIMELIGHT_ENABLED = true.
-    // This ensures no hardware map lookup occurs if the camera is absent.
     private LimelightLocalizer limelightLocalizer = null;
 
     private Logger logger;
@@ -48,13 +47,10 @@ public class MainTeleOp extends LinearOpMode {
         logger = new Logger(telemetry);
         hwMap = new HWMap(hardwareMap);
 
-        // Initialize Core Systems
         localizer = new SwerveLocalizer(hwMap);
         swerveDrivetrain = new SwerveDrivetrain(hwMap, logger);
         swerveController = new SwerveController();
 
-        // Optional: Limelight vision relocalization.
-        // Completely skipped (no hardware map call) if LIMELIGHT_ENABLED = false.
         if (SwerveConfig.LIMELIGHT_ENABLED) {
             limelightLocalizer = new LimelightLocalizer(hardwareMap);
         }
@@ -88,9 +84,6 @@ public class MainTeleOp extends LinearOpMode {
             // 2. Localization (Fail-Safe Fusion)
             localizer.update(swerveDrivetrain.getActualVelocity(), dt);
 
-            // 2a. Vision relocalization (only runs when LIMELIGHT_ENABLED = true).
-            // All Limelight code is isolated in this block — nothing outside it
-            // references LimelightLocalizer, preserving full subsystem isolation.
             if (SwerveConfig.LIMELIGHT_ENABLED && limelightLocalizer != null) {
                 // omega() from the velocity observer is rad/s; convert for MT2 gate.
                 double angularVelDegS = Math.toDegrees(swerveDrivetrain.getActualVelocity().omega());
@@ -106,8 +99,6 @@ public class MainTeleOp extends LinearOpMode {
             double heading = currentPose.omega();
 
             // 3. Process Driver Intent (Field-Centric)
-            // Raw joystick values (-1 to 1) are passed. SwerveController handles
-            // deadbands/curves.
             double vx = -gamepad1.left_stick_y;
             double vy = -gamepad1.left_stick_x;
             double turn = -gamepad1.right_stick_x;
@@ -146,7 +137,7 @@ public class MainTeleOp extends LinearOpMode {
         logger.log("Pinpoint Invalid Loops", localizer.getConsecutiveInvalidPinpointLoops(), Logger.LogLevels.PRODUCTION);
         swerveDrivetrain.log();
 
-        // Limelight telemetry — only emitted when the subsystem is active.
+        // Limelight telemetry
         if (SwerveConfig.LIMELIGHT_ENABLED && limelightLocalizer != null) {
             logger.log("LL Tag Count",  limelightLocalizer.getLastTagCount(),              Logger.LogLevels.PRODUCTION);
             logger.log("LL Has Update", limelightLocalizer.hasVisionUpdate() ? 1.0 : 0.0, Logger.LogLevels.PRODUCTION);

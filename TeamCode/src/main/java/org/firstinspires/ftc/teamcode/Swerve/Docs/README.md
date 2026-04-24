@@ -74,10 +74,12 @@ Use `PIDTuningGuide.md` after the robot already behaves basically correctly in:
 
 Do not treat PID tuning as the first fix for bad offsets, bad orientation, or bad module direction.
 
-## Historical docs
+## Analysis & Technical Records
 
-Stale or historical documents live in:
+Technical deep-dives and current implementation plans live in:
 
-- `stale/README.md`
+- `analysis/`
 
-That folder includes older audits, simulator notes, architecture snapshots, and speculative analysis that may still be interesting but are not the primary source of truth anymore.
+Historical records and superseded analysis documents are located in:
+
+- `analysis/stale/` (Marked with `@depreciatted`)

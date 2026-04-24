@@ -8,6 +8,9 @@ import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
 import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
+import com.qualcomm.hardware.lynx.LynxModule;
+
+import java.util.List;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 
@@ -38,7 +41,7 @@ public class HWMap {
     private final GoBildaPinpointDriver odo;
     public final IMU imu;
 
-    public HWMap (HardwareMap hardwareMap) {
+    public HWMap(HardwareMap hardwareMap) {
         FLM = hardwareMap.get(DcMotorEx.class, "FLM");
         FRM = hardwareMap.get(DcMotorEx.class, "FRM");
         BLM = hardwareMap.get(DcMotorEx.class, "BLM");
@@ -62,6 +65,11 @@ public class HWMap {
         imu.initialize(parameters);
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
+
+        List<LynxModule> allHubs = hardwareMap.getAll(LynxModule.class);
+        for (LynxModule hub : allHubs) {
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+        }
     }
 
     public GoBildaPinpointDriver getOdo() {

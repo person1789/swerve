@@ -68,6 +68,10 @@ class SwerveSimulator {
         gamepadState.connected = incoming.connected;
     }
 
+    synchronized BrowserGamepadState getGamepadState() {
+        return gamepadState;
+    }
+
     synchronized void step(double dtSeconds) {
         applySnapInput();
         applyHeadingReset();
