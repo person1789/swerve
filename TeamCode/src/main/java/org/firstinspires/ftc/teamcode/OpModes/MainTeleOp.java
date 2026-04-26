@@ -79,8 +79,8 @@ public class MainTeleOp extends LinearOpMode {
             double heading = currentPose.omega();
 
             // 3. Process Driver Intent (Field-Centric)
-            double rawVx = -gamepad1.left_stick_y;
-            double rawVy = -gamepad1.left_stick_x;
+            double rawVx = -gamepad1.left_stick_x;
+            double rawVy = -gamepad1.left_stick_y;
             double rawTurn = -gamepad1.right_stick_x;
 
             // 4. Run the shared teleop motion path on the common stack.
