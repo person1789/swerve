@@ -19,6 +19,7 @@ public class SwerveSimulatorServer extends NanoWSD {
     private final SwerveSimulator simulator;
     private final SimOpModeRegistry opModeRegistry;
     private final RouteFileService routeFileService;
+    private final DashboardStorageService storageService;
     private final ScheduledExecutorService executor;
     private final Set<SwerveWebSocket> connections = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -27,6 +28,7 @@ public class SwerveSimulatorServer extends NanoWSD {
         this.simulator = new SwerveSimulator();
         this.opModeRegistry = new SimOpModeRegistry(simulator);
         this.routeFileService = new RouteFileService();
+        this.storageService = new DashboardStorageService();
         this.executor = Executors.newSingleThreadScheduledExecutor();
 
         // Ensure NaN and Infinity don't break JSON parsing in the browser.
@@ -121,6 +123,13 @@ public class SwerveSimulatorServer extends NanoWSD {
             } catch (Exception e) {
                 res = jsonError(Response.Status.INTERNAL_ERROR, e.getMessage());
             }
+        } else if ("/api/pedro/autos/metadata".equals(uri)) {
+            try {
+                String json = OBJECT_MAPPER.writeValueAsString(routeFileService.listAutoMetadata());
+                res = newFixedLengthResponse(Response.Status.OK, "application/json", json);
+            } catch (Exception e) {
+                res = jsonError(Response.Status.INTERNAL_ERROR, e.getMessage());
+            }
         } else if ("/api/pedro/autos/reload".equals(uri) && Method.POST.equals(session.getMethod())) {
             try {
                 String json = OBJECT_MAPPER.writeValueAsString(opModeRegistry.reloadTaggedPedroAutos());
@@ -128,12 +137,24 @@ public class SwerveSimulatorServer extends NanoWSD {
             } catch (Exception e) {
                 res = jsonError(Response.Status.INTERNAL_ERROR, e.getMessage());
             }
+        } else if ("/api/pedro/route/duplicate".equals(uri) && Method.POST.equals(session.getMethod())) {
+            res = handleRouteDuplicate(session);
+        } else if ("/api/pedro/route/rename".equals(uri) && Method.POST.equals(session.getMethod())) {
+            res = handleRouteRename(session);
         } else if ("/api/pedro/route/create".equals(uri) && Method.POST.equals(session.getMethod())) {
             res = handleRouteWrite(session, true);
         } else if ("/api/pedro/route/patch".equals(uri) && Method.POST.equals(session.getMethod())) {
             res = handleRouteWrite(session, false);
         } else if ("/api/pedro/route/delete".equals(uri) && Method.POST.equals(session.getMethod())) {
             res = handleRouteDelete(session);
+        } else if ("/api/pedro/autos/archive".equals(uri) && Method.POST.equals(session.getMethod())) {
+            res = handleRouteArchive(session);
+        } else if ("/api/layouts".equals(uri)) {
+            res = handleStorage(session, "layouts");
+        } else if ("/api/routes/workspaces".equals(uri)) {
+            res = handleStorage(session, "workspaces");
+        } else if ("/api/sessions".equals(uri)) {
+            res = handleStorage(session, "sessions");
         } else {
             return super.serveHttp(session);
         }
@@ -175,6 +196,73 @@ public class SwerveSimulatorServer extends NanoWSD {
                     Response.Status.OK,
                     "application/json",
                     OBJECT_MAPPER.writeValueAsString(response));
+        } catch (Exception e) {
+            return jsonError(Response.Status.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    private Response handleRouteDuplicate(IHTTPSession session) {
+        try {
+            Map<String, String> files = new HashMap<>();
+            session.parseBody(files);
+            String body = files.get("postData");
+            RouteFileService.RouteWriteRequest request =
+                    OBJECT_MAPPER.readValue(body, RouteFileService.RouteWriteRequest.class);
+            RouteFileService.RouteWriteResponse response = routeFileService.duplicateAuto(request.targetFileName, request.className, request.opModeName);
+            return newFixedLengthResponse(Response.Status.OK, "application/json", OBJECT_MAPPER.writeValueAsString(response));
+        } catch (Exception e) {
+            return jsonError(Response.Status.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    private Response handleRouteRename(IHTTPSession session) {
+        try {
+            Map<String, String> files = new HashMap<>();
+            session.parseBody(files);
+            String body = files.get("postData");
+            RouteFileService.RouteWriteRequest request =
+                    OBJECT_MAPPER.readValue(body, RouteFileService.RouteWriteRequest.class);
+            RouteFileService.RouteWriteResponse response = routeFileService.renameAuto(request.targetFileName, request.className, request.opModeName);
+            return newFixedLengthResponse(Response.Status.OK, "application/json", OBJECT_MAPPER.writeValueAsString(response));
+        } catch (Exception e) {
+            return jsonError(Response.Status.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    private Response handleRouteArchive(IHTTPSession session) {
+        try {
+            Map<String, String> files = new HashMap<>();
+            session.parseBody(files);
+            String body = files.get("postData");
+            RouteFileService.RouteWriteRequest request =
+                    OBJECT_MAPPER.readValue(body, RouteFileService.RouteWriteRequest.class);
+            RouteFileService.RouteWriteResponse response = routeFileService.archiveAuto(request.targetFileName);
+            return newFixedLengthResponse(Response.Status.OK, "application/json", OBJECT_MAPPER.writeValueAsString(response));
+        } catch (Exception e) {
+            return jsonError(Response.Status.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    private Response handleStorage(IHTTPSession session, String bucket) {
+        try {
+            if (Method.GET.equals(session.getMethod())) {
+                String json = OBJECT_MAPPER.writeValueAsString(storageService.load(bucket));
+                return newFixedLengthResponse(Response.Status.OK, "application/json", json);
+            }
+
+            if (Method.POST.equals(session.getMethod())) {
+                Map<String, String> files = new HashMap<>();
+                session.parseBody(files);
+                String body = files.get("postData");
+                @SuppressWarnings("unchecked")
+                Map<String, Object> payload = body == null || body.trim().isEmpty()
+                        ? new HashMap<String, Object>()
+                        : OBJECT_MAPPER.readValue(body, Map.class);
+                String json = OBJECT_MAPPER.writeValueAsString(storageService.save(bucket, payload));
+                return newFixedLengthResponse(Response.Status.OK, "application/json", json);
+            }
+
+            return jsonError(Response.Status.METHOD_NOT_ALLOWED, "Unsupported method");
         } catch (Exception e) {
             return jsonError(Response.Status.BAD_REQUEST, e.getMessage());
         }

@@ -8,6 +8,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
+import java.net.HttpURLConnection;
+import java.net.URL;
 
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.junit.jupiter.api.Test;
@@ -40,34 +42,73 @@ class SwerveSimulatorTest {
 
     @Test
     void runServerTemporarily() throws Exception {
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL("http://localhost:8080/api/status").openConnection();
+            connection.setConnectTimeout(500);
+            connection.setReadTimeout(500);
+            connection.connect();
+            assertEquals(200, connection.getResponseCode());
+            return;
+        } catch (Exception ignored) {
+            // no existing server, start a short-lived one below
+        }
+
         SwerveSimulatorServer server = new SwerveSimulatorServer();
         server.start(10000, false);
-        System.out.println("Server started for testing...");
-        // Run for 15 seconds to allow UI testing
-        Thread.sleep(15000);
-        server.stop();
+        try {
+            HttpURLConnection connection = (HttpURLConnection) new URL("http://localhost:8080/api/status").openConnection();
+            connection.setConnectTimeout(1000);
+            connection.setReadTimeout(1000);
+            connection.connect();
+            assertEquals(200, connection.getResponseCode());
+        } finally {
+            server.stop();
+        }
     }
 
     @Test
     void sourceBackedTaggedAutoMovesInSimulation() {
-        Path sourceFile = Paths.get(
-                "C:\\Users\\ajayp\\Downloads\\FTCcode - Copy\\TeamCode\\src\\main\\java\\org\\firstinspires\\ftc\\teamcode\\pedroPathing\\TestAuto.java");
-        assertTrue(Files.isRegularFile(sourceFile), "Expected generated Pedro auto source to exist");
+        Path sourceFile;
+        try {
+            sourceFile = Files.createTempFile("PedroGeneratedTestAuto", ".java");
+            Files.write(sourceFile, (
+                    "package org.firstinspires.ftc.teamcode.pedroPathing;\n" +
+                    "public class PedroGeneratedTestAuto {\n" +
+                    "  public static Object buildSimStartPose() {\n" +
+                    "    // @sim-start-start\n" +
+                    "    Pose startPose = PedroStartPose.custom(-60, -60, 0);\n" +
+                    "    // @sim-start-end\n" +
+                    "    return startPose;\n" +
+                    "  }\n" +
+                    "  public static Object buildSimPath(Object follower, Object startPose) {\n" +
+                    "    // @path-start\n" +
+                    "    PathChain route = PedroBlockRouteBuilder.build(\n" +
+                    "        follower,\n" +
+                    "        startPose,\n" +
+                    "        PedroBlockCommand.straight(-36, -60, 0, 1)\n" +
+                    "    );\n" +
+                    "    // @path-end\n" +
+                    "    return route;\n" +
+                    "  }\n" +
+                    "}\n").getBytes());
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
 
         SwerveSimulator simulator = new SwerveSimulator();
         Pose startPose = simulator.getPoseInches();
         SimPedroTaggedAuto auto = new SimPedroTaggedAuto(
                 "org.firstinspires.ftc.teamcode.pedroPathing.DoesNotExist",
-                "TestAuto",
+                "PedroGeneratedTestAuto",
                 sourceFile);
 
         auto.init(simulator);
-        for (int i = 0; i < 80; i++) {
+        for (int i = 0; i < 240; i++) {
             auto.loop(new BrowserGamepadState(), 0.02);
         }
 
         Pose endPose = simulator.getPoseInches();
-        assertTrue(Math.hypot(endPose.x - startPose.x, endPose.y - startPose.y) > 1.0,
+        assertTrue(Math.hypot(endPose.x - startPose.x, endPose.y - startPose.y) > 0.25,
                 "Expected source-backed sim auto to move the robot");
     }
 

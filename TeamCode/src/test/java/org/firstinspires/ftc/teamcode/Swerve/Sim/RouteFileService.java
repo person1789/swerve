@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -13,6 +14,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class RouteFileService {
     private static final Pattern SIMPLE_NAME = Pattern.compile("[A-Za-z][A-Za-z0-9_]*");
@@ -24,9 +26,11 @@ public class RouteFileService {
     private static final Charset UTF8 = StandardCharsets.UTF_8;
 
     private final Path pedroDir;
+    private final Path staleGeneratedDir;
 
     public RouteFileService() {
         this.pedroDir = resolvePedroDir();
+        this.staleGeneratedDir = pedroDir.resolve("stale").resolve("generated").normalize();
     }
 
     private static Path resolvePedroDir() {
@@ -48,20 +52,37 @@ public class RouteFileService {
     }
 
     public List<String> listAutoFiles() throws IOException {
-        List<String> names = new ArrayList<>();
+        return listAutoMetadata().stream()
+                .map(metadata -> metadata.fileName)
+                .collect(Collectors.toList());
+    }
+
+    public List<AutoMetadata> listAutoMetadata() throws IOException {
+        List<AutoMetadata> autos = new ArrayList<>();
         if (!Files.isDirectory(pedroDir)) {
-            return names;
+            return autos;
         }
 
         try (java.util.stream.Stream<Path> stream = Files.list(pedroDir)) {
-            stream.filter(path -> path.getFileName().toString().endsWith(".java"))
-                    .map(path -> path.getFileName().toString())
-                    .filter(name -> name.endsWith("Auto.java"))
-                    .sorted(Comparator.naturalOrder())
-                    .forEach(names::add);
+            stream.filter(path -> path.getFileName().toString().endsWith("Auto.java"))
+                    .sorted(Comparator.comparing(path -> path.getFileName().toString()))
+                    .forEach(path -> {
+                        try {
+                            String source = new String(Files.readAllBytes(path), UTF8);
+                            autos.add(new AutoMetadata(
+                                    path.getFileName().toString(),
+                                    path.toAbsolutePath().toString(),
+                                    extractClassName(source, path.getFileName().toString()),
+                                    extractOpModeName(source, path.getFileName().toString()),
+                                    source.contains("// @sim"),
+                                    Files.getLastModifiedTime(path).toMillis(),
+                                    false));
+                        } catch (IOException ignored) {
+                        }
+                    });
         }
 
-        return names;
+        return autos;
     }
 
     public RouteWriteResponse createAuto(RouteWriteRequest request) throws IOException {
@@ -118,6 +139,59 @@ public class RouteFileService {
                 "Deleted " + normalizedFileName,
                 normalizedFileName,
                 file.toAbsolutePath().toString());
+    }
+
+    public RouteWriteResponse duplicateAuto(String targetFileName, String className, String opModeName) throws IOException {
+        String normalizedFileName = requireJavaFileName(targetFileName);
+        String newClassName = normalizeSimpleName(className, normalizedFileName.replace(".java", "Copy"));
+        String newFileName = newClassName + ".java";
+        Path sourceFile = resolveFile(normalizedFileName);
+        Path targetFile = resolveFile(newFileName);
+        String source = new String(Files.readAllBytes(sourceFile), UTF8);
+
+        String updated = source.replaceFirst("\\b" + Pattern.quote(normalizedFileName.replace(".java", "")) + "\\b", newClassName);
+        if (opModeName != null && !opModeName.trim().isEmpty()) {
+            updated = updated.replaceFirst("@Autonomous\\(name = \"[^\"]*\"", "@Autonomous(name = \"" + escapeJava(opModeName.trim()) + "\"");
+        } else {
+            updated = updated.replaceFirst("@Autonomous\\(name = \"[^\"]*\"", "@Autonomous(name = \"" + escapeJava(newClassName) + "\"");
+        }
+        updated = updated.replaceFirst("SIM_OPMODE_NAME = \"[^\"]*\"", "SIM_OPMODE_NAME = \"" + escapeJava(newClassName) + "\"");
+
+        Files.write(targetFile, updated.getBytes(UTF8));
+        return new RouteWriteResponse(true, "Duplicated " + normalizedFileName + " to " + newFileName, newFileName, targetFile.toAbsolutePath().toString());
+    }
+
+    public RouteWriteResponse renameAuto(String targetFileName, String className, String opModeName) throws IOException {
+        String normalizedFileName = requireJavaFileName(targetFileName);
+        String newClassName = normalizeSimpleName(className, normalizedFileName.replace(".java", ""));
+        String newFileName = newClassName + ".java";
+        Path sourceFile = resolveFile(normalizedFileName);
+        Path targetFile = resolveFile(newFileName);
+        String source = new String(Files.readAllBytes(sourceFile), UTF8);
+
+        String updated = source.replaceFirst("\\b" + Pattern.quote(normalizedFileName.replace(".java", "")) + "\\b", newClassName);
+        if (opModeName != null && !opModeName.trim().isEmpty()) {
+            updated = updated.replaceFirst("@Autonomous\\(name = \"[^\"]*\"", "@Autonomous(name = \"" + escapeJava(opModeName.trim()) + "\"");
+        }
+        updated = updated.replaceFirst("SIM_OPMODE_NAME = \"[^\"]*\"", "SIM_OPMODE_NAME = \"" + escapeJava(newClassName) + "\"");
+
+        Files.write(targetFile, updated.getBytes(UTF8));
+        if (!sourceFile.equals(targetFile)) {
+            Files.delete(sourceFile);
+        }
+        return new RouteWriteResponse(true, "Renamed " + normalizedFileName + " to " + newFileName, newFileName, targetFile.toAbsolutePath().toString());
+    }
+
+    public RouteWriteResponse archiveAuto(String targetFileName) throws IOException {
+        String normalizedFileName = requireJavaFileName(targetFileName);
+        Path sourceFile = resolveFile(normalizedFileName);
+        if (!Files.exists(sourceFile)) {
+            throw new IOException("Auto file not found: " + normalizedFileName);
+        }
+        Files.createDirectories(staleGeneratedDir);
+        Path targetFile = staleGeneratedDir.resolve(normalizedFileName).normalize();
+        Files.move(sourceFile, targetFile, StandardCopyOption.REPLACE_EXISTING);
+        return new RouteWriteResponse(true, "Archived " + normalizedFileName, normalizedFileName, targetFile.toAbsolutePath().toString());
     }
 
     private String buildAutoTemplate(String className, String opModeName, RouteCodeParts routeCode) {
@@ -324,12 +398,42 @@ public class RouteFileService {
         return value.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 
+    private static String extractClassName(String source, String fallbackFileName) {
+        java.util.regex.Matcher matcher = Pattern.compile("public class\\s+([A-Za-z][A-Za-z0-9_]*)").matcher(source);
+        return matcher.find() ? matcher.group(1) : fallbackFileName.replace(".java", "");
+    }
+
+    private static String extractOpModeName(String source, String fallbackFileName) {
+        java.util.regex.Matcher matcher = Pattern.compile("@Autonomous\\(name = \"([^\"]*)\"").matcher(source);
+        return matcher.find() ? matcher.group(1) : fallbackFileName.replace(".java", "");
+    }
+
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class RouteWriteRequest {
         public String className;
         public String opModeName;
         public String targetFileName;
         public String routeCode;
+    }
+
+    public static class AutoMetadata {
+        public final String fileName;
+        public final String filePath;
+        public final String className;
+        public final String opModeName;
+        public final boolean simTagged;
+        public final long modifiedTimeMs;
+        public final boolean archived;
+
+        public AutoMetadata(String fileName, String filePath, String className, String opModeName, boolean simTagged, long modifiedTimeMs, boolean archived) {
+            this.fileName = fileName;
+            this.filePath = filePath;
+            this.className = className;
+            this.opModeName = opModeName;
+            this.simTagged = simTagged;
+            this.modifiedTimeMs = modifiedTimeMs;
+            this.archived = archived;
+        }
     }
 
     public static class RouteWriteResponse {

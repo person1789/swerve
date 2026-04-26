@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Circle, Square, Play, Pause, Download, Trash2, List } from 'lucide-react';
+import { Circle, Square, Play, Pause, Download, Trash2, List, Upload, BookmarkPlus } from 'lucide-react';
 import { SessionRecorder, type Session } from '../lib/SessionRecorder';
 
 interface TimelineBarProps {
@@ -8,27 +8,36 @@ interface TimelineBarProps {
   onReplayFrame: (data: Record<string, unknown> | null) => void;
 }
 
+interface SessionSummary {
+  id: string;
+  name: string;
+  date: number;
+  frameCount: number;
+  source: 'sim' | 'robot' | 'replay';
+  opMode?: string;
+}
+
 export function TimelineBar({ recorder, telemetry, onReplayFrame }: TimelineBarProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [showSessions, setShowSessions] = useState(false);
-  const [sessions, setSessions] = useState<{ name: string; date: number; frameCount: number }[]>([]);
+  const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [replaySession, setReplaySession] = useState<Session | null>(null);
   const [replayIndex, setReplayIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(1);
+  const [bookmarks, setBookmarks] = useState<number[]>([]);
+  const importInputRef = useRef<HTMLInputElement>(null);
   const replayTimer = useRef<number>(0);
 
-  // Record frames when recording
   useEffect(() => {
     if (isRecording && Object.keys(telemetry).length > 0) {
       recorder.addFrame(telemetry);
     }
   }, [telemetry, isRecording, recorder]);
 
-  // Replay timer
   useEffect(() => {
     if (isPlaying && replaySession) {
-      const interval = 20 / speed; // 50Hz base
+      const interval = 20 / speed;
       replayTimer.current = window.setInterval(() => {
         setReplayIndex(prev => {
           const next = prev + 1;
@@ -45,8 +54,9 @@ export function TimelineBar({ recorder, telemetry, onReplayFrame }: TimelineBarP
   }, [isPlaying, replaySession, speed, onReplayFrame]);
 
   const handleStartRecording = () => {
-    recorder.startRecording();
+    recorder.startRecording('sim', String(telemetry.activeOpMode || ''), String((telemetry as Record<string, unknown>).routeName || ''));
     setIsRecording(true);
+    setBookmarks([]);
   };
 
   const handleStopRecording = async () => {
@@ -61,21 +71,22 @@ export function TimelineBar({ recorder, telemetry, onReplayFrame }: TimelineBarP
     setSessions(list);
   };
 
-  const handleLoadSession = async (name: string) => {
-    const session = await SessionRecorder.loadSession(name);
+  const handleLoadSession = async (id: string) => {
+    const session = await SessionRecorder.loadSession(id);
     if (session) {
       setReplaySession(session);
       setReplayIndex(0);
       setIsPlaying(false);
       setShowSessions(false);
+      setBookmarks([]);
       if (session.frames.length > 0) {
         onReplayFrame(session.frames[0].data);
       }
     }
   };
 
-  const handleDeleteSession = async (name: string) => {
-    await SessionRecorder.deleteSession(name);
+  const handleDeleteSession = async (id: string) => {
+    await SessionRecorder.deleteSession(id);
     refreshSessions();
   };
 
@@ -86,14 +97,40 @@ export function TimelineBar({ recorder, telemetry, onReplayFrame }: TimelineBarP
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${replaySession.name}.csv`;
+    a.download = `${replaySession.manifest.name}.csv`;
     a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleExportBundle = () => {
+    if (!replaySession) return;
+    const blob = new Blob([SessionRecorder.exportBundle(replaySession)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${replaySession.manifest.name}.session.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportBundle = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    const parsed = JSON.parse(text) as Session;
+    const sessionName = `${parsed.manifest.name}-imported`;
+    const importedRecorder = new SessionRecorder();
+    importedRecorder.startRecording('replay');
+    parsed.frames.forEach(frame => importedRecorder.addFrame(frame.data));
+    await importedRecorder.stopAndSave(sessionName, parsed.manifest.notes);
+    await refreshSessions();
+    event.target.value = '';
   };
 
   const handleStopReplay = () => {
     setReplaySession(null);
     setIsPlaying(false);
+    setBookmarks([]);
     onReplayFrame(null);
   };
 
@@ -107,35 +144,33 @@ export function TimelineBar({ recorder, telemetry, onReplayFrame }: TimelineBarP
       flexShrink: 0,
       position: 'relative',
     }}>
-      {/* Record Button */}
       {!replaySession && (
         <button onClick={isRecording ? handleStopRecording : handleStartRecording} style={{ ...iconBtn, color: isRecording ? '#ff5252' : 'rgba(255,255,255,0.5)' }}>
           {isRecording ? <Square size={14} fill="#ff5252" /> : <Circle size={14} />}
         </button>
       )}
 
-      {/* Sessions List Toggle */}
       <button onClick={() => { setShowSessions(!showSessions); refreshSessions(); }} style={{ ...iconBtn, color: 'rgba(255,255,255,0.5)' }}>
         <List size={14} />
       </button>
+      <button onClick={() => importInputRef.current?.click()} style={{ ...iconBtn, color: 'rgba(255,255,255,0.5)' }}>
+        <Upload size={14} />
+      </button>
 
-      {/* Replay Controls */}
       {replaySession && (
         <>
           <button onClick={() => setIsPlaying(!isPlaying)} style={{ ...iconBtn, color: '#7c4dff' }}>
             {isPlaying ? <Pause size={14} /> : <Play size={14} />}
           </button>
 
-          {/* Speed Selector */}
           <select value={speed} onChange={(e) => setSpeed(parseFloat(e.target.value))} style={selectStyle}>
-            <option value={0.25}>0.25×</option>
-            <option value={0.5}>0.5×</option>
-            <option value={1}>1×</option>
-            <option value={2}>2×</option>
-            <option value={4}>4×</option>
+            <option value={0.25}>0.25x</option>
+            <option value={0.5}>0.5x</option>
+            <option value={1}>1x</option>
+            <option value={2}>2x</option>
+            <option value={4}>4x</option>
           </select>
 
-          {/* Scrubber */}
           <input
             type="range"
             min={0}
@@ -153,11 +188,16 @@ export function TimelineBar({ recorder, telemetry, onReplayFrame }: TimelineBarP
             {replayIndex + 1}/{replaySession.frames.length}
           </span>
 
+          <button onClick={() => setBookmarks(prev => [...prev, replayIndex].sort((a, b) => a - b))} style={{ ...iconBtn, color: '#ffd740' }}>
+            <BookmarkPlus size={14} />
+          </button>
           <button onClick={handleExportCSV} style={{ ...iconBtn, color: 'rgba(255,255,255,0.5)' }}>
             <Download size={14} />
           </button>
-
-          <button onClick={handleStopReplay} style={{ ...iconBtn, color: '#ff5252' }}>✕</button>
+          <button onClick={handleExportBundle} style={{ ...iconBtn, color: '#8bf5ff' }}>
+            <Upload size={14} />
+          </button>
+          <button onClick={handleStopReplay} style={{ ...iconBtn, color: '#ff5252' }}>×</button>
         </>
       )}
 
@@ -167,7 +207,23 @@ export function TimelineBar({ recorder, telemetry, onReplayFrame }: TimelineBarP
         </span>
       )}
 
-      {/* Sessions Dropdown */}
+      {bookmarks.length > 0 && replaySession && (
+        <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
+          {bookmarks.map(mark => (
+            <button
+              key={mark}
+              onClick={() => {
+                setReplayIndex(mark);
+                onReplayFrame(replaySession.frames[mark].data);
+              }}
+              style={{ ...miniBtn, color: mark === replayIndex ? '#ffd740' : 'var(--text-dim)' }}
+            >
+              {mark}
+            </button>
+          ))}
+        </div>
+      )}
+
       {showSessions && (
         <div style={{
           position: 'absolute',
@@ -178,8 +234,8 @@ export function TimelineBar({ recorder, telemetry, onReplayFrame }: TimelineBarP
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: '8px',
           padding: '0.5rem',
-          minWidth: '220px',
-          maxHeight: '200px',
+          minWidth: '280px',
+          maxHeight: '240px',
           overflow: 'auto',
           zIndex: 100,
         }}>
@@ -190,17 +246,20 @@ export function TimelineBar({ recorder, telemetry, onReplayFrame }: TimelineBarP
             <div style={{ fontSize: '0.65rem', color: 'rgba(255,255,255,0.3)' }}>No sessions yet</div>
           )}
           {sessions.map(s => (
-            <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.25rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
-              <button onClick={() => handleLoadSession(s.name)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '0.65rem', cursor: 'pointer', textAlign: 'left' }}>
-                {s.name} ({s.frameCount}f)
+            <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.4rem', padding: '0.25rem 0', borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
+              <button onClick={() => handleLoadSession(s.id)} style={{ background: 'none', border: 'none', color: 'white', fontSize: '0.65rem', cursor: 'pointer', textAlign: 'left', flex: 1 }}>
+                <div>{s.name}</div>
+                <div style={{ color: 'var(--text-dim)', fontSize: '0.58rem' }}>{s.source} · {s.frameCount}f {s.opMode ? `· ${s.opMode}` : ''}</div>
               </button>
-              <button onClick={() => handleDeleteSession(s.name)} style={{ ...iconBtn, color: '#ff5252' }}>
+              <button onClick={() => handleDeleteSession(s.id)} style={{ ...iconBtn, color: '#ff5252' }}>
                 <Trash2 size={12} />
               </button>
             </div>
           ))}
         </div>
       )}
+
+      <input ref={importInputRef} type="file" accept=".json,.session.json" onChange={handleImportBundle} style={{ display: 'none' }} />
     </div>
   );
 }
@@ -222,4 +281,13 @@ const selectStyle: React.CSSProperties = {
   padding: '0.15rem 0.3rem',
   borderRadius: '4px',
   outline: 'none',
+};
+
+const miniBtn: React.CSSProperties = {
+  background: 'rgba(255,255,255,0.05)',
+  border: '1px solid rgba(255,255,255,0.08)',
+  borderRadius: 4,
+  fontSize: '0.6rem',
+  padding: '0.1rem 0.35rem',
+  cursor: 'pointer',
 };

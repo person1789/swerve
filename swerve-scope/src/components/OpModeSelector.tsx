@@ -15,10 +15,10 @@ export function OpModeSelector({ availableOpModes, activeOpMode, opModeState, ws
   const isStopped = opModeState === 'STOPPED';
   const isInit = opModeState === 'INITIALIZED';
   const isRunning = opModeState === 'RUNNING';
+  const isInitFailed = opModeState === 'INIT_FAILED';
 
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-      {/* OpMode Dropdown */}
       <select
         value={activeOpMode || ''}
         onChange={(e) => send({ type: 'opmode_select', name: e.target.value })}
@@ -42,20 +42,20 @@ export function OpModeSelector({ availableOpModes, activeOpMode, opModeState, ws
         ))}
       </select>
 
-      {/* State Controls */}
       <button
         onClick={() => send({ type: 'opmode_control', action: 'INIT' })}
         disabled={!activeOpMode || isInit || isRunning}
         style={{
           ...btnStyle,
-          backgroundColor: isStopped && activeOpMode ? 'rgba(255,215,64,0.2)' : 'rgba(255,255,255,0.05)',
-          color: isStopped && activeOpMode ? '#ffd740' : 'rgba(255,255,255,0.3)',
-          borderColor: isStopped && activeOpMode ? 'rgba(255,215,64,0.3)' : 'rgba(255,255,255,0.1)',
-          cursor: isStopped && activeOpMode ? 'pointer' : 'not-allowed',
+          backgroundColor: (isStopped || isInitFailed) && activeOpMode ? 'rgba(255,215,64,0.2)' : 'rgba(255,255,255,0.05)',
+          color: (isStopped || isInitFailed) && activeOpMode ? '#ffd740' : 'rgba(255,255,255,0.3)',
+          borderColor: (isStopped || isInitFailed) && activeOpMode ? 'rgba(255,215,64,0.3)' : 'rgba(255,255,255,0.1)',
+          cursor: (isStopped || isInitFailed) && activeOpMode ? 'pointer' : 'not-allowed',
         }}
       >
         INIT
       </button>
+
       <button
         onClick={() => send({ type: 'opmode_control', action: 'START' })}
         disabled={!isInit}
@@ -69,6 +69,7 @@ export function OpModeSelector({ availableOpModes, activeOpMode, opModeState, ws
       >
         START
       </button>
+
       <button
         onClick={() => send({ type: 'opmode_control', action: 'STOP' })}
         disabled={isStopped}
@@ -83,14 +84,25 @@ export function OpModeSelector({ availableOpModes, activeOpMode, opModeState, ws
         STOP
       </button>
 
-      {/* State Indicator */}
       <span style={{
         fontSize: '0.65rem',
         fontWeight: 700,
         padding: '0.15rem 0.5rem',
         borderRadius: 9999,
-        backgroundColor: isRunning ? 'rgba(0,230,118,0.15)' : isInit ? 'rgba(255,215,64,0.15)' : 'rgba(255,255,255,0.05)',
-        color: isRunning ? '#00e676' : isInit ? '#ffd740' : 'rgba(255,255,255,0.4)',
+        backgroundColor: isRunning
+          ? 'rgba(0,230,118,0.15)'
+          : isInit
+            ? 'rgba(255,215,64,0.15)'
+            : isInitFailed
+              ? 'rgba(255,82,82,0.16)'
+              : 'rgba(255,255,255,0.05)',
+        color: isRunning
+          ? '#00e676'
+          : isInit
+            ? '#ffd740'
+            : isInitFailed
+              ? '#ff8a80'
+              : 'rgba(255,255,255,0.4)',
       }}>
         ● {opModeState}
       </span>

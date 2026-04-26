@@ -52,6 +52,16 @@ interface StoredRouteV2 {
   showRobotSilhouettes?: boolean;
 }
 
+interface AutoMetadata {
+  fileName: string;
+  filePath: string;
+  className: string;
+  opModeName: string;
+  simTagged: boolean;
+  modifiedTimeMs: number;
+  archived: boolean;
+}
+
 interface SampledPose extends PoseLike {
   segmentId?: string;
 }
@@ -136,8 +146,11 @@ export function RouteDesigner() {
   const [fieldImageOpacity, setFieldImageOpacity] = useState(0.45);
   const [routeName, setRouteName] = useState('decode-lane');
   const [existingAutoFiles, setExistingAutoFiles] = useState<string[]>([]);
+  const [autoMetadata, setAutoMetadata] = useState<AutoMetadata[]>([]);
   const [selectedAutoFile, setSelectedAutoFile] = useState('');
   const [automationStatus, setAutomationStatus] = useState('');
+  const [routeDirty, setRouteDirty] = useState(false);
+  const [lastSavedSignature, setLastSavedSignature] = useState('');
   const [isPreviewPlaying, setIsPreviewPlaying] = useState(false);
   const [previewDistance, setPreviewDistance] = useState(0);
   const [snapToIntersections, setSnapToIntersections] = useState(true);
@@ -299,6 +312,50 @@ export function RouteDesigner() {
     const trimmed = routeName.trim();
     return trimmed ? `${trimmed} Auto` : 'Generated Auto';
   }, [routeName]);
+
+  const routeSummary = useMemo(() => {
+    const segmentCount = blocks.length;
+    const totalDistanceIn = routeSamples.totalDistance;
+    const estimatedDurationSec = totalDistanceIn / 36;
+    let headingChangeDeg = 0;
+    let previousHeading = selectedStart.headingDeg;
+    for (const block of blocks) {
+      headingChangeDeg += Math.abs(normalizeDeg(block.endHeadingDeg - previousHeading));
+      previousHeading = block.endHeadingDeg;
+    }
+    return {
+      segmentCount,
+      totalDistanceIn,
+      estimatedDurationSec,
+      headingChangeDeg,
+    };
+  }, [blocks, routeSamples.totalDistance, selectedStart.headingDeg]);
+
+  const routeWarnings = useMemo(() => {
+    const warnings: string[] = [];
+    const points = previewSegments.flatMap(segment => [segment.start, segment.end]);
+    if (points.some(point => Math.abs(point.xIn) > FIELD_HALF_IN || Math.abs(point.yIn) > FIELD_HALF_IN)) {
+      warnings.push('Route leaves the field bounds.');
+    }
+    if (blocks.some(block => Math.hypot(block.endXIn - selectedStart.xIn, block.endYIn - selectedStart.yIn) < 1 && blocks.length === 1)) {
+      warnings.push('First segment endpoint is too close to the start pose.');
+    }
+    if (blocks.some(block => block.type === 'curved' && block.controlXIn !== undefined && block.controlYIn !== undefined && Math.hypot(block.endXIn - block.controlXIn, block.endYIn - block.controlYIn) < 0.5)) {
+      warnings.push('A curve control point is almost on top of its endpoint.');
+    }
+    if (blocks.some(block => Math.abs(normalizeDeg(block.endHeadingDeg)) > 360)) {
+      warnings.push('Heading normalization looks off.');
+    }
+    for (let i = 1; i < blocks.length; i++) {
+      const dx = blocks[i].endXIn - blocks[i - 1].endXIn;
+      const dy = blocks[i].endYIn - blocks[i - 1].endYIn;
+      if (Math.hypot(dx, dy) < 0.5) {
+        warnings.push(`Segment ${i + 1} has a near-zero length endpoint move.`);
+        break;
+      }
+    }
+    return warnings;
+  }, [blocks, previewSegments, selectedStart.xIn, selectedStart.yIn]);
 
   const toSvg = (xIn: number, yIn: number) => ({
     x: ((xIn + FIELD_HALF_IN) / (FIELD_HALF_IN * 2)) * 100,
@@ -505,12 +562,14 @@ export function RouteDesigner() {
 
   const refreshAutoFiles = async () => {
     try {
-      const response = await fetch(`http://${window.location.hostname || 'localhost'}:8080/api/pedro/autos`);
+      const response = await fetch(`http://${window.location.hostname || 'localhost'}:8080/api/pedro/autos/metadata`);
       if (!response.ok) {
         return;
       }
 
-      const files = await response.json() as string[];
+      const metadata = await response.json() as AutoMetadata[];
+      const files = metadata.map(item => item.fileName);
+      setAutoMetadata(metadata);
       setExistingAutoFiles(files);
       setSelectedAutoFile(prev => {
         if (prev && files.includes(prev)) {
@@ -568,6 +627,22 @@ export function RouteDesigner() {
     refreshAutoFiles();
   }, []);
 
+  const currentSignature = `${routeName}\n${selectedAutoFile}\n${generatedCode}`;
+
+  useEffect(() => {
+    setRouteDirty(lastSavedSignature.length > 0 && currentSignature !== lastSavedSignature);
+  }, [currentSignature, lastSavedSignature]);
+
+  useEffect(() => {
+    if (lastSavedSignature.length > 0) {
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setLastSavedSignature(currentSignature);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [currentSignature, lastSavedSignature]);
+
   useEffect(() => {
     const savedRaw = window.localStorage.getItem(ROUTE_DESIGNER_STORAGE_KEY);
     if (!savedRaw) {
@@ -610,6 +685,7 @@ export function RouteDesigner() {
       const parsedV2 = parsed as Partial<StoredRouteV2>;
       setSelectedAutoFile(typeof parsedV2.selectedAutoFile === 'string' ? parsedV2.selectedAutoFile : '');
       setShowRobotSilhouettes(parsedV2.showRobotSilhouettes !== false);
+      setLastSavedSignature('');
     } catch {
       // ignore malformed local route state
     }
@@ -633,6 +709,21 @@ export function RouteDesigner() {
       showRobotSilhouettes,
     };
     window.localStorage.setItem(ROUTE_DESIGNER_STORAGE_KEY, JSON.stringify(payload));
+    void fetch(`http://${window.location.hostname || 'localhost'}:8080/api/routes/workspaces`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        current: {
+          schemaVersion: 2,
+          routeName: payload.routeName,
+          selectedAutoFile: payload.selectedAutoFile,
+          showRobotSilhouettes: payload.showRobotSilhouettes !== false,
+          fieldImageOpacity: payload.fieldImageOpacity,
+          robotSizeIn: payload.robotSizeIn,
+          updatedAtMs: Date.now(),
+        },
+      }),
+    }).catch(() => undefined);
   }, [blocks, fieldImageDataUrl, fieldImageOpacity, presetMatch, robotSizeIn, routeName, selectedAutoFile, selectedStart, showRobotSilhouettes]);
 
   const createAutoFile = async () => {
@@ -654,6 +745,7 @@ export function RouteDesigner() {
         await reloadSimAutos({
           silent: true,
         });
+        setLastSavedSignature(`${routeName}\n${className}.java\n${generatedCode}`);
         setAutomationStatus(result.message || (result.filePath ? `Created ${className}.java at ${result.filePath}` : 'Created auto file'));
       } else {
         setAutomationStatus(result.message || 'Failed to create auto file');
@@ -693,6 +785,103 @@ export function RouteDesigner() {
     }
   };
 
+  const duplicateSelectedAuto = async () => {
+    if (!selectedAutoFile) {
+      setAutomationStatus('Choose an auto file to duplicate');
+      return;
+    }
+
+    const duplicateClassName = `${className}Copy`;
+    setAutomationStatus(`Duplicating ${selectedAutoFile}...`);
+    try {
+      const response = await fetch(`http://${window.location.hostname || 'localhost'}:8080/api/pedro/route/duplicate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetFileName: selectedAutoFile,
+          className: duplicateClassName,
+          opModeName: `${opModeName} Copy`,
+        }),
+      });
+      const result = await response.json() as { ok?: boolean; message?: string; fileName?: string };
+      await refreshAutoFiles();
+      if (result.ok) {
+        if (result.fileName) {
+          setSelectedAutoFile(result.fileName);
+        }
+        await reloadSimAutos({ silent: true });
+        setAutomationStatus(result.message || 'Duplicated auto file');
+      } else {
+        setAutomationStatus(result.message || 'Failed to duplicate auto file');
+      }
+    } catch {
+      setAutomationStatus('Failed to duplicate auto file');
+    }
+  };
+
+  const renameSelectedAuto = async () => {
+    if (!selectedAutoFile) {
+      setAutomationStatus('Choose an auto file to rename');
+      return;
+    }
+
+    setAutomationStatus(`Renaming ${selectedAutoFile}...`);
+    try {
+      const response = await fetch(`http://${window.location.hostname || 'localhost'}:8080/api/pedro/route/rename`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetFileName: selectedAutoFile,
+          className,
+          opModeName,
+        }),
+      });
+      const result = await response.json() as { ok?: boolean; message?: string; fileName?: string };
+      await refreshAutoFiles();
+      if (result.ok) {
+        if (result.fileName) {
+          setSelectedAutoFile(result.fileName);
+        }
+        await reloadSimAutos({ silent: true });
+        setRouteDirty(false);
+        setAutomationStatus(result.message || 'Renamed auto file');
+      } else {
+        setAutomationStatus(result.message || 'Failed to rename auto file');
+      }
+    } catch {
+      setAutomationStatus('Failed to rename auto file');
+    }
+  };
+
+  const archiveSelectedAuto = async () => {
+    if (!selectedAutoFile) {
+      setAutomationStatus('Choose an auto file to archive');
+      return;
+    }
+
+    setAutomationStatus(`Archiving ${selectedAutoFile}...`);
+    try {
+      const response = await fetch(`http://${window.location.hostname || 'localhost'}:8080/api/pedro/autos/archive`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetFileName: selectedAutoFile,
+        }),
+      });
+      const result = await response.json() as { ok?: boolean; message?: string };
+      if (result.ok) {
+        setSelectedAutoFile('');
+        await refreshAutoFiles();
+        await reloadSimAutos({ silent: true });
+        setAutomationStatus(result.message || 'Archived auto file');
+      } else {
+        setAutomationStatus(result.message || 'Failed to archive auto file');
+      }
+    } catch {
+      setAutomationStatus('Failed to archive auto file');
+    }
+  };
+
   const patchExistingAuto = async () => {
     if (!selectedAutoFile) {
       setAutomationStatus('Choose an existing auto file first');
@@ -715,6 +904,7 @@ export function RouteDesigner() {
         await reloadSimAutos({
           silent: true,
         });
+        setLastSavedSignature(`${routeName}\n${selectedAutoFile}\n${generatedCode}`);
         setAutomationStatus(result.message || 'Updated auto file');
       } else {
         setAutomationStatus(result.message || 'Failed to update auto file');
@@ -792,6 +982,7 @@ export function RouteDesigner() {
         controlScale: Number(block.controlScale ?? 1),
         headingWeight: Number(block.headingWeight ?? 1),
       })));
+      setLastSavedSignature('');
     } catch {
       // ignore malformed route files for now
     } finally {
@@ -819,11 +1010,13 @@ export function RouteDesigner() {
     setIsPreviewPlaying(false);
     setShowRobotSilhouettes(true);
     setAutomationStatus('Reset route workspace');
+    setLastSavedSignature('');
   };
 
   const startHandle = headingHandlePosition(selectedStart);
   const startSvg = toSvg(selectedStart.xIn, selectedStart.yIn);
   const startHeadingSvg = toSvg(startHandle.xIn, startHandle.yIn);
+  const currentAutoMeta = autoMetadata.find(item => item.fileName === selectedAutoFile);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', gap: '0.5rem', padding: '0.5rem' }}>
@@ -854,7 +1047,10 @@ export function RouteDesigner() {
           <button onClick={() => routeFileInputRef.current?.click()} style={btnStyle}><FolderOpen size={12} /> Load Route</button>
           <button onClick={createAutoFile} style={btnStyle}><Download size={12} /> Create Auto</button>
           <button onClick={patchExistingAuto} style={btnStyle}><FolderOpen size={12} /> Patch @path</button>
+          <button onClick={duplicateSelectedAuto} style={btnStyle}><Copy size={12} /> Duplicate Auto</button>
+          <button onClick={renameSelectedAuto} style={btnStyle}><RefreshCcw size={12} /> Rename Auto</button>
           <button onClick={deleteSelectedAuto} style={btnStyle}><Trash2 size={12} /> Delete Auto</button>
+          <button onClick={archiveSelectedAuto} style={btnStyle}><FolderOpen size={12} /> Archive Auto</button>
           <button onClick={() => { void reloadSimAutos(); }} style={btnStyle}><RefreshCcw size={12} /> Reload Sim Autos</button>
           <button onClick={() => fieldImageInputRef.current?.click()} style={btnStyle}><ImagePlus size={12} /> Field Image</button>
           <button onClick={() => {
@@ -918,6 +1114,9 @@ export function RouteDesigner() {
             <span style={{ color: 'var(--text-dim)', fontSize: '0.63rem' }}>
               {presetMatch ? `Preset ${presetMatch.label}` : 'Custom start pose'}
             </span>
+            <span style={{ color: routeDirty ? '#ffd740' : 'var(--text-dim)', fontSize: '0.63rem' }}>
+              {routeDirty ? 'Unsaved route changes' : 'Route saved to selected auto'}
+            </span>
             <span style={{ color: 'var(--text-dim)', fontSize: '0.63rem' }}>
               {className}
             </span>
@@ -925,6 +1124,30 @@ export function RouteDesigner() {
               {automationStatus}
             </span>
           </div>
+        </div>
+      </div>
+
+      <div className="glass-card" style={{ padding: '0.5rem', display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: '0.6rem' }}>
+        <div style={{ display: 'grid', gap: '0.25rem' }}>
+          <div style={summaryRow}><span>Segments</span><strong>{routeSummary.segmentCount}</strong></div>
+          <div style={summaryRow}><span>Distance</span><strong>{routeSummary.totalDistanceIn.toFixed(1)} in</strong></div>
+          <div style={summaryRow}><span>Estimated Time</span><strong>{routeSummary.estimatedDurationSec.toFixed(2)} s</strong></div>
+          <div style={summaryRow}><span>Total Heading Change</span><strong>{routeSummary.headingChangeDeg.toFixed(1)} deg</strong></div>
+          {currentAutoMeta && (
+            <>
+              <div style={summaryRow}><span>Selected File</span><strong>{currentAutoMeta.fileName}</strong></div>
+              <div style={summaryRow}><span>Sim Tagged</span><strong>{currentAutoMeta.simTagged ? 'Yes' : 'No'}</strong></div>
+              <div style={{ ...summaryRow, alignItems: 'flex-start' }}><span>Path</span><strong style={{ textAlign: 'right', maxWidth: '70%', wordBreak: 'break-all' }}>{currentAutoMeta.filePath}</strong></div>
+            </>
+          )}
+        </div>
+        <div style={{ display: 'grid', gap: '0.3rem' }}>
+          <div style={{ fontSize: '0.62rem', color: 'var(--text-dim)', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.05em' }}>Validation</div>
+          {routeWarnings.length === 0 ? (
+            <div style={{ fontSize: '0.68rem', color: '#00e676' }}>No route warnings.</div>
+          ) : routeWarnings.map(warning => (
+            <div key={warning} style={{ fontSize: '0.68rem', color: '#ffd740' }}>{warning}</div>
+          ))}
         </div>
       </div>
 
@@ -1153,4 +1376,12 @@ const toggleLabel: React.CSSProperties = {
   gap: '0.3rem',
   fontSize: '0.62rem',
   color: 'var(--text-primary)',
+};
+
+const summaryRow: React.CSSProperties = {
+  display: 'flex',
+  justifyContent: 'space-between',
+  gap: '0.75rem',
+  fontSize: '0.68rem',
+  color: 'var(--text-dim)',
 };
