@@ -32,6 +32,10 @@ public final class PedroDecodeRoute {
     private PedroDecodeRoute() {
     }
 
+    public static Pose startPose(PedroStartPose startPose) {
+        return startPose.toPose();
+    }
+
     public static Pose laneExit(Pose startPose) {
         return new Pose(laneExitXIn, laneExitYIn, startPose.getHeading());
     }

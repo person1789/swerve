@@ -8,6 +8,7 @@ import com.pedropathing.paths.PathChain;
 
 import org.firstinspires.ftc.teamcode.pedroPathing.PedroDecodeLaneAuto;
 import org.firstinspires.ftc.teamcode.pedroPathing.PedroDecodeRoute;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroStartPose;
 import org.firstinspires.ftc.teamcode.pedroPathing.PedroSwerveFactory;
 
 public class SimPedroDecodeLaneAuto implements SimOpMode {
@@ -25,10 +26,10 @@ public class SimPedroDecodeLaneAuto implements SimOpMode {
         SimPedroLocalizer localizer = new SimPedroLocalizer(sim);
         this.follower = new Follower(PedroSwerveFactory.createFollowerConstants(), localizer, drivetrain);
 
-        Pose startPose = new Pose(
-                PedroDecodeLaneAuto.startXIn,
-                PedroDecodeLaneAuto.startYIn,
-                Math.toRadians(PedroDecodeLaneAuto.startHeadingDeg));
+        Pose startPose = PedroDecodeRoute.startPose(
+                PedroStartPose.fromName(
+                        PedroDecodeLaneAuto.configuredStartPose,
+                        PedroStartPose.RED_BASE_CORNER));
         PathChain routine = PedroDecodeRoute.buildLaneAuto(follower, startPose);
 
         sim.setPoseInches(new org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose(

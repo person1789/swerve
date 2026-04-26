@@ -30,6 +30,7 @@ public class PedroPathChainAuto extends LinearOpMode {
     public void runOpMode() throws InterruptedException {
         PedroSwerveFactory.PedroRobot robot = PedroSwerveFactory.createRobot(hardwareMap, null);
         Follower follower = robot.follower;
+        PedroSwerveFactory.applyLiveTuning(follower);
 
         Pose startPose = new Pose(0.0, 0.0, 0.0);
         org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose storedPose = PoseStorage.getCurrentPose();
@@ -72,6 +73,7 @@ public class PedroPathChainAuto extends LinearOpMode {
         follower.followPath(routine, true);
 
         while (opModeIsActive() && follower.isBusy()) {
+            PedroSwerveFactory.applyLiveTuning(follower);
             follower.update();
             Pose pose = follower.getPose();
             telemetry.addData("X", pose.getX());

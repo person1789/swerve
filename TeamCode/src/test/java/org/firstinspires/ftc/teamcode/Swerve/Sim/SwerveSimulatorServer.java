@@ -18,6 +18,7 @@ public class SwerveSimulatorServer extends NanoWSD {
 
     private final SwerveSimulator simulator;
     private final SimOpModeRegistry opModeRegistry;
+    private final RouteFileService routeFileService;
     private final ScheduledExecutorService executor;
     private final Set<SwerveWebSocket> connections = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
@@ -25,6 +26,7 @@ public class SwerveSimulatorServer extends NanoWSD {
         super(PORT);
         this.simulator = new SwerveSimulator();
         this.opModeRegistry = new SimOpModeRegistry(simulator);
+        this.routeFileService = new RouteFileService();
         this.executor = Executors.newSingleThreadScheduledExecutor();
 
         // Ensure NaN and Infinity don't break JSON parsing in the browser.
@@ -94,7 +96,9 @@ public class SwerveSimulatorServer extends NanoWSD {
         String uri = session.getUri();
         Response res;
 
-        if ("/api/status".equals(uri)) {
+        if (Method.OPTIONS.equals(session.getMethod())) {
+            res = newFixedLengthResponse(Response.Status.OK, "text/plain", "");
+        } else if ("/api/status".equals(uri)) {
             res = newFixedLengthResponse(Response.Status.OK, "application/json", "{\"status\":\"ok\",\"mode\":\"sim\"}");
         } else if ("/api/opmodes".equals(uri)) {
             try {
@@ -110,12 +114,62 @@ public class SwerveSimulatorServer extends NanoWSD {
             } catch (Exception e) {
                 res = newFixedLengthResponse(Response.Status.INTERNAL_ERROR, "text/plain", "Error");
             }
+        } else if ("/api/pedro/autos".equals(uri)) {
+            try {
+                String json = OBJECT_MAPPER.writeValueAsString(routeFileService.listAutoFiles());
+                res = newFixedLengthResponse(Response.Status.OK, "application/json", json);
+            } catch (Exception e) {
+                res = jsonError(Response.Status.INTERNAL_ERROR, e.getMessage());
+            }
+        } else if ("/api/pedro/autos/reload".equals(uri) && Method.POST.equals(session.getMethod())) {
+            try {
+                String json = OBJECT_MAPPER.writeValueAsString(opModeRegistry.reloadTaggedPedroAutos());
+                res = newFixedLengthResponse(Response.Status.OK, "application/json", json);
+            } catch (Exception e) {
+                res = jsonError(Response.Status.INTERNAL_ERROR, e.getMessage());
+            }
+        } else if ("/api/pedro/route/create".equals(uri) && Method.POST.equals(session.getMethod())) {
+            res = handleRouteWrite(session, true);
+        } else if ("/api/pedro/route/patch".equals(uri) && Method.POST.equals(session.getMethod())) {
+            res = handleRouteWrite(session, false);
         } else {
             return super.serveHttp(session);
         }
 
         res.addHeader("Access-Control-Allow-Origin", "*");
+        res.addHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        res.addHeader("Access-Control-Allow-Headers", "Content-Type");
         return res;
+    }
+
+    private Response handleRouteWrite(IHTTPSession session, boolean create) {
+        try {
+            Map<String, String> files = new HashMap<>();
+            session.parseBody(files);
+            String body = files.get("postData");
+            RouteFileService.RouteWriteRequest request =
+                    OBJECT_MAPPER.readValue(body, RouteFileService.RouteWriteRequest.class);
+            RouteFileService.RouteWriteResponse response = create
+                    ? routeFileService.createAuto(request)
+                    : routeFileService.patchAuto(request);
+            return newFixedLengthResponse(
+                    Response.Status.OK,
+                    "application/json",
+                    OBJECT_MAPPER.writeValueAsString(response));
+        } catch (Exception e) {
+            return jsonError(Response.Status.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    private Response jsonError(Response.Status status, String message) {
+        try {
+            Map<String, Object> payload = new HashMap<>();
+            payload.put("ok", false);
+            payload.put("message", message == null ? "Unknown error" : message);
+            return newFixedLengthResponse(status, "application/json", OBJECT_MAPPER.writeValueAsString(payload));
+        } catch (Exception ignored) {
+            return newFixedLengthResponse(status, "text/plain", message == null ? "Unknown error" : message);
+        }
     }
 
     @SuppressWarnings("unchecked")

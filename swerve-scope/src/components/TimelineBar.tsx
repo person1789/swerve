@@ -97,8 +97,6 @@ export function TimelineBar({ recorder, telemetry, onReplayFrame }: TimelineBarP
     onReplayFrame(null);
   };
 
-  const progress = replaySession ? (replayIndex / Math.max(1, replaySession.frames.length - 1)) * 100 : 0;
-
   return (
     <div className="glass-panel" style={{
       margin: '0 0.5rem 0.5rem',

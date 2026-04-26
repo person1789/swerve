@@ -46,6 +46,10 @@ public final class PedroBlockRouteBuilder {
         return builder.build();
     }
 
+    public static PathChain build(Follower follower, PedroStartPose startPose, PedroBlockCommand... commands) {
+        return build(follower, startPose.toPose(), commands);
+    }
+
     private static Pose scaledControlPose(Pose start, Pose end, PedroBlockCommand command) {
         double baseX = command.controlXIn != null ? command.controlXIn : midpoint(start.getX(), end.getX());
         double baseY = command.controlYIn != null ? command.controlYIn : midpoint(start.getY(), end.getY());

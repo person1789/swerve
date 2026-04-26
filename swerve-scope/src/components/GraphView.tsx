@@ -29,18 +29,6 @@ export function GraphView({ telemetry }: GraphViewProps) {
 
   // Flatten telemetry to get all available numerical keys
   const availableKeys = useMemo(() => {
-    const keys: string[] = [];
-    const flatten = (obj: any, prefix = '') => {
-      for (const [k, v] of Object.entries(obj)) {
-        const fullKey = prefix ? `${prefix}.${k}` : k;
-        if (typeof v === 'number') {
-          keys.add(fullKey);
-        } else if (v && typeof v === 'object' && !Array.isArray(v)) {
-          flatten(v, fullKey);
-        }
-      }
-    };
-    
     const keySet = new Set<string>();
     const flattenToSet = (obj: any, prefix = '') => {
       for (const [k, v] of Object.entries(obj)) {
@@ -59,10 +47,6 @@ export function GraphView({ telemetry }: GraphViewProps) {
   // Record history
   useEffect(() => {
     const frame: Record<string, number> = { _time: Date.now() - startTime.current };
-    
-    const getVal = (path: string, obj: any): number => {
-      return path.split('.').reduce((o, i) => (o ? o[i] : 0), obj) || 0;
-    };
 
     // Store all numerical values found in telemetry to allow switching keys without losing history
     const flattenToFrame = (obj: any, prefix = '') => {
@@ -250,4 +234,3 @@ const modeBtn: React.CSSProperties = {
   border: '1px solid rgba(255,255,255,0.1)', borderRadius: '6px', cursor: 'pointer',
   background: 'rgba(124,77,255,0.1)', color: '#b388ff',
 };
-

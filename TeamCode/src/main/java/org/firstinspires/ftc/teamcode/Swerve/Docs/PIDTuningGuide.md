@@ -25,9 +25,12 @@ Tune in this order:
 1. Steering module PID
 2. Heading maintain PID
 3. Heading snap PID
-4. Pedro translational PID if you return to autonomous
-5. Pedro heading PID if you return to autonomous
-6. Pedro drive PID if you return to autonomous
+4. Pedro robot model values if you return to autonomous
+5. Pedro translational PID if you return to autonomous
+6. Pedro heading PID if you return to autonomous
+7. Pedro drive PID if you return to autonomous
+8. Pedro centripetal scaling if you return to autonomous
+9. Pedro predictive braking if you return to autonomous
 
 Do not tune a higher-level loop until the lower-level loop below it passes.
 
@@ -149,47 +152,82 @@ Fail conditions:
 - Final heading error remains after settling.
 - Behavior changes drastically depending on starting angle.
 
-## 4. Pedro Translational PID
+## 4. Pedro robot model values
 
 If you are not running autonomous right now, skip this section.
 
 Source:
 
-- `pedroPathing/Constants.java`
-- `translationalPIDFCoefficients`
-- `secondaryTranslationalPIDFCoefficients`
+- `Swerve/Core/SwerveConfig.java`
+- `PEDRO_MASS`
+- `PEDRO_FORWARD_ZERO_POWER_ACCELERATION`
+- `PEDRO_LATERAL_ZERO_POWER_ACCELERATION`
+
+Purpose:
+
+- Gives Pedro a closer model of how the robot coasts and slows down.
+
+## 5. Pedro Translational PID
+
+If you are not running autonomous right now, skip this section.
+
+Source:
+
+- `Swerve/Core/SwerveConfig.java`
+- `PEDRO_TRANSLATIONAL_*`
+- `PEDRO_SECONDARY_TRANSLATIONAL_*`
 
 Purpose:
 
 - Corrects path-tracking error in X/Y translation while following paths.
 
-## 5. Pedro Heading PID
+## 6. Pedro Heading PID
 
 If you are not running autonomous right now, skip this section.
 
 Source:
 
-- `pedroPathing/Constants.java`
-- `headingPIDFCoefficients`
-- `secondaryHeadingPIDFCoefficients`
+- `Swerve/Core/SwerveConfig.java`
+- `PEDRO_HEADING_*`
+- `PEDRO_SECONDARY_HEADING_*`
 
 Purpose:
 
 - Controls robot orientation while following a path.
 
-## 6. Pedro Drive PID
+## 7. Pedro Drive PID
 
 If you are not running autonomous right now, skip this section.
 
 Source:
 
-- `pedroPathing/Constants.java`
-- `drivePIDFCoefficients`
-- `secondaryDrivePIDFCoefficients`
+- `Swerve/Core/SwerveConfig.java`
+- `PEDRO_DRIVE_*`
+- `PEDRO_SECONDARY_DRIVE_*`
 
 Purpose:
 
 - Shapes velocity-related drive response inside the follower.
+
+## 8. Pedro centipetal scaling and braking
+
+If you are not running autonomous right now, skip this section.
+
+Source:
+
+- `Swerve/Core/SwerveConfig.java`
+- `PEDRO_CENTRIPETAL_SCALING`
+- `PEDRO_USE_PREDICTIVE_BRAKING`
+- `PEDRO_BRAKING_*`
+
+Purpose:
+
+- `PEDRO_CENTRIPETAL_SCALING` adjusts curve correction.
+- `PEDRO_BRAKING_*` adjusts how the follower slows into end points.
+
+See:
+
+- `PedroFollowerTuningGuide.md`
 
 ## 7. Tuning Stop Rules
 

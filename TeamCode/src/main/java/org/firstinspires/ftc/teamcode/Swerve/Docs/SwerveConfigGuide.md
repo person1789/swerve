@@ -144,3 +144,24 @@ The current design intentionally does not rely on:
 - a layered stack of competing drive controllers
 
 That keeps control authority in one place and makes debugging simpler.
+
+## 8. Pedro autonomous tuning
+
+The current unified Pedro path-following values now live in:
+
+- `SwerveConfig.java`
+
+That includes:
+
+- translational PID
+- heading PID
+- drive PID
+- centripetal scaling
+- predictive braking
+- mass and zero-power acceleration model values
+
+Those values are intended to be tuned in FTC Dashboard.
+
+For the actual tuning order and what each value does, use:
+
+- `PedroFollowerTuningGuide.md`

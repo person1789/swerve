@@ -178,6 +178,38 @@ This makes it easier to:
 - swap field endpoints quickly
 - reuse the same route definition in robot code and simulator code
 
+## Route designer workflow
+
+The browser simulator now includes a route-designer panel for this block-route layer.
+
+The intended workflow is:
+
+1. Pick a preset start pose or drag a custom start pose.
+2. Set robot size so the outline matches the real footprint.
+3. Optionally load a field image into the designer as a background reference.
+4. Add straight and curved blocks.
+5. Drag endpoints, curve control points, and heading handles until the route shape looks right.
+6. Copy the generated `PedroBlockRouteBuilder.build(...)` snippet into robot code.
+
+The generated code maps directly onto:
+
+- `PedroStartPose`
+- `PedroBlockCommand`
+- `PedroBlockRouteBuilder`
+
+If the start pose still matches a preset, the code uses:
+
+- `PedroDecodeRoute.startPose(PedroStartPose.X)`
+
+If the start pose was manually moved, the code uses:
+
+- `PedroStartPose.custom(x, y, headingDeg)`
+
+That keeps the route designer useful for both:
+
+- common legal start locations
+- quick custom experiments in the simulator
+
 ## Centripetal correction
 
 Pedro's drivetrain API already separates:
@@ -191,6 +223,29 @@ The corrective term is where Pedro's path-following compensation, including curv
 Because `PedroDrivetrainAdapter` extends Pedro's `CustomDrivetrain`, the adapter still receives Pedro's mixed robot-centric drive request after that correction logic has already been applied upstream by the follower.
 
 That means this architecture keeps Pedro's path-following correction behavior while still routing the final command through the custom swerve stack.
+
+## Live Dashboard tuning
+
+The Pedro follower tuning values now live in:
+
+- `SwerveConfig.java`
+
+The important families are:
+
+- translational PID
+- heading PID
+- drive PID
+- centripetal scaling
+- predictive braking
+- mass and zero-power acceleration model values
+
+The current Pedro autos and the tagged simulator wrapper now call:
+
+- `PedroSwerveFactory.applyLiveTuning(follower)`
+
+inside the active loop.
+
+That means FTC Dashboard changes apply during the run instead of only at init time.
 
 ## Simulator status
 

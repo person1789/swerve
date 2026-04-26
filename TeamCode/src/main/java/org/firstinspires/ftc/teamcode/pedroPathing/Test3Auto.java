@@ -9,34 +9,36 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
 
-/**
- * DECODE season navigation skeleton:
- * leave BASE, approach the alliance GOAL / CLASSIFIER side, then return to BASE.
- *
- * Assumption: start pose is in the alliance-side corner of BASE, facing downfield.
- * This is a path-only autonomous and does not yet actuate intake / scoring mechanisms.
- */
 // @sim
 @Config
-@Autonomous(name = "Pedro DECODE Lane Auto", group = "Pedro")
-public class PedroDecodeLaneAuto extends LinearOpMode {
-    public static String SIM_OPMODE_NAME = "DECODELaneAuto";
-    public static String configuredStartPose = PedroStartPose.RED_BASE_CORNER.name();
+@Autonomous(name = "test 3 Auto", group = "Pedro")
+public class Test3Auto extends LinearOpMode {
+    public static String SIM_OPMODE_NAME = "Test3Auto";
     public static boolean useStoredPose = true;
 
     public static Pose buildSimStartPose() {
-        return PedroDecodeRoute.startPose(
-                PedroStartPose.fromName(configuredStartPose, PedroStartPose.RED_BASE_CORNER));
+        // @sim-start-start
+        Pose startPose = PedroStartPose.custom(0, 0, 0);
+        // @sim-start-end
+        return startPose;
     }
 
     public static PathChain buildSimPath(Follower follower, Pose startPose) {
-        return PedroDecodeRoute.buildLaneAuto(follower, startPose);
+        // @path-start
+PathChain route = PedroBlockRouteBuilder.build(
+                follower,
+                startPose,
+                PedroBlockCommand.curved(-39.26, -53.15, 0, -39.26, -1.13, 0, 1, 0.9)
+        );
+        // @path-end
+        return route;
     }
 
     @Override
     public void runOpMode() throws InterruptedException {
         PedroSwerveFactory.PedroRobot robot = PedroSwerveFactory.createRobot(hardwareMap, null);
         Follower follower = robot.follower;
+
         PedroSwerveFactory.applyLiveTuning(follower);
 
         Pose startPose = buildSimStartPose();
@@ -45,22 +47,13 @@ public class PedroDecodeLaneAuto extends LinearOpMode {
             startPose = new Pose(storedPose.x, storedPose.y, storedPose.heading);
         }
 
-        Pose laneExit = PedroDecodeRoute.laneExit(startPose);
-        Pose goalApproach = PedroDecodeRoute.goalApproach();
-        Pose classifierBypass = PedroDecodeRoute.classifierBypass();
-        Pose baseReturn = PedroDecodeRoute.baseReturn();
-        PathChain routine = buildSimPath(follower, startPose);
-
+        PathChain route = buildSimPath(follower, startPose);
         robot.stack.resetForStart();
         follower.setStartingPose(startPose);
         follower.setPose(startPose);
 
-        telemetry.addLine("DECODE lane auto ready");
+        telemetry.addLine("Pedro auto ready");
         telemetry.addData("Start", startPose);
-        telemetry.addData("LaneExit", laneExit);
-        telemetry.addData("GoalApproach", goalApproach);
-        telemetry.addData("ClassifierBypass", classifierBypass);
-        telemetry.addData("BaseReturn", baseReturn);
         telemetry.update();
 
         waitForStart();
@@ -68,7 +61,7 @@ public class PedroDecodeLaneAuto extends LinearOpMode {
             return;
         }
 
-        follower.followPath(routine, true);
+        follower.followPath(route, true);
 
         while (opModeIsActive() && follower.isBusy()) {
             PedroSwerveFactory.applyLiveTuning(follower);
