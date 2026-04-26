@@ -24,6 +24,7 @@ public class SimOpModeRegistry {
         this.simulator = simulator;
         register("MainTeleOp", SimMainTeleOp::new);
         register("SwerveSystemCheck", SimSystemCheck::new);
+        register("DECODELaneAuto", SimPedroDecodeLaneAuto::new);
     }
 
     public void register(String name, Supplier<SimOpMode> supplier) {

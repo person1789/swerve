@@ -7,6 +7,7 @@ import java.util.Map;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveModule;
@@ -29,6 +30,8 @@ class SwerveSimulator {
     private Vector actualVelocity = new Vector(0.0, 0.0, 0.0);
     private boolean lastResetHeading;
     private String activeSnap = "none";
+    private boolean directDriveEnabled;
+    private Vector directDriveCommand = new Vector(0.0, 0.0, 0.0);
 
     SwerveSimulator() {
         double halfLength = WHEEL_BASE_METERS / 2.0;
@@ -73,6 +76,22 @@ class SwerveSimulator {
     }
 
     synchronized void step(double dtSeconds) {
+        if (directDriveEnabled) {
+            drivetrain.setAutonomousVelocity(directDriveCommand, dtSeconds);
+
+            for (MockSwerveModuleIO io : moduleIo) {
+                io.step(dtSeconds);
+            }
+
+            actualVelocity = currentVelocityFromModules();
+            Vector worldVelocity = new Vector(actualVelocity.x(), actualVelocity.y()).rotate(pose.omega());
+            pose = new Vector(
+                    pose.x() + worldVelocity.x() * dtSeconds,
+                    pose.y() + worldVelocity.y() * dtSeconds,
+                    MathUtil.normalizeAngle(pose.omega() + actualVelocity.omega() * dtSeconds));
+            return;
+        }
+
         applySnapInput();
         applyHeadingReset();
 
@@ -99,6 +118,31 @@ class SwerveSimulator {
                 pose.x() + worldVelocity.x() * dtSeconds,
                 pose.y() + worldVelocity.y() * dtSeconds,
                 MathUtil.normalizeAngle(heading + actualVelocity.omega() * dtSeconds));
+    }
+
+    synchronized void setDirectDriveCommand(double forward, double strafe, double rotation) {
+        directDriveEnabled = true;
+        directDriveCommand = new Vector(forward, strafe, rotation);
+    }
+
+    synchronized void clearDirectDriveCommand() {
+        directDriveEnabled = false;
+        directDriveCommand = new Vector(0.0, 0.0, 0.0);
+    }
+
+    synchronized Pose getPoseInches() {
+        return new Pose(metersToInches(pose.x()), metersToInches(pose.y()), pose.omega());
+    }
+
+    synchronized Pose getVelocityInches() {
+        return new Pose(metersToInches(actualVelocity.x()), metersToInches(actualVelocity.y()), actualVelocity.omega());
+    }
+
+    synchronized void setPoseInches(Pose poseInches) {
+        pose = new Vector(inchesToMeters(poseInches.x), inchesToMeters(poseInches.y), poseInches.heading);
+        actualVelocity = new Vector(0.0, 0.0, 0.0);
+        drivetrain.resetSmoother();
+        controller.resetHeading(poseInches.heading);
     }
 
     synchronized Map<String, Object> snapshot() {
@@ -188,5 +232,13 @@ class SwerveSimulator {
             modulesState.add(moduleMap);
         }
         return modulesState;
+    }
+
+    private static double metersToInches(double meters) {
+        return meters / 0.0254;
+    }
+
+    private static double inchesToMeters(double inches) {
+        return inches * 0.0254;
     }
 }

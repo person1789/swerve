@@ -18,6 +18,7 @@ class SwerveDrivetrainTest {
     private final double originalSteerReadyTolerance = SwerveConfig.STEER_READY_ANGLE_TOLERANCE_RAD;
     private final double originalSteerDriveFullAuthority = SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD;
     private final double originalSteerDriveHardCutoff = SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD;
+    private final double originalSteerDriveMinAuthority = SwerveConfig.STEER_DRIVE_MIN_AUTHORITY;
 
     @AfterEach
     void restoreConfig() {
@@ -27,6 +28,7 @@ class SwerveDrivetrainTest {
         SwerveConfig.STEER_READY_ANGLE_TOLERANCE_RAD = originalSteerReadyTolerance;
         SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = originalSteerDriveFullAuthority;
         SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = originalSteerDriveHardCutoff;
+        SwerveConfig.STEER_DRIVE_MIN_AUTHORITY = originalSteerDriveMinAuthority;
     }
 
     @Test
@@ -94,6 +96,7 @@ class SwerveDrivetrainTest {
         SwerveConfig.REQUIRE_STEER_READY_FOR_DRIVE = false;
         SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = Math.toRadians(5.0);
         SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = Math.toRadians(35.0);
+        SwerveConfig.STEER_DRIVE_MIN_AUTHORITY = 0.12;
         TestModuleIO[] ios = {
                 new TestModuleIO(), new TestModuleIO(), new TestModuleIO(), new TestModuleIO()
         };
@@ -102,7 +105,7 @@ class SwerveDrivetrainTest {
 
         drivetrain.setVelocity(new Vector(1.0, 0.0, 0.0), 0.02);
 
-        assertEquals(false, drivetrain.isSteerReadyForDrive());
+        assertTrue(Math.abs(ios[0].drivePower) > 0.0);
         assertTrue(Math.abs(ios[0].drivePower) < 0.2);
     }
 

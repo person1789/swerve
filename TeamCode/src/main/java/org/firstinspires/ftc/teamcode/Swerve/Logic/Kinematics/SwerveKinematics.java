@@ -129,7 +129,15 @@ public class SwerveKinematics {
         }
 
         double[] solution = solve3x3(normal, rhs);
-        return new Vector(solution[0], solution[1], solution[2]);
+        Vector result = new Vector(solution[0], solution[1], solution[2]);
+        
+        if (desiredVelocity.magnitude() > 0.1) {
+            System.out.printf("FEASIBLE_PROJ: Desired=[%.3f, %.3f, %.3f] Result=[%.3f, %.3f, %.3f]\n",
+                desiredVelocity.x(), desiredVelocity.y(), desiredVelocity.omega(),
+                result.x(), result.y(), result.omega());
+        }
+        
+        return result;
     }
 
     public void setLoopTimeSec(double loopTimeSec) {

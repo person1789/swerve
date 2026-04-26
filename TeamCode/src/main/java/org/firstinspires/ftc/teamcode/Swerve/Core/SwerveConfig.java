@@ -155,8 +155,14 @@ public class SwerveConfig {
         /** Below this steer error, drive authority is left untouched. */
         public static double STEER_DRIVE_FULL_AUTHORITY_RAD = Math.toRadians(6.0);
 
-        /** Above this steer error, drive is fully cut unless the diagnostic gate is disabled. */
+        /** Above this steer error, normal steer-error scaling reaches its minimum authority. */
         public static double STEER_DRIVE_HARD_CUTOFF_RAD = Math.toRadians(22.0);
+
+        /**
+         * Minimum drive authority retained during normal steer-error derating.
+         * Set to 0 only if you explicitly want the robot to wait on module alignment.
+         */
+        public static double STEER_DRIVE_MIN_AUTHORITY = 0.12;
 
         // ─────────────────────────────────────────────────────────────────────────
         // 7. Filters & Observer

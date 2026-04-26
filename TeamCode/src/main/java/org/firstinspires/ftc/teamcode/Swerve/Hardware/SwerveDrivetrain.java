@@ -81,12 +81,26 @@ public class SwerveDrivetrain {
     }
 
     public void setVelocity(Vector driverTarget, double dt) {
+        setVelocityInternal(driverTarget, dt, true);
+    }
+
+    /**
+     * Applies an autonomous chassis target without the teleop-oriented motion
+     * smoother/input shaping layer.
+     */
+    public void setAutonomousVelocity(Vector normalizedTarget, double dt) {
+        setVelocityInternal(normalizedTarget, dt, false);
+    }
+
+    private void setVelocityInternal(Vector driverTarget, double dt, boolean useSmoother) {
         velocityObserver.update(modules);
         lastDriverTarget = driverTarget;
         kinematics.setLoopTimeSec(dt);
 
         boolean hasInput = driverTarget.magnitude() > 0.01;
-        Vector chassisVelocity = smoother.smooth(driverTarget, dt);
+        Vector chassisVelocity = useSmoother
+                ? smoother.smooth(driverTarget, dt)
+                : toPhysicalChassisVelocity(driverTarget);
         lastSmoothedVelocity = chassisVelocity;
 
         switch (state) {
@@ -99,32 +113,46 @@ public class SwerveDrivetrain {
                 break;
 
             case WAITING_TO_LOCK:
-                driveWithPipeline(chassisVelocity, dt);
                 if (hasInput) {
                     lockTimerMs = 0.0;
                     state = States.DRIVING;
+                    driveWithPipeline(chassisVelocity, dt);
                 } else {
+                    driveWithPipeline(chassisVelocity, dt);
                     lockTimerMs += dt * 1000.0;
                     if (lockTimerMs > SwerveConfig.LOCK_DELAY_MS && chassisVelocity.magnitude() < 0.01) {
                         state = States.LOCKED;
+                        resetSmoother();
                     }
                 }
                 break;
 
             case LOCKED:
-                if (SwerveConfig.ENABLE_IDLE_X_STANCE) {
-                    applyXStance(dt);
-                } else {
-                    driveWithPipeline(chassisVelocity, dt);
-                }
                 if (hasInput) {
                     lockTimerMs = 0.0;
                     state = States.DRIVING;
+                    resetSmoother();
+                    // Recalculate chassisVelocity after reset to start ramping from 0 in this tick
+                    Vector freshVelocity = smoother.smooth(driverTarget, dt);
+                    driveWithPipeline(freshVelocity, dt);
+                } else {
+                    if (SwerveConfig.ENABLE_IDLE_X_STANCE) {
+                        applyXStance(dt);
+                    } else {
+                        driveWithPipeline(new Vector(0, 0, 0), dt);
+                    }
                 }
                 break;
         }
 
         performHealthSystemScan();
+    }
+
+    private Vector toPhysicalChassisVelocity(Vector normalizedTarget) {
+        return new Vector(
+                normalizedTarget.x() * SwerveConfig.getMaxLinearSpeedMPS(),
+                normalizedTarget.y() * SwerveConfig.getMaxLinearSpeedMPS(),
+                normalizedTarget.omega() * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S);
     }
 
     private void driveWithPipeline(Vector velocity, double dt) {

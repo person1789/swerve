@@ -13,11 +13,13 @@ class SwerveKinematicsAndAuditorTest {
 
     private final double originalFullAuthority = SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD;
     private final double originalHardCutoff = SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD;
+    private final double originalMinAuthority = SwerveConfig.STEER_DRIVE_MIN_AUTHORITY;
 
     @AfterEach
     void restoreConfig() {
         SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = originalFullAuthority;
         SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = originalHardCutoff;
+        SwerveConfig.STEER_DRIVE_MIN_AUTHORITY = originalMinAuthority;
     }
 
     @Test
@@ -110,9 +112,10 @@ class SwerveKinematicsAndAuditorTest {
     }
 
     @Test
-    void auditorCutsDriveAuthorityAtLargeSteerErrors() {
+    void auditorRetainsMinimumDriveAuthorityAtLargeSteerErrors() {
         SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = Math.toRadians(5.0);
         SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = Math.toRadians(25.0);
+        SwerveConfig.STEER_DRIVE_MIN_AUTHORITY = 0.12;
         SwerveAuditor auditor = new SwerveAuditor();
         SwerveModuleState[] desired = {
                 new SwerveModuleState(1.0, Math.toRadians(30.0)),
@@ -123,7 +126,7 @@ class SwerveKinematicsAndAuditorTest {
 
         SwerveModuleState[] optimized = auditor.optimize(desired, new double[] {0.0, 0.0, 0.0, 0.0});
 
-        assertEquals(0.0, optimized[0].speedMetersPerSecond, 1e-9);
+        assertEquals(Math.cos(Math.toRadians(30.0)) * 0.12, optimized[0].speedMetersPerSecond, 1e-9);
     }
 
     @Test

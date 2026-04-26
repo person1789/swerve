@@ -62,11 +62,13 @@ public class SwerveAuditor {
             return 1.0;
         }
         if (absErrorRad >= SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD) {
-            return 0.0;
+            return SwerveConfig.STEER_DRIVE_MIN_AUTHORITY;
         }
 
         double range = SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD - SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD;
         double normalized = (SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD - absErrorRad) / range;
-        return normalized * normalized * (3.0 - 2.0 * normalized);
+        double smooth = normalized * normalized * (3.0 - 2.0 * normalized);
+        return SwerveConfig.STEER_DRIVE_MIN_AUTHORITY
+                + (1.0 - SwerveConfig.STEER_DRIVE_MIN_AUTHORITY) * smooth;
     }
 }
