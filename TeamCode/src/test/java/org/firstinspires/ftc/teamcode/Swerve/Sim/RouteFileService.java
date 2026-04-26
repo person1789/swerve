@@ -106,6 +106,20 @@ public class RouteFileService {
                 file.toAbsolutePath().toString());
     }
 
+    public RouteWriteResponse deleteAuto(String targetFileName) throws IOException {
+        String normalizedFileName = requireJavaFileName(targetFileName);
+        Path file = resolveFile(normalizedFileName);
+        if (!Files.exists(file)) {
+            throw new IOException("Auto file not found: " + normalizedFileName);
+        }
+        Files.delete(file);
+        return new RouteWriteResponse(
+                true,
+                "Deleted " + normalizedFileName,
+                normalizedFileName,
+                file.toAbsolutePath().toString());
+    }
+
     private String buildAutoTemplate(String className, String opModeName, RouteCodeParts routeCode) {
         return ""
                 + "package " + PACKAGE_NAME + ";\n\n"

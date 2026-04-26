@@ -64,10 +64,13 @@ tasks.register("runSwerveSimulator", JavaExec) {
         def compileTask = tasks.named("compileDebugUnitTestJavaWithJavac").get()
         def compileClasspath = []
         if (compileTask.hasProperty("classpath") && compileTask.classpath != null) {
-            compileClasspath = compileTask.classpath.files
+            compileClasspath = compileTask.classpath.files.findAll { file ->
+                !file.absolutePath.contains("FtcRobotController\\build\\intermediates\\compile_library_classes_jar")
+            }
         }
         setClasspath(project.files(
                 compileClasspath,
+                "${project(':FtcRobotController').buildDir}/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
                 "$buildDir/intermediates/javac/debug/compileDebugJavaWithJavac/classes",
                 "$buildDir/intermediates/javac/debugUnitTest/compileDebugUnitTestJavaWithJavac/classes",
                 "$buildDir/intermediates/java_res/debug/processDebugJavaRes/out",

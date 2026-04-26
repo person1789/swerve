@@ -40,6 +40,18 @@ interface StoredRouteV1 {
   blocks: RouteBlock[];
 }
 
+interface StoredRouteV2 {
+  version: 2;
+  routeName: string;
+  start: PoseLike & { presetKey?: string | null };
+  robotSizeIn: number;
+  fieldImageOpacity: number;
+  fieldImageDataUrl?: string | null;
+  blocks: RouteBlock[];
+  selectedAutoFile?: string;
+  showRobotSilhouettes?: boolean;
+}
+
 interface SampledPose extends PoseLike {
   segmentId?: string;
 }
@@ -57,6 +69,7 @@ const HEADING_HANDLE_DISTANCE_IN = 11;
 const FIELD_VIEWBOX_PADDING = 8;
 const TILE_SIZE_IN = 24;
 const SNAP_THRESHOLD_IN = 3;
+const ROUTE_DESIGNER_STORAGE_KEY = 'swerve-scope.route-designer.v2';
 
 const startOptions: StartPoseOption[] = [
   { key: 'RED_BASE_CORNER', label: 'Red Base Corner', xIn: -60, yIn: -60, headingDeg: 0 },
@@ -130,6 +143,7 @@ export function RouteDesigner() {
   const [snapToIntersections, setSnapToIntersections] = useState(true);
   const [snapToTileCenters, setSnapToTileCenters] = useState(false);
   const [snapToMidpoints, setSnapToMidpoints] = useState(false);
+  const [showRobotSilhouettes, setShowRobotSilhouettes] = useState(true);
 
   const presetMatch = useMemo(
     () => startOptions.find(option => samePose(option, selectedStart)) ?? null,
@@ -456,11 +470,11 @@ export function RouteDesigner() {
       {
         id: `b${Date.now()}`,
         type,
-        endXIn: clamp(endX + 12, -FIELD_HALF_IN, FIELD_HALF_IN),
+        endXIn: clamp(endX + 24, -FIELD_HALF_IN, FIELD_HALF_IN),
         endYIn: endY,
         endHeadingDeg: endHeading,
-        controlXIn: type === 'curved' ? clamp(endX + 6, -FIELD_HALF_IN, FIELD_HALF_IN) : undefined,
-        controlYIn: type === 'curved' ? clamp(endY + 8, -FIELD_HALF_IN, FIELD_HALF_IN) : undefined,
+        controlXIn: type === 'curved' ? clamp(endX + 12, -FIELD_HALF_IN, FIELD_HALF_IN) : undefined,
+        controlYIn: type === 'curved' ? clamp(endY + 12, -FIELD_HALF_IN, FIELD_HALF_IN) : undefined,
         controlHeadingDeg: type === 'curved' ? endHeading : undefined,
         controlScale: 1,
         headingWeight: 0.9,
@@ -498,7 +512,25 @@ export function RouteDesigner() {
 
       const files = await response.json() as string[];
       setExistingAutoFiles(files);
-      setSelectedAutoFile(prev => (prev && files.includes(prev) ? prev : (files[0] ?? '')));
+      setSelectedAutoFile(prev => {
+        if (prev && files.includes(prev)) {
+          return prev;
+        }
+
+        const savedRaw = window.localStorage.getItem(ROUTE_DESIGNER_STORAGE_KEY);
+        if (savedRaw) {
+          try {
+            const saved = JSON.parse(savedRaw) as Partial<StoredRouteV2>;
+            if (saved.selectedAutoFile && files.includes(saved.selectedAutoFile)) {
+              return saved.selectedAutoFile;
+            }
+          } catch {
+            // ignore broken local state
+          }
+        }
+
+        return files[0] ?? '';
+      });
     } catch {
       // leave empty if backend is unavailable
     }
@@ -536,6 +568,73 @@ export function RouteDesigner() {
     refreshAutoFiles();
   }, []);
 
+  useEffect(() => {
+    const savedRaw = window.localStorage.getItem(ROUTE_DESIGNER_STORAGE_KEY);
+    if (!savedRaw) {
+      return;
+    }
+
+    try {
+      const parsed = JSON.parse(savedRaw) as Partial<StoredRouteV1 | StoredRouteV2>;
+      if (!parsed.start || !Array.isArray(parsed.blocks)) {
+        return;
+      }
+
+      const preset = parsed.start.presetKey
+        ? startOptions.find(option => option.key === parsed.start?.presetKey)
+        : null;
+
+      setRouteName(parsed.routeName?.trim() || 'decode-lane');
+      setSelectedStart(preset ?? {
+        key: 'CUSTOM',
+        label: 'Custom Start',
+        xIn: Number(parsed.start.xIn ?? startOptions[0].xIn),
+        yIn: Number(parsed.start.yIn ?? startOptions[0].yIn),
+        headingDeg: normalizeDeg(Number(parsed.start.headingDeg ?? startOptions[0].headingDeg)),
+      });
+      setRobotSizeIn(clamp(Number(parsed.robotSizeIn ?? ROBOT_SIZE_DEFAULT_IN), 8, 30));
+      setFieldImageOpacity(clamp(Number(parsed.fieldImageOpacity ?? 0.45), 0, 1));
+      setFieldImageDataUrl(parsed.fieldImageDataUrl ?? null);
+      setBlocks(parsed.blocks.map((block, index) => ({
+        id: block.id || `b${Date.now()}-${index}`,
+        type: block.type === 'curved' ? 'curved' : 'straight',
+        endXIn: Number(block.endXIn ?? 0),
+        endYIn: Number(block.endYIn ?? 0),
+        endHeadingDeg: normalizeDeg(Number(block.endHeadingDeg ?? 0)),
+        controlXIn: block.controlXIn !== undefined ? Number(block.controlXIn) : undefined,
+        controlYIn: block.controlYIn !== undefined ? Number(block.controlYIn) : undefined,
+        controlHeadingDeg: block.controlHeadingDeg !== undefined ? normalizeDeg(Number(block.controlHeadingDeg)) : undefined,
+        controlScale: Number(block.controlScale ?? 1),
+        headingWeight: Number(block.headingWeight ?? 1),
+      })));
+      const parsedV2 = parsed as Partial<StoredRouteV2>;
+      setSelectedAutoFile(typeof parsedV2.selectedAutoFile === 'string' ? parsedV2.selectedAutoFile : '');
+      setShowRobotSilhouettes(parsedV2.showRobotSilhouettes !== false);
+    } catch {
+      // ignore malformed local route state
+    }
+  }, []);
+
+  useEffect(() => {
+    const payload: StoredRouteV2 = {
+      version: 2,
+      routeName: routeName.trim() || 'decode-lane',
+      start: {
+        xIn: selectedStart.xIn,
+        yIn: selectedStart.yIn,
+        headingDeg: selectedStart.headingDeg,
+        presetKey: presetMatch?.key ?? null,
+      },
+      robotSizeIn,
+      fieldImageOpacity,
+      fieldImageDataUrl,
+      blocks,
+      selectedAutoFile,
+      showRobotSilhouettes,
+    };
+    window.localStorage.setItem(ROUTE_DESIGNER_STORAGE_KEY, JSON.stringify(payload));
+  }, [blocks, fieldImageDataUrl, fieldImageOpacity, presetMatch, robotSizeIn, routeName, selectedAutoFile, selectedStart, showRobotSilhouettes]);
+
   const createAutoFile = async () => {
     setAutomationStatus('Creating auto file...');
     try {
@@ -561,6 +660,36 @@ export function RouteDesigner() {
       }
     } catch {
       setAutomationStatus('Failed to create auto file');
+    }
+  };
+
+  const deleteSelectedAuto = async () => {
+    if (!selectedAutoFile) {
+      setAutomationStatus('Choose an auto file to delete');
+      return;
+    }
+
+    setAutomationStatus(`Deleting ${selectedAutoFile}...`);
+    try {
+      const response = await fetch(`http://${window.location.hostname || 'localhost'}:8080/api/pedro/route/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetFileName: selectedAutoFile,
+        }),
+      });
+      const result = await response.json() as { ok?: boolean; message?: string };
+      if (result.ok) {
+        const deletedFile = selectedAutoFile;
+        setSelectedAutoFile('');
+        await refreshAutoFiles();
+        await reloadSimAutos({ silent: true });
+        setAutomationStatus(result.message || `Deleted ${deletedFile}`);
+      } else {
+        setAutomationStatus(result.message || 'Failed to delete auto file');
+      }
+    } catch {
+      setAutomationStatus('Failed to delete auto file');
     }
   };
 
@@ -596,8 +725,8 @@ export function RouteDesigner() {
   };
 
   const saveRouteJson = () => {
-    const payload: StoredRouteV1 = {
-      version: 1,
+    const payload: StoredRouteV2 = {
+      version: 2,
       routeName: routeName.trim() || 'route',
       start: {
         xIn: selectedStart.xIn,
@@ -609,6 +738,8 @@ export function RouteDesigner() {
       fieldImageOpacity,
       fieldImageDataUrl,
       blocks,
+      selectedAutoFile,
+      showRobotSilhouettes,
     };
 
     const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
@@ -626,8 +757,8 @@ export function RouteDesigner() {
 
     try {
       const text = await file.text();
-      const parsed = JSON.parse(text) as Partial<StoredRouteV1>;
-      if (parsed.version !== 1 || !parsed.start || !Array.isArray(parsed.blocks)) {
+      const parsed = JSON.parse(text) as Partial<StoredRouteV1 | StoredRouteV2>;
+      if ((parsed.version !== 1 && parsed.version !== 2) || !parsed.start || !Array.isArray(parsed.blocks)) {
         return;
       }
 
@@ -646,6 +777,9 @@ export function RouteDesigner() {
       setRobotSizeIn(clamp(Number(parsed.robotSizeIn ?? ROBOT_SIZE_DEFAULT_IN), 8, 30));
       setFieldImageOpacity(clamp(Number(parsed.fieldImageOpacity ?? 0.45), 0, 1));
       setFieldImageDataUrl(parsed.fieldImageDataUrl ?? null);
+      const parsedV2 = parsed as Partial<StoredRouteV2>;
+      setSelectedAutoFile(typeof parsedV2.selectedAutoFile === 'string' ? parsedV2.selectedAutoFile : '');
+      setShowRobotSilhouettes(parsedV2.showRobotSilhouettes !== false);
       setBlocks(parsed.blocks.map((block, index) => ({
         id: block.id || `b${Date.now()}-${index}`,
         type: block.type === 'curved' ? 'curved' : 'straight',
@@ -679,9 +813,11 @@ export function RouteDesigner() {
     setFieldImageDataUrl(null);
     setFieldImageOpacity(0.45);
     setRouteName('decode-lane');
+    setSelectedAutoFile('');
     setDragTarget(null);
     setPreviewDistance(0);
     setIsPreviewPlaying(false);
+    setShowRobotSilhouettes(true);
     setAutomationStatus('Reset route workspace');
   };
 
@@ -718,6 +854,7 @@ export function RouteDesigner() {
           <button onClick={() => routeFileInputRef.current?.click()} style={btnStyle}><FolderOpen size={12} /> Load Route</button>
           <button onClick={createAutoFile} style={btnStyle}><Download size={12} /> Create Auto</button>
           <button onClick={patchExistingAuto} style={btnStyle}><FolderOpen size={12} /> Patch @path</button>
+          <button onClick={deleteSelectedAuto} style={btnStyle}><Trash2 size={12} /> Delete Auto</button>
           <button onClick={() => { void reloadSimAutos(); }} style={btnStyle}><RefreshCcw size={12} /> Reload Sim Autos</button>
           <button onClick={() => fieldImageInputRef.current?.click()} style={btnStyle}><ImagePlus size={12} /> Field Image</button>
           <button onClick={() => {
@@ -765,11 +902,12 @@ export function RouteDesigner() {
               <label style={toggleLabel}><input type="checkbox" checked={snapToIntersections} onChange={(e) => setSnapToIntersections(e.target.checked)} /> Intersections</label>
               <label style={toggleLabel}><input type="checkbox" checked={snapToTileCenters} onChange={(e) => setSnapToTileCenters(e.target.checked)} /> Tile Centers</label>
               <label style={toggleLabel}><input type="checkbox" checked={snapToMidpoints} onChange={(e) => setSnapToMidpoints(e.target.checked)} /> Midpoints</label>
+              <label style={toggleLabel}><input type="checkbox" checked={showRobotSilhouettes} onChange={(e) => setShowRobotSilhouettes(e.target.checked)} /> Robot</label>
             </div>
           </label>
           <label style={labelStyle}>
             <span>Existing Auto</span>
-            <select value={selectedAutoFile} onChange={(event) => setSelectedAutoFile(event.target.value)} style={selectStyle}>
+            <select value={selectedAutoFile} onChange={(event) => setSelectedAutoFile(event.target.value)} style={autoSelectStyle}>
               <option value="">Choose file</option>
               {existingAutoFiles.map(file => (
                 <option key={file} value={file}>{file}</option>
@@ -845,17 +983,21 @@ export function RouteDesigner() {
                   <circle cx={control.x} cy={control.y} r="2.2" fill="#00e676" stroke="white" strokeWidth="0.35" onPointerDown={(event) => beginDrag(event, { type: 'control', id: segment.id })} />
                 )}
 
-                <PoseOutline pose={segment.end} toSvg={toSvg} robotSizePct={robotSizePct} opacity={0.38} stroke="rgba(68,138,255,0.75)" />
+                {showRobotSilhouettes && (
+                  <PoseOutline pose={segment.end} toSvg={toSvg} robotSizePct={robotSizePct} opacity={0.38} stroke="rgba(68,138,255,0.75)" />
+                )}
               </g>
             );
           })}
 
           <line x1={startSvg.x} y1={startSvg.y} x2={startHeadingSvg.x} y2={startHeadingSvg.y} stroke="rgba(255,82,82,0.8)" strokeWidth="0.4" />
           <circle cx={startHeadingSvg.x} cy={startHeadingSvg.y} r="2.1" fill="#ff5252" stroke="white" strokeWidth="0.35" onPointerDown={(event) => beginDrag(event, { type: 'startHeading' })} />
-          <PoseOutline pose={selectedStart} toSvg={toSvg} robotSizePct={robotSizePct} opacity={0.7} stroke="rgba(68,138,255,0.95)" />
+          {showRobotSilhouettes && (
+            <PoseOutline pose={selectedStart} toSvg={toSvg} robotSizePct={robotSizePct} opacity={0.7} stroke="rgba(68,138,255,0.95)" />
+          )}
           <circle cx={startSvg.x} cy={startSvg.y} r="2.7" fill="#448aff" stroke="white" strokeWidth="0.35" onPointerDown={(event) => beginDrag(event, { type: 'start' })} />
 
-          {previewPose && (
+          {previewPose && showRobotSilhouettes && (
             <PoseOutline pose={previewPose} toSvg={toSvg} robotSizePct={robotSizePct} opacity={0.95} stroke="rgba(255,255,255,0.95)" />
           )}
         </svg>
@@ -962,6 +1104,12 @@ const inputStyle: React.CSSProperties = {
 const selectStyle: React.CSSProperties = {
   ...inputStyle,
   appearance: 'none',
+};
+
+const autoSelectStyle: React.CSSProperties = {
+  ...selectStyle,
+  background: '#ffffff',
+  color: '#111111',
 };
 
 const btnStyle: React.CSSProperties = {

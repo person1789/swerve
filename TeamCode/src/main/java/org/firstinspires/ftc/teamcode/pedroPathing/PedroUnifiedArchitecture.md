@@ -127,6 +127,26 @@ Instead it builds:
 
 and passes those into `FollowerBuilder`.
 
+## About IDE "unused" colors
+
+Some `PEDRO_*` fields in `SwerveConfig` may not get the usual "used" text color in the IDE.
+
+That does not mean they are dead.
+
+They are used indirectly through:
+
+- `PedroSwerveFactory.applyToFollowerConstants(...)`
+- `PedroSwerveFactory.applyLiveTuning(...)`
+
+Those methods push the config values into Pedro's `FollowerConstants` and live `Follower` object at runtime.
+
+So the reliable test is:
+
+- whether the fields are read in `PedroSwerveFactory`
+- whether the autos call `createRobot(...)` and `applyLiveTuning(...)`
+
+In the current code, they do.
+
 ## Why this is the right middle ground
 
 This gives us:
@@ -150,6 +170,19 @@ If we ever find a real architectural reason to fork Pedro later, this adapter la
 - `PedroPathChainAuto.java`
 - `PedroDecodeRoute.java`
 - `MainTeleOp.java`
+
+## Active vs stale
+
+The active robot integration is the adapter-based path above.
+
+Older Pedro experiments that are not part of the active path are moved under:
+
+- `pedroPathing/stale`
+
+That now includes:
+
+- older `SwervePod`-based experimentation
+- generated `Test*.java` route-designer autos that were useful for iteration but should not sit in the live Pedro folder
 
 ## Block routes
 

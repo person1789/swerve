@@ -132,6 +132,8 @@ public class SwerveSimulatorServer extends NanoWSD {
             res = handleRouteWrite(session, true);
         } else if ("/api/pedro/route/patch".equals(uri) && Method.POST.equals(session.getMethod())) {
             res = handleRouteWrite(session, false);
+        } else if ("/api/pedro/route/delete".equals(uri) && Method.POST.equals(session.getMethod())) {
+            res = handleRouteDelete(session);
         } else {
             return super.serveHttp(session);
         }
@@ -152,6 +154,23 @@ public class SwerveSimulatorServer extends NanoWSD {
             RouteFileService.RouteWriteResponse response = create
                     ? routeFileService.createAuto(request)
                     : routeFileService.patchAuto(request);
+            return newFixedLengthResponse(
+                    Response.Status.OK,
+                    "application/json",
+                    OBJECT_MAPPER.writeValueAsString(response));
+        } catch (Exception e) {
+            return jsonError(Response.Status.BAD_REQUEST, e.getMessage());
+        }
+    }
+
+    private Response handleRouteDelete(IHTTPSession session) {
+        try {
+            Map<String, String> files = new HashMap<>();
+            session.parseBody(files);
+            String body = files.get("postData");
+            RouteFileService.RouteWriteRequest request =
+                    OBJECT_MAPPER.readValue(body, RouteFileService.RouteWriteRequest.class);
+            RouteFileService.RouteWriteResponse response = routeFileService.deleteAuto(request.targetFileName);
             return newFixedLengthResponse(
                     Response.Status.OK,
                     "application/json",

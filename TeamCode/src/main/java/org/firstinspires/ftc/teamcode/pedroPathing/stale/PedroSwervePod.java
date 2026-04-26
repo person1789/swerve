@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedroPathing;
+package org.firstinspires.ftc.teamcode.pedroPathing.stale;
 
 import com.pedropathing.ftc.drivetrains.SwervePod;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -10,7 +10,11 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveModule;
 
 /**
- * Thin adapter from the team's existing SwerveModule implementation to Pedro's SwervePod API.
+ * Legacy experiment adapter from the team's SwerveModule to Pedro's older
+ * SwervePod API.
+ *
+ * The current robot path does not use this class. The active Pedro integration
+ * uses PedroDrivetrainAdapter + PedroLocalizerAdapter + PedroUnifiedSwerveStack.
  */
 public class PedroSwervePod implements SwervePod {
     private static final double FIRST_LOOP_DT_SEC = 0.020;

@@ -294,7 +294,7 @@ public class SwerveConfig {
          * redeploying, which is useful for comparing odometry-only vs. vision-fused
          * accuracy during practice.
          */
-        public static boolean LIMELIGHT_ENABLED = true;
+        public static boolean LIMELIGHT_ENABLED = false;
 
         /**
          * Reject Limelight results that are older than this many milliseconds.

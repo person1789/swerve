@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedroPathing;
+package org.firstinspires.ftc.teamcode.pedroPathing.stale.generated;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.pedropathing.follower.Follower;
@@ -8,29 +8,33 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroBlockCommand;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroBlockRouteBuilder;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroDecodeRoute;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroStartPose;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroSwerveFactory;
 
 // @sim
 @Config
-@Autonomous(name = "test Auto", group = "Pedro")
-public class TestAuto extends LinearOpMode {
-    public static String SIM_OPMODE_NAME = "TestAuto";
+@Autonomous(name = "test2 Auto", group = "Pedro")
+public class Test2Auto extends LinearOpMode {
+    public static String SIM_OPMODE_NAME = "Test2Auto";
     public static boolean useStoredPose = true;
 
     public static Pose buildSimStartPose() {
-        // @sim-start-start
         Pose startPose = PedroDecodeRoute.startPose(PedroStartPose.RED_BASE_CORNER);
-// @sim-start-end
         return startPose;
     }
 
     public static PathChain buildSimPath(Follower follower, Pose startPose) {
-        // @path-start
-PathChain route = PedroBlockRouteBuilder.build(
+        PathChain route = PedroBlockRouteBuilder.build(
                 follower,
                 startPose,
-                PedroBlockCommand.straight(22, -28.84, 0, 0.9)
+                PedroBlockCommand.straight(-30, -60, 0, 1),
+                PedroBlockCommand.curved(18, -28, 32, -8, -46, 0, 1, 0.8),
+                PedroBlockCommand.straight(28, -6, 90, 0.9),
+                PedroBlockCommand.curved(-52, -44, 86.92, -10, -8, 135, 1, 0.9)
         );
-// @path-end
         return route;
     }
 

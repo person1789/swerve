@@ -1,4 +1,4 @@
-package org.firstinspires.ftc.teamcode.pedroPathing;
+package org.firstinspires.ftc.teamcode.pedroPathing.stale.generated;
 
 import com.acmerobotics.dashboard.config.Config;
 import com.pedropathing.follower.Follower;
@@ -8,29 +8,30 @@ import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroBlockCommand;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroBlockRouteBuilder;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroDecodeRoute;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroStartPose;
+import org.firstinspires.ftc.teamcode.pedroPathing.PedroSwerveFactory;
 
 // @sim
 @Config
-@Autonomous(name = "test 3 Auto", group = "Pedro")
-public class Test3Auto extends LinearOpMode {
-    public static String SIM_OPMODE_NAME = "Test3Auto";
+@Autonomous(name = "test Auto", group = "Pedro")
+public class TestAuto extends LinearOpMode {
+    public static String SIM_OPMODE_NAME = "TestAuto";
     public static boolean useStoredPose = true;
 
     public static Pose buildSimStartPose() {
-        // @sim-start-start
-        Pose startPose = PedroStartPose.custom(0, 0, 0);
-        // @sim-start-end
+        Pose startPose = PedroDecodeRoute.startPose(PedroStartPose.RED_BASE_CORNER);
         return startPose;
     }
 
     public static PathChain buildSimPath(Follower follower, Pose startPose) {
-        // @path-start
-PathChain route = PedroBlockRouteBuilder.build(
+        PathChain route = PedroBlockRouteBuilder.build(
                 follower,
                 startPose,
-                PedroBlockCommand.curved(-39.26, -53.15, 0, -39.26, -1.13, 0, 1, 0.9)
+                PedroBlockCommand.straight(22, -28.84, 0, 0.9)
         );
-        // @path-end
         return route;
     }
 
