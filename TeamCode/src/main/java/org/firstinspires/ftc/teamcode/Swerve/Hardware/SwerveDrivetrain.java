@@ -176,11 +176,12 @@ public class SwerveDrivetrain {
     }
 
     private void applyXStance(double dt) {
-        double[] xAngles = { Math.toRadians(45), Math.toRadians(-45), Math.toRadians(45), Math.toRadians(-45) };
+        double[] lockAngles = SwerveConfig.LOCKED_STANCE_ANGLES_RAD;
         SwerveModuleState[] xStates = new SwerveModuleState[4];
         for (int i = 0; i < 4; i++) {
-            xStates[i] = new SwerveModuleState(0.0, xAngles[i]);
-            modules[i].update(xAngles[i], 0.0, dt);
+            double angle = lockAngles[i];
+            xStates[i] = new SwerveModuleState(0.0, angle);
+            modules[i].update(angle, 0.0, dt);
         }
         lastRawStates = copyStates(xStates);
         lastOptimizedStates = copyStates(xStates);

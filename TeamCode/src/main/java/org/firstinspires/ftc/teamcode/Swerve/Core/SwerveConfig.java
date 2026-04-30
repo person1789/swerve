@@ -164,6 +164,24 @@ public class SwerveConfig {
          */
         public static double STEER_DRIVE_MIN_AUTHORITY = 0.12;
 
+        /**
+         * Minimum retained cosine-based drive factor during steer transitions.
+         * This prevents large steer errors from silently zeroing wheel speed even when
+         * the normal authority floor is nonzero.
+         */
+        public static double STEER_DRIVE_MIN_COSINE_FACTOR = 0.35;
+
+        /**
+         * Lock stance module angles in radians, ordered FL, FR, RR, RL.
+         * Defaults to a turn-ready stance tangent to a pure in-place rotation.
+         */
+        public static double[] LOCKED_STANCE_ANGLES_RAD = {
+                Math.toRadians(135.0),
+                Math.toRadians(45.0),
+                Math.toRadians(-45.0),
+                Math.toRadians(-135.0)
+        };
+
         // ─────────────────────────────────────────────────────────────────────────
         // 7. Filters & Observer
         // ─────────────────────────────────────────────────────────────────────────
@@ -213,7 +231,9 @@ public class SwerveConfig {
         }
 
         // ─────────────────────────────────────────────────────────────────────────
-        // Pedro follower tuning
+        // Pedro follower tuning (legacy mirror values)
+        // Active FTC Dashboard tuning now lives in org.firstinspires.ftc.teamcode.pedroPathing.tuning.*
+        // PedroSwerveFactory reads those tuning classes directly.
         public static double PEDRO_MASS = 10.65;
         public static double PEDRO_FORWARD_ZERO_POWER_ACCELERATION = -40.0;
         public static double PEDRO_LATERAL_ZERO_POWER_ACCELERATION = -40.0;

@@ -9,7 +9,22 @@ import com.pedropathing.ftc.FollowerBuilder;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
-import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroFollowerModelTuning;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroFollowerSafetyTuning;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroPathControlTuning;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroPredictiveBrakingTuning;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroPrimaryDriveTuning;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroPrimaryHeadingTuning;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroPrimaryTranslationTuning;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroSecondaryDriveTuning;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroSecondaryHeadingTuning;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroSecondaryTranslationTuning;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroTuneSnapshots.FilteredPidfSnapshot;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroTuneSnapshots.ModelSnapshot;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroTuneSnapshots.PathControlSnapshot;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroTuneSnapshots.PidfSnapshot;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroTuneSnapshots.PredictiveBrakingSnapshot;
+import org.firstinspires.ftc.teamcode.pedroPathing.tuning.PedroTuneSnapshots.SafetySnapshot;
 
 /**
  * Central Pedro factory for the current robot configuration.
@@ -42,12 +57,18 @@ public final class PedroSwerveFactory {
         follower.setSecondaryHeadingPIDFCoefficients(secondaryHeadingPid());
         follower.setDrivePIDFCoefficients(primaryDrivePid());
         follower.setSecondaryDrivePIDFCoefficients(secondaryDrivePid());
-        follower.setCentripetalScaling(SwerveConfig.PEDRO_CENTRIPETAL_SCALING);
-        follower.useTranslational = SwerveConfig.PEDRO_USE_TRANSLATIONAL_PID;
-        follower.useHeading = SwerveConfig.PEDRO_USE_HEADING_PID;
-        follower.useDrive = SwerveConfig.PEDRO_USE_DRIVE_PID;
-        follower.usePredictiveBraking = SwerveConfig.PEDRO_USE_PREDICTIVE_BRAKING;
-        follower.useCentripetal = SwerveConfig.PEDRO_CENTRIPETAL_SCALING != 0.0;
+        PidfSnapshot primaryTranslation = PedroPrimaryTranslationTuning.snapshot();
+        PidfSnapshot primaryHeading = PedroPrimaryHeadingTuning.snapshot();
+        FilteredPidfSnapshot primaryDrive = PedroPrimaryDriveTuning.snapshot();
+        PathControlSnapshot pathControl = PedroPathControlTuning.snapshot();
+        PredictiveBrakingSnapshot braking = PedroPredictiveBrakingTuning.snapshot();
+
+        follower.setCentripetalScaling(pathControl.centripetalScaling);
+        follower.useTranslational = primaryTranslation.enabled;
+        follower.useHeading = primaryHeading.enabled;
+        follower.useDrive = primaryDrive.enabled;
+        follower.usePredictiveBraking = braking.enabled;
+        follower.useCentripetal = pathControl.centripetalScaling != 0.0;
         follower.updateConstants();
     }
 
@@ -81,91 +102,65 @@ public final class PedroSwerveFactory {
     }
 
     private static void applyToFollowerConstants(FollowerConstants followerConstants) {
-        followerConstants.mass(SwerveConfig.PEDRO_MASS)
-                .forwardZeroPowerAcceleration(SwerveConfig.PEDRO_FORWARD_ZERO_POWER_ACCELERATION)
-                .lateralZeroPowerAcceleration(SwerveConfig.PEDRO_LATERAL_ZERO_POWER_ACCELERATION)
+        ModelSnapshot model = PedroFollowerModelTuning.snapshot();
+        PathControlSnapshot pathControl = PedroPathControlTuning.snapshot();
+        SafetySnapshot safety = PedroFollowerSafetyTuning.snapshot();
+        PredictiveBrakingSnapshot braking = PedroPredictiveBrakingTuning.snapshot();
+        followerConstants.mass(model.mass)
+                .forwardZeroPowerAcceleration(model.forwardZeroPowerAcceleration)
+                .lateralZeroPowerAcceleration(model.lateralZeroPowerAcceleration)
                 .translationalPIDFCoefficients(primaryTranslationalPid())
                 .secondaryTranslationalPIDFCoefficients(secondaryTranslationalPid())
                 .headingPIDFCoefficients(primaryHeadingPid())
                 .secondaryHeadingPIDFCoefficients(secondaryHeadingPid())
                 .drivePIDFCoefficients(primaryDrivePid())
                 .secondaryDrivePIDFCoefficients(secondaryDrivePid())
-                .translationalPIDFSwitch(SwerveConfig.PEDRO_TRANSLATIONAL_PID_SWITCH)
-                .headingPIDFSwitch(SwerveConfig.PEDRO_HEADING_PID_SWITCH_RAD)
-                .drivePIDFSwitch(SwerveConfig.PEDRO_DRIVE_PID_SWITCH)
-                .turnHeadingErrorThreshold(SwerveConfig.PEDRO_TURN_HEADING_ERROR_THRESHOLD_RAD)
-                .centripetalScaling(SwerveConfig.PEDRO_CENTRIPETAL_SCALING)
-                .automaticHoldEnd(SwerveConfig.PEDRO_AUTOMATIC_HOLD_END)
-                .holdPointTranslationalScaling(SwerveConfig.PEDRO_HOLD_POINT_TRANSLATIONAL_SCALING)
-                .holdPointHeadingScaling(SwerveConfig.PEDRO_HOLD_POINT_HEADING_SCALING)
-                .BEZIER_CURVE_SEARCH_LIMIT(SwerveConfig.PEDRO_BEZIER_CURVE_SEARCH_LIMIT)
-                .useSecondaryTranslationalPIDF(SwerveConfig.PEDRO_USE_SECONDARY_TRANSLATIONAL_PID)
-                .useSecondaryHeadingPIDF(SwerveConfig.PEDRO_USE_SECONDARY_HEADING_PID)
-                .useSecondaryDrivePIDF(SwerveConfig.PEDRO_USE_SECONDARY_DRIVE_PID)
+                .translationalPIDFSwitch(PedroPrimaryTranslationTuning.snapshot().switchThreshold)
+                .headingPIDFSwitch(PedroPrimaryHeadingTuning.snapshot().switchThreshold)
+                .drivePIDFSwitch(PedroPrimaryDriveTuning.snapshot().switchThreshold)
+                .turnHeadingErrorThreshold(pathControl.turnHeadingErrorThresholdRad)
+                .centripetalScaling(pathControl.centripetalScaling)
+                .automaticHoldEnd(pathControl.automaticHoldEnd)
+                .holdPointTranslationalScaling(pathControl.holdPointTranslationalScaling)
+                .holdPointHeadingScaling(pathControl.holdPointHeadingScaling)
+                .BEZIER_CURVE_SEARCH_LIMIT(pathControl.bezierCurveSearchLimit)
+                .useSecondaryTranslationalPIDF(PedroSecondaryTranslationTuning.snapshot().enabled)
+                .useSecondaryHeadingPIDF(PedroSecondaryHeadingTuning.snapshot().enabled)
+                .useSecondaryDrivePIDF(PedroSecondaryDriveTuning.snapshot().enabled)
                 .predictiveBrakingCoefficients(predictiveBraking())
-                .driveKalmanFilterModelCovariance(SwerveConfig.PEDRO_DRIVE_KALMAN_MODEL_COVARIANCE)
-                .driveKalmanFilterDataCovariance(SwerveConfig.PEDRO_DRIVE_KALMAN_DATA_COVARIANCE)
-                .stuckVelocity(SwerveConfig.PEDRO_STUCK_VELOCITY)
-                .stuckTValue(SwerveConfig.PEDRO_STUCK_T_VALUE)
-                .stuckTimeout(SwerveConfig.PEDRO_STUCK_TIMEOUT);
-        followerConstants.usePredictiveBraking = SwerveConfig.PEDRO_USE_PREDICTIVE_BRAKING;
+                .driveKalmanFilterModelCovariance(safety.driveKalmanModelCovariance)
+                .driveKalmanFilterDataCovariance(safety.driveKalmanDataCovariance)
+                .stuckVelocity(safety.stuckVelocity)
+                .stuckTValue(safety.stuckTValue)
+                .stuckTimeout(safety.stuckTimeout);
+        followerConstants.usePredictiveBraking = braking.enabled;
     }
 
     private static PIDFCoefficients primaryTranslationalPid() {
-        return new PIDFCoefficients(
-                SwerveConfig.PEDRO_TRANSLATIONAL_P,
-                SwerveConfig.PEDRO_TRANSLATIONAL_I,
-                SwerveConfig.PEDRO_TRANSLATIONAL_D,
-                SwerveConfig.PEDRO_TRANSLATIONAL_F);
+        return PedroPrimaryTranslationTuning.snapshot().toPidf();
     }
 
     private static PIDFCoefficients secondaryTranslationalPid() {
-        return new PIDFCoefficients(
-                SwerveConfig.PEDRO_SECONDARY_TRANSLATIONAL_P,
-                SwerveConfig.PEDRO_SECONDARY_TRANSLATIONAL_I,
-                SwerveConfig.PEDRO_SECONDARY_TRANSLATIONAL_D,
-                SwerveConfig.PEDRO_SECONDARY_TRANSLATIONAL_F);
+        return PedroSecondaryTranslationTuning.snapshot().toPidf();
     }
 
     private static PIDFCoefficients primaryHeadingPid() {
-        return new PIDFCoefficients(
-                SwerveConfig.PEDRO_HEADING_P,
-                SwerveConfig.PEDRO_HEADING_I,
-                SwerveConfig.PEDRO_HEADING_D,
-                SwerveConfig.PEDRO_HEADING_F);
+        return PedroPrimaryHeadingTuning.snapshot().toPidf();
     }
 
     private static PIDFCoefficients secondaryHeadingPid() {
-        return new PIDFCoefficients(
-                SwerveConfig.PEDRO_SECONDARY_HEADING_P,
-                SwerveConfig.PEDRO_SECONDARY_HEADING_I,
-                SwerveConfig.PEDRO_SECONDARY_HEADING_D,
-                SwerveConfig.PEDRO_SECONDARY_HEADING_F);
+        return PedroSecondaryHeadingTuning.snapshot().toPidf();
     }
 
     private static FilteredPIDFCoefficients primaryDrivePid() {
-        return new FilteredPIDFCoefficients(
-                SwerveConfig.PEDRO_DRIVE_P,
-                SwerveConfig.PEDRO_DRIVE_I,
-                SwerveConfig.PEDRO_DRIVE_D,
-                SwerveConfig.PEDRO_DRIVE_F,
-                SwerveConfig.PEDRO_DRIVE_T);
+        return PedroPrimaryDriveTuning.snapshot().toPidf();
     }
 
     private static FilteredPIDFCoefficients secondaryDrivePid() {
-        return new FilteredPIDFCoefficients(
-                SwerveConfig.PEDRO_SECONDARY_DRIVE_P,
-                SwerveConfig.PEDRO_SECONDARY_DRIVE_I,
-                SwerveConfig.PEDRO_SECONDARY_DRIVE_D,
-                SwerveConfig.PEDRO_SECONDARY_DRIVE_F,
-                SwerveConfig.PEDRO_SECONDARY_DRIVE_T);
+        return PedroSecondaryDriveTuning.snapshot().toPidf();
     }
 
     private static PredictiveBrakingCoefficients predictiveBraking() {
-        return new PredictiveBrakingCoefficients(
-                SwerveConfig.PEDRO_BRAKING_LINEAR,
-                SwerveConfig.PEDRO_BRAKING_QUADRATIC_FRICTION,
-                SwerveConfig.PEDRO_BRAKING_P)
-                .withMaximumBrakingPower(SwerveConfig.PEDRO_BRAKING_MAX_POWER);
+        return PedroPredictiveBrakingTuning.snapshot().toCoefficients();
     }
 }

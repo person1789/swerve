@@ -19,6 +19,8 @@ class SwerveDrivetrainTest {
     private final double originalSteerDriveFullAuthority = SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD;
     private final double originalSteerDriveHardCutoff = SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD;
     private final double originalSteerDriveMinAuthority = SwerveConfig.STEER_DRIVE_MIN_AUTHORITY;
+    private final double originalSteerDriveMinCosineFactor = SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR;
+    private final double[] originalLockedStanceAngles = SwerveConfig.LOCKED_STANCE_ANGLES_RAD.clone();
 
     @AfterEach
     void restoreConfig() {
@@ -29,6 +31,8 @@ class SwerveDrivetrainTest {
         SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = originalSteerDriveFullAuthority;
         SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = originalSteerDriveHardCutoff;
         SwerveConfig.STEER_DRIVE_MIN_AUTHORITY = originalSteerDriveMinAuthority;
+        SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR = originalSteerDriveMinCosineFactor;
+        SwerveConfig.LOCKED_STANCE_ANGLES_RAD = originalLockedStanceAngles.clone();
     }
 
     @Test
@@ -97,6 +101,7 @@ class SwerveDrivetrainTest {
         SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = Math.toRadians(5.0);
         SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = Math.toRadians(35.0);
         SwerveConfig.STEER_DRIVE_MIN_AUTHORITY = 0.12;
+        SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR = 0.35;
         TestModuleIO[] ios = {
                 new TestModuleIO(), new TestModuleIO(), new TestModuleIO(), new TestModuleIO()
         };
@@ -106,7 +111,31 @@ class SwerveDrivetrainTest {
         drivetrain.setVelocity(new Vector(1.0, 0.0, 0.0), 0.02);
 
         assertTrue(Math.abs(ios[0].drivePower) > 0.0);
-        assertTrue(Math.abs(ios[0].drivePower) < 0.2);
+        assertTrue(Math.abs(ios[0].drivePower) < 0.3);
+    }
+
+    @Test
+    void lockedStateUsesConfiguredRotateReadyStance() {
+        SwerveConfig.ENABLE_IDLE_X_STANCE = true;
+        SwerveConfig.LOCK_DELAY_MS = 20.0;
+        SwerveConfig.LOCKED_STANCE_ANGLES_RAD = new double[] {
+                Math.toRadians(135.0),
+                Math.toRadians(45.0),
+                Math.toRadians(-45.0),
+                Math.toRadians(-135.0)
+        };
+        SwerveDrivetrain drivetrain = new SwerveDrivetrain(createModules(), () -> 12.0, null);
+
+        drivetrain.setVelocity(new Vector(0.0, 0.0, 0.0), 0.01);
+        drivetrain.setVelocity(new Vector(0.0, 0.0, 0.0), 0.02);
+        drivetrain.setVelocity(new Vector(0.0, 0.0, 0.0), 0.02);
+        drivetrain.setVelocity(new Vector(0.0, 0.0, 0.0), 0.02);
+
+        assertEquals(SwerveDrivetrain.States.LOCKED, drivetrain.getState());
+        assertEquals(Math.toRadians(135.0), drivetrain.getLastOptimizedStates()[0].angleRadians, 1e-9);
+        assertEquals(Math.toRadians(45.0), drivetrain.getLastOptimizedStates()[1].angleRadians, 1e-9);
+        assertEquals(Math.toRadians(-45.0), drivetrain.getLastOptimizedStates()[2].angleRadians, 1e-9);
+        assertEquals(Math.toRadians(-135.0), drivetrain.getLastOptimizedStates()[3].angleRadians, 1e-9);
     }
 
     private SwerveModule[] createModules() {

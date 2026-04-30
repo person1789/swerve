@@ -32,6 +32,7 @@ public class PedroUnifiedSwerveStack {
     private boolean pedroLoopOpen = false;
     private double totalHeadingRad = 0.0;
     private double previousHeadingRad = 0.0;
+    private double pedroVelocityConstraintScale = 1.0;
 
     public PedroUnifiedSwerveStack(HardwareMap hardwareMap, Logger logger) {
         this.hwMap = new HWMap(hardwareMap);
@@ -132,7 +133,12 @@ public class PedroUnifiedSwerveStack {
 
     public void drivePedroRobotCentric(double forward, double strafe, double rotation) {
         advancePedroLoop();
-        drivetrain.setAutonomousVelocity(new Vector(forward, strafe, rotation), lastDtSec);
+        drivetrain.setAutonomousVelocity(
+                new Vector(
+                        forward * pedroVelocityConstraintScale,
+                        strafe * pedroVelocityConstraintScale,
+                        rotation * pedroVelocityConstraintScale),
+                lastDtSec);
         pedroLoopOpen = false;
     }
 
@@ -184,6 +190,14 @@ public class PedroUnifiedSwerveStack {
 
     public Logger getLogger() {
         return logger;
+    }
+
+    public void setPedroVelocityConstraintScale(double scale) {
+        pedroVelocityConstraintScale = MathUtil.clamp(scale, 0.0, 1.0);
+    }
+
+    public double getPedroVelocityConstraintScale() {
+        return pedroVelocityConstraintScale;
     }
 
     private void updateLocalization() {

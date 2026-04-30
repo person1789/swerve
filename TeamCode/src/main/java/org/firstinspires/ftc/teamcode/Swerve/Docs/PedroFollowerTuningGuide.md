@@ -1,19 +1,32 @@
 # Pedro Follower Tuning Guide
 
-This guide covers the Pedro autonomous tuning values that are now exposed through:
+This guide covers the Pedro autonomous tuning values that are now exposed through independent FTC Dashboard config classes under:
 
-- `Swerve/Core/SwerveConfig.java`
+- `pedroPathing/tuning`
+
+The active source of truth is now split into separate tune groups:
+
+- `PedroPrimaryTranslationTuning`
+- `PedroSecondaryTranslationTuning`
+- `PedroPrimaryHeadingTuning`
+- `PedroSecondaryHeadingTuning`
+- `PedroPrimaryDriveTuning`
+- `PedroSecondaryDriveTuning`
+- `PedroFollowerModelTuning`
+- `PedroPathControlTuning`
+- `PedroPredictiveBrakingTuning`
+- `PedroFollowerSafetyTuning`
 
 They are FTC Dashboard tuneable because:
 
-- `SwerveConfig` is `@Config`
+- each tune group is its own `@Config` class
 - the active Pedro autos now call `PedroSwerveFactory.applyLiveTuning(follower)` during the run loop
 
 That means you can change these values in FTC Dashboard while the robot is running an auto and the follower will pick up the new values without redeploying.
 
 ## What is tuneable now
 
-These Pedro follower settings are now surfaced in `SwerveConfig`.
+These Pedro follower settings are now surfaced in dedicated tune classes instead of one large shared config bucket.
 
 ### Path correction
 

@@ -38,8 +38,9 @@ public class SwerveAuditor {
                 error = MathUtil.angleError(currentAnglesRad[i], state.angleRadians);
             }
 
-            double cosineScale = Math.cos(error);
-            state.speedMetersPerSecond *= Math.max(0, cosineScale);
+            double cosineScale = Math.abs(Math.cos(error));
+            cosineScale = Math.max(SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR, cosineScale);
+            state.speedMetersPerSecond *= cosineScale;
             state.speedMetersPerSecond *= steerDriveScale(Math.abs(error));
 
             optimized[i] = state;

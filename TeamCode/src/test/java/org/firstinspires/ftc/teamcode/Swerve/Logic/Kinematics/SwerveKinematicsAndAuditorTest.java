@@ -14,12 +14,14 @@ class SwerveKinematicsAndAuditorTest {
     private final double originalFullAuthority = SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD;
     private final double originalHardCutoff = SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD;
     private final double originalMinAuthority = SwerveConfig.STEER_DRIVE_MIN_AUTHORITY;
+    private final double originalMinCosineFactor = SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR;
 
     @AfterEach
     void restoreConfig() {
         SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = originalFullAuthority;
         SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = originalHardCutoff;
         SwerveConfig.STEER_DRIVE_MIN_AUTHORITY = originalMinAuthority;
+        SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR = originalMinCosineFactor;
     }
 
     @Test
@@ -75,9 +77,10 @@ class SwerveKinematicsAndAuditorTest {
     }
 
     @Test
-    void auditorSanitizesNanAndAppliesCosineScaling() {
-        // Passes if NaN inputs are replaced with zeros and perpendicular steering commands zero the drive speed through cosine scaling.
+    void auditorSanitizesNanAndRetainsMinimumDriveThroughCosineFloor() {
+        // Passes if NaN inputs are replaced with zeros and large steer errors still retain some drive authority.
         SwerveAuditor auditor = new SwerveAuditor();
+        SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR = 0.35;
         SwerveModuleState[] desired = {
                 new SwerveModuleState(Double.NaN, Double.NaN),
                 new SwerveModuleState(1.0, Math.PI / 2.0),
@@ -90,7 +93,7 @@ class SwerveKinematicsAndAuditorTest {
 
         assertEquals(0.0, optimized[0].speedMetersPerSecond, 1e-9);
         assertEquals(0.0, optimized[0].angleRadians, 1e-9);
-        assertEquals(0.0, optimized[1].speedMetersPerSecond, 1e-9);
+        assertEquals(0.35 * SwerveConfig.STEER_DRIVE_MIN_AUTHORITY, optimized[1].speedMetersPerSecond, 1e-9);
     }
 
     @Test
@@ -116,6 +119,7 @@ class SwerveKinematicsAndAuditorTest {
         SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = Math.toRadians(5.0);
         SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = Math.toRadians(25.0);
         SwerveConfig.STEER_DRIVE_MIN_AUTHORITY = 0.12;
+        SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR = 0.35;
         SwerveAuditor auditor = new SwerveAuditor();
         SwerveModuleState[] desired = {
                 new SwerveModuleState(1.0, Math.toRadians(30.0)),
@@ -126,7 +130,7 @@ class SwerveKinematicsAndAuditorTest {
 
         SwerveModuleState[] optimized = auditor.optimize(desired, new double[] {0.0, 0.0, 0.0, 0.0});
 
-        assertEquals(Math.cos(Math.toRadians(30.0)) * 0.12, optimized[0].speedMetersPerSecond, 1e-9);
+        assertEquals(Math.max(0.35, Math.abs(Math.cos(Math.toRadians(30.0)))) * 0.12, optimized[0].speedMetersPerSecond, 1e-9);
     }
 
     @Test
