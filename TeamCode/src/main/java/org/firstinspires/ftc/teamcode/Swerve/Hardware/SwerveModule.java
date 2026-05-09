@@ -8,11 +8,12 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
 import com.qualcomm.robotcore.util.Range;
+import com.acmerobotics.dashboard.config.Config;
 import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.normalizeRadians;
 
 
 
-
+@Config
 public class SwerveModule {
 
     public static double STEER_P = 0.0;
@@ -62,18 +63,15 @@ public class SwerveModule {
                 hardwareMap.get(DcMotorEx.class, driveMotorName),
                 hardwareMap.get(CRServo.class, steerServoName),
                 hardwareMap.get(AnalogInput.class, encoderName)
-
-
         );
         this.inverse = inverse;
         this.offset = offset;
     }
 
-
     public void update() {
         rotationController.setPIDF(STEER_P, STEER_I, STEER_D, 0.0);
 
-        double targetAngle = getTargetAngle();
+        double targetAngle = normalizeRadians(getTargetAngle()); //do normalization
         double currentAngle = getCurrentRotation();
 
         double error = normalizeRadians(targetAngle - currentAngle);
@@ -91,7 +89,7 @@ public class SwerveModule {
     }
 
     public double getTargetAngle() {
-        return normalizeRadians(targetAngle);
+        return targetAngle;
     }
 
     public double getCurrentRotation() {
@@ -124,5 +122,10 @@ public class SwerveModule {
 
     public void setZeroPowerBehavior(DcMotor.ZeroPowerBehavior zeroPowerBehavior) {
         driveMotor.setZeroPowerBehavior(zeroPowerBehavior);
+    }
+
+    public void stop() {
+        driveMotor.setPower(0.0);
+        steerServo.setPower(0.0);
     }
 }
