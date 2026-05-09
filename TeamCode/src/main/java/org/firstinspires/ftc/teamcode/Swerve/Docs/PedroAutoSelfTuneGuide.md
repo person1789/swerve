@@ -85,6 +85,85 @@ These values live in the independent FTC Dashboard classes under:
 If `APPLY_RECOMMENDATIONS = true`, the OpMode writes the recommended values back into the live tuning classes at the end of the run.
 
 That means the new values become the new FTC Dashboard values immediately for the current session.
+# Tuning the auto tuner itself
+
+The auto tuner is also tuneable. If recommendations are too aggressive, too weak, or noisy, tune the tuner before tuning your robot again.
+
+### Step 1: Verify baseline quality first
+
+Before adjusting any auto-tuner gains, verify:
+
+- module offsets and inversion are correct
+- steering behavior is stable and not oscillating
+- localization is healthy (no large drift, low invalid loop count)
+- battery is consistent between runs
+
+If baseline hardware/localization is unstable, the auto tuner output will also be unstable.
+
+### Step 2: Run in observe-only mode first
+
+Set:
+
+- `APPLY_RECOMMENDATIONS = false`
+
+Then run 3-5 passes and compare recommendation deltas.
+
+Interpretation:
+
+- **small repeatable deltas**: tuner is likely stable
+- **large alternating deltas**: tuner is overreacting to noise
+- **persistent one-direction drift**: current gains are still too far off or tests are too short
+
+### Step 3: Adjust test geometry and duration
+
+Use larger test distances when motion is too short to expose real tracking error:
+
+- increase `FORWARD_TEST_IN` to improve translation signal quality
+- increase `STRAFE_TEST_IN` to expose lateral model mismatch
+- increase `CURVE_TEST_IN` to better excite heading + centripetal behavior
+
+Use smaller distances when space is limited or when runs become inconsistent due to collisions.
+
+### Step 4: Control recommendation aggressiveness
+
+Use staged adoption instead of full commits:
+
+1. keep `APPLY_RECOMMENDATIONS = false`
+2. copy recommendations manually
+3. apply ~30-60% of each suggested delta
+4. rerun and iterate
+
+This avoids overshoot when the robot is far from the ideal region.
+
+### Step 5: Decide when to enable auto-apply
+
+Enable:
+
+- `APPLY_RECOMMENDATIONS = true`
+
+only after two consecutive observe-only runs produce similar recommendations.
+
+### Step 6: Validate after each pass
+
+After any update, run a short validation auto and inspect:
+
+- peak translation error
+- settle time near end of segment
+- heading overshoot on curve transitions
+- translation authority collapse (if present)
+
+If one metric improves while another regresses heavily, reduce update size and rerun.
+
+## Practical auto-tuner workflow
+
+1. Warm robot and battery, confirm hardware health.
+2. Set `APPLY_RECOMMENDATIONS = false`.
+3. Run 3 baseline passes.
+4. If noisy, increase test distance and rerun.
+5. Apply partial recommendation deltas manually.
+6. Repeat until deltas are small.
+7. Turn on `APPLY_RECOMMENDATIONS = true` for final convergence passes.
+8. Lock in values and finish with manual challenge-path validation.
 
 ## Important limitation
 

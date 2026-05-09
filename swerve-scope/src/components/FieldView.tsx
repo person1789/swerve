@@ -168,7 +168,7 @@ export function FieldView({ telemetry }: FieldViewProps) {
           const modCx = -Number(mod.yMeters ?? 0) * pxPerMeter;
           const modCy = -Number(mod.xMeters ?? 0) * pxPerMeter;
           ctx.translate(modCx, modCy);
-          ctx.rotate(-Number(mod.currentAngleRadians ?? 0));
+          ctx.rotate(Number(mod.currentAngleRadians ?? 0));
 
           ctx.fillStyle = '#ff9100';
           ctx.fillRect(-4, -4, 8, 8);

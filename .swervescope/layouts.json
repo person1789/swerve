@@ -1,24 +1,24 @@
 {
   "current" : {
     "schemaVersion" : 2,
-    "name" : "Auto Review",
+    "name" : "Mechanisms",
     "mode" : "dashboard",
-    "updatedAtMs" : 1777222222482,
+    "updatedAtMs" : 1777583735836,
     "items" : [ {
       "id" : "telemetry",
       "visible" : true
     }, {
       "id" : "modules",
-      "visible" : true
+      "visible" : false
     }, {
       "id" : "config",
       "visible" : true
     }, {
       "id" : "route",
-      "visible" : true
+      "visible" : false
     }, {
       "id" : "gamepad",
-      "visible" : false
+      "visible" : true
     } ]
   }
 }
