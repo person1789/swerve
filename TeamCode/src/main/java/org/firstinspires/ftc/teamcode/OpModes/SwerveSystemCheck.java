@@ -164,8 +164,6 @@ public class SwerveSystemCheck extends LinearOpMode {
                 telemetry.addData("Steer Ready Tol (deg)", Math.toDegrees(SwerveConfig.STEER_READY_ANGLE_TOLERANCE_RAD));
                 telemetry.addData("Steer Full Auth (deg)", Math.toDegrees(SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD));
                 telemetry.addData("Steer Hard Cut (deg)", Math.toDegrees(SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD));
-                telemetry.addData("Feasible Filter", SwerveConfig.FEASIBLE_TRANSLATION_FILTER_ENABLED);
-
                 telemetry.addLine();
                 telemetry.addData("Smooth X (in/s)", metersToInches(smoothedVelocity.x()));
                 telemetry.addData("Smooth Y (in/s)", metersToInches(smoothedVelocity.y()));

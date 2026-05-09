@@ -17,9 +17,8 @@ Use local tests for logic that does not need FTC runtime hardware objects:
 Current examples live under `TeamCode/src/test/java`, including:
 
 - `Swerve/Core/MathUtilTest.java`
-- `Swerve/Input/MotionSmootherTest.java`
-- `Swerve/Logic/Control/SwerveControllerTest.java`
 - `Swerve/Hardware/SwerveDrivetrainTest.java`
+- `auto/KookyAutoControllerTest.java`
 
 ## What you should not try to unit test directly
 
@@ -33,7 +32,7 @@ These still belong to on-robot or deeper integration testing unless you extract 
 ## Run tests from Android Studio
 
 1. Open the `TeamCode/src/test/java` tree.
-2. Right-click an actual test class such as `SwerveControllerTest`.
+2. Right-click an actual test class such as `SwerveDrivetrainTest`.
 3. Choose **Run**.
 
 You can also right-click the `test` source root to run the whole local suite.
@@ -49,13 +48,13 @@ Run all local TeamCode tests:
 Run one test class:
 
 ```powershell
-.\gradlew :TeamCode:testDebugUnitTest --tests "org.firstinspires.ftc.teamcode.Swerve.Logic.Control.SwerveControllerTest"
+.\gradlew :TeamCode:testDebugUnitTest --tests "org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrainTest"
 ```
 
 Run one test method:
 
 ```powershell
-.\gradlew :TeamCode:testDebugUnitTest --tests "org.firstinspires.ftc.teamcode.Swerve.Logic.Control.SwerveControllerTest.headingLockWaitsForConfiguredDelayBeforeActivating"
+.\gradlew :TeamCode:testDebugUnitTest --tests "org.firstinspires.ftc.teamcode.auto.KookyAutoControllerTest.diagonalTranslationRespectsMagnitudeLimit"
 ```
 
 Compile-check the robot code without running tests:
@@ -68,17 +67,15 @@ Compile-check the robot code without running tests:
 
 If your next goal is better `MainTeleOp` confidence without building a full OpMode harness, start with these:
 
-1. `SwerveControllerTest`
-   - heading hold
-   - snap behavior
-   - reset behavior
-2. `MotionSmootherTest`
-   - acceleration and braking feel
-3. `SwerveDrivetrainTest`
+1. `SwerveDrivetrainTest`
    - idle locking behavior
    - drive-mode setup
-4. `SwerveModuleTest`
+2. `SwerveModuleTest`
    - wheel speed conversion sanity
+3. `SwerveKinematicsAndAuditorTest`
+   - module state generation assumptions
+4. `KookyAutoControllerTest`
+   - command limiting and auto correction behavior
 
 ## TeleOp bring-up on the real robot
 

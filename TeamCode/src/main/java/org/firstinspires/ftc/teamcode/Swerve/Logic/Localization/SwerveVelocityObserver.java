@@ -15,7 +15,16 @@ import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 public class SwerveVelocityObserver {
 
     private final SwerveKinematics kinematics;
-    private Vector observedVelocity = new Vector(0, 0, 0);
+    private final SwerveModuleState[] stateCache = {
+            new SwerveModuleState(),
+            new SwerveModuleState(),
+            new SwerveModuleState(),
+            new SwerveModuleState()
+    };
+    private final double[] instantVelocity = new double[3];
+    private double observedVx = 0.0;
+    private double observedVy = 0.0;
+    private double observedOmega = 0.0;
 
     public SwerveVelocityObserver(SwerveKinematics kinematics) {
         this.kinematics = kinematics;
@@ -26,11 +35,10 @@ public class SwerveVelocityObserver {
      * @param modules Array of SwerveModules to read encoders from.
      */
     public void update(org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveModule[] modules) {
-        SwerveModuleState[] states = new SwerveModuleState[4];
         for (int i = 0; i < 4; i++) {
-            states[i] = modules[i].getCurrentState();
+            modules[i].copyCurrentStateInto(stateCache[i]);
         }
-        update(states);
+        update(stateCache);
     }
 
     /**
@@ -38,24 +46,26 @@ public class SwerveVelocityObserver {
      * @param states Array of 4 module states (speed and angle).
      */
     public void update(SwerveModuleState[] states) {
-        Vector instantVelocity = kinematics.forwardKinematics(states);
-
-        // Apply Low-Pass Filter using Vector lerp (efficient single-allocation)
+        kinematics.forwardKinematics(states, instantVelocity);
         double alpha = SwerveConfig.OBSERVER_LPF_GAIN;
-        observedVelocity = observedVelocity.lerp(instantVelocity, alpha);
+        observedVx += alpha * (instantVelocity[0] - observedVx);
+        observedVy += alpha * (instantVelocity[1] - observedVy);
+        observedOmega += alpha * (instantVelocity[2] - observedOmega);
     }
 
     /**
      * @return The smoothed velocity estimate in chassis-space (vx, vy, omega).
      */
     public Vector getVelocity() {
-        return observedVelocity;
+        return new Vector(observedVx, observedVy, observedOmega);
     }
 
     /**
      * Resets the observer estimate to zero.
      */
     public void reset() {
-        observedVelocity = new Vector(0, 0, 0);
+        observedVx = 0.0;
+        observedVy = 0.0;
+        observedOmega = 0.0;
     }
 }

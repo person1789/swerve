@@ -48,25 +48,7 @@ This is where to look when:
 - field-centric driving is rotated incorrectly
 - observed robot motion and pose disagree badly
 
-> Deprecated: this document describes a superseded multi-layer architecture. The live teleop path is now intentionally slimmer and centered on `OpMode -> SwerveDrivetrain -> SwerveModule`.
-
-### `SwerveController`
-
-Owns:
-
-- manual turn passthrough
-- heading maintain logic
-- heading snap logic
-
-Right now heading maintain and snap are intentionally disabled by default until tuned on the real robot.
-
-### `MotionSmoother`
-
-Owns:
-
-- stick shaping
-- acceleration limiting
-- jerk limiting
+> Deprecated: this document describes a superseded architecture. The removed `SwerveController` and `MotionSmoother` layers are no longer part of the live runtime. The active teleop path is intentionally slimmer and centered on `OpMode -> SwerveDrivetrain -> SwerveModule`.
 - brake/reverse snap-down behavior
 
 This is the main "feel" layer. If the robot feels sluggish or too jumpy, this is the first place to inspect after hardware truth is verified.

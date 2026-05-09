@@ -13,7 +13,6 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Localization.SwerveLocalizer;
-import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.Limelight.LimelightLocalizer;
@@ -50,7 +49,6 @@ public class MainTeleOp extends LinearOpMode {
         waitForStart();
         timer.reset();
         loopTimeEstimator.reset();
-        drivetrain.resetSmoother();
         previousStartPressed = false;
 
         while (opModeIsActive()) {
@@ -59,7 +57,6 @@ public class MainTeleOp extends LinearOpMode {
             boolean startPressed = gamepad1.start;
             if (startPressed && !previousStartPressed) {
                 localizer.resetHeading();
-                drivetrain.resetSmoother();
             }
             previousStartPressed = startPressed;
 
@@ -73,8 +70,7 @@ public class MainTeleOp extends LinearOpMode {
                 }
             }
 
-            Vector currentPose = localizer.getPose();
-            double heading = currentPose.omega();
+            double heading = localizer.getHeading();
             driveFromGamepad(heading, dt);
             loopCounter++;
             if (loggingStateChanged || shouldEmitTelemetry(loopCounter, SwerveConfig.TELEOP_TELEMETRY_INTERVAL_LOOPS)) {
@@ -140,12 +136,11 @@ public class MainTeleOp extends LinearOpMode {
             return;
         }
 
-        Vector rawPinpointPose = localizer.getRawPinpointPose();
         logger.log("Loop Time (ms)", dt * 1000.0, Logger.LogLevels.PRODUCTION);
         logger.log("Heading (deg)", Math.toDegrees(heading), Logger.LogLevels.PRODUCTION);
-        logger.log("Pinpoint Raw X (in)", rawPinpointPose.x(), Logger.LogLevels.PRODUCTION);
-        logger.log("Pinpoint Raw Y (in)", rawPinpointPose.y(), Logger.LogLevels.PRODUCTION);
-        logger.log("Pinpoint Raw Heading (deg)", Math.toDegrees(rawPinpointPose.omega()), Logger.LogLevels.PRODUCTION);
+        logger.log("Pinpoint Raw X (in)", localizer.getRawPinpointXInches(), Logger.LogLevels.PRODUCTION);
+        logger.log("Pinpoint Raw Y (in)", localizer.getRawPinpointYInches(), Logger.LogLevels.PRODUCTION);
+        logger.log("Pinpoint Raw Heading (deg)", Math.toDegrees(localizer.getRawPinpointHeadingRadians()), Logger.LogLevels.PRODUCTION);
         logger.log("Pinpoint Used", localizer.isUsingPinpoint() ? 1.0 : 0.0, Logger.LogLevels.PRODUCTION);
         logger.log("Pinpoint Invalid Loops", localizer.getConsecutiveInvalidPinpointLoops(), Logger.LogLevels.PRODUCTION);
         drivetrain.log();

@@ -154,7 +154,7 @@ public class SwerveDrivetrain {
                     if (SwerveConfig.ENABLE_IDLE_X_STANCE) {
                         applyXStance(dt);
                     } else {
-                        driveWithPipeline(new Vector(0, 0, 0), dt);
+                        driveWithPipeline(0.0, 0.0, 0.0, dt);
                     }
                 }
                 break;
@@ -171,12 +171,16 @@ public class SwerveDrivetrain {
     }
 
     private void driveWithPipeline(Vector velocity, double dt) {
+        driveWithPipeline(velocity.x(), velocity.y(), velocity.omega(), dt);
+    }
+
+    private void driveWithPipeline(double vx, double vy, double omega, double dt) {
         for (int i = 0; i < 4; i++) {
             currentAngles[i] = modules[i].getCurrentRotation();
         }
 
         lastTranslationAuthority = 1.0;
-        kinematics.inverseKinematics(velocity.x(), velocity.y(), velocity.omega(), workingStates);
+        kinematics.inverseKinematics(vx, vy, omega, workingStates);
         sanitizeStates(workingStates);
         desaturateStates(workingStates);
         copyInto(lastRawStates, workingStates);
