@@ -8,8 +8,6 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
 import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
-import org.firstinspires.ftc.teamcode.Swerve.Input.MotionSmoother;
-import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveAuditor;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Localization.SwerveVelocityObserver;
@@ -32,19 +30,25 @@ public class SwerveDrivetrain {
     public final SwerveModule[] modules;
 
     private final SwerveKinematics kinematics;
-    private final SwerveAuditor auditor;
-    private final MotionSmoother smoother;
     private final SwerveVelocityObserver velocityObserver;
     private final DoubleSupplier batteryVoltageSupplier;
     private final Logger logger;
+    private final double[] currentAngles = new double[4];
+    private final SwerveModuleState[] workingStates = zeroStates();
+    private final SwerveModuleState[] gatedStates = zeroStates();
+    private final SwerveModuleState[] xStates = zeroStates();
 
     private States state = States.DRIVING;
     private double lockTimerMs = 0.0;
-    private Vector lastDriverTarget = new Vector(0, 0, 0);
-    private Vector lastSmoothedVelocity = new Vector(0, 0, 0);
+    private double lastDriverTargetX = 0.0;
+    private double lastDriverTargetY = 0.0;
+    private double lastDriverTargetOmega = 0.0;
+    private double lastVelocityX = 0.0;
+    private double lastVelocityY = 0.0;
+    private double lastVelocityOmega = 0.0;
     private double lastTranslationAuthority = 1.0;
-    private SwerveModuleState[] lastRawStates = zeroStates();
-    private SwerveModuleState[] lastOptimizedStates = zeroStates();
+    private final SwerveModuleState[] lastRawStates = zeroStates();
+    private final SwerveModuleState[] lastOptimizedStates = zeroStates();
     private boolean steerReadyForDrive = true;
 
     public SwerveDrivetrain(HWMap hwMap, Logger logger) {
@@ -69,8 +73,6 @@ public class SwerveDrivetrain {
         this.batteryVoltageSupplier = batteryVoltageSupplier != null ? batteryVoltageSupplier : () -> 12.0;
         this.logger = logger;
         this.kinematics = new SwerveKinematics();
-        this.auditor = new SwerveAuditor();
-        this.smoother = new MotionSmoother();
         this.velocityObserver = new SwerveVelocityObserver(kinematics);
 
         for (SwerveModule module : modules) {
@@ -81,7 +83,18 @@ public class SwerveDrivetrain {
     }
 
     public void setVelocity(Vector driverTarget, double dt) {
-        setVelocityInternal(driverTarget, dt, true);
+        setVelocityInternal(driverTarget.x(), driverTarget.y(), driverTarget.omega(), dt);
+    }
+
+    public void setVelocity(double x, double y, double omega, double dt) {
+        setVelocityInternal(x, y, omega, dt);
+    }
+
+    public void refreshSensors() {
+        for (SwerveModule module : modules) {
+            module.refreshSensors();
+        }
+        velocityObserver.update(modules);
     }
 
     /**
@@ -89,19 +102,24 @@ public class SwerveDrivetrain {
      * smoother/input shaping layer.
      */
     public void setAutonomousVelocity(Vector normalizedTarget, double dt) {
-        setVelocityInternal(normalizedTarget, dt, false);
+        setVelocityInternal(normalizedTarget.x(), normalizedTarget.y(), normalizedTarget.omega(), dt);
     }
 
-    private void setVelocityInternal(Vector driverTarget, double dt, boolean useSmoother) {
-        velocityObserver.update(modules);
-        lastDriverTarget = driverTarget;
+    public void setAutonomousVelocity(double x, double y, double omega, double dt) {
+        setVelocityInternal(x, y, omega, dt);
+    }
+
+    private void setVelocityInternal(double driverX, double driverY, double driverOmega, double dt) {
+        lastDriverTargetX = driverX;
+        lastDriverTargetY = driverY;
+        lastDriverTargetOmega = driverOmega;
         kinematics.setLoopTimeSec(dt);
 
-        boolean hasInput = driverTarget.magnitude() > 0.01;
-        Vector chassisVelocity = useSmoother
-                ? smoother.smooth(driverTarget, dt)
-                : toPhysicalChassisVelocity(driverTarget);
-        lastSmoothedVelocity = chassisVelocity;
+        boolean hasInput = Math.hypot(driverX, driverY) > 0.01 || Math.abs(driverOmega) > 0.01;
+        Vector chassisVelocity = toPhysicalChassisVelocity(driverX, driverY, driverOmega);
+        lastVelocityX = chassisVelocity.x();
+        lastVelocityY = chassisVelocity.y();
+        lastVelocityOmega = chassisVelocity.omega();
 
         switch (state) {
             case DRIVING:
@@ -131,10 +149,7 @@ public class SwerveDrivetrain {
                 if (hasInput) {
                     lockTimerMs = 0.0;
                     state = States.DRIVING;
-                    resetSmoother();
-                    // Recalculate chassisVelocity after reset to start ramping from 0 in this tick
-                    Vector freshVelocity = smoother.smooth(driverTarget, dt);
-                    driveWithPipeline(freshVelocity, dt);
+                    driveWithPipeline(chassisVelocity, dt);
                 } else {
                     if (SwerveConfig.ENABLE_IDLE_X_STANCE) {
                         applyXStance(dt);
@@ -148,28 +163,30 @@ public class SwerveDrivetrain {
         performHealthSystemScan();
     }
 
-    private Vector toPhysicalChassisVelocity(Vector normalizedTarget) {
+    private Vector toPhysicalChassisVelocity(double x, double y, double omega) {
         return new Vector(
-                normalizedTarget.x() * SwerveConfig.getMaxLinearSpeedMPS(),
-                normalizedTarget.y() * SwerveConfig.getMaxLinearSpeedMPS(),
-                normalizedTarget.omega() * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S);
+                x * SwerveConfig.getMaxLinearSpeedMPS(),
+                y * SwerveConfig.getMaxLinearSpeedMPS(),
+                omega * SwerveConfig.MAX_ANGULAR_VELOCITY_RAD_S);
     }
 
     private void driveWithPipeline(Vector velocity, double dt) {
-        double[] currentAngles = new double[4];
         for (int i = 0; i < 4; i++) {
             currentAngles[i] = modules[i].getCurrentRotation();
         }
 
-        Vector commandedVelocity = applyFeasibleTranslationFilter(velocity, currentAngles);
-        SwerveModuleState[] raw = kinematics.inverseKinematics(commandedVelocity);
-        lastRawStates = copyStates(raw);
-        SwerveModuleState[] optimized = auditor.optimize(raw, currentAngles);
-        lastOptimizedStates = copyStates(optimized);
-        steerReadyForDrive = areModulesReadyForDrive(optimized, currentAngles);
-        SwerveModuleState[] commandedStates = (SwerveConfig.REQUIRE_STEER_READY_FOR_DRIVE && !steerReadyForDrive)
-                ? zeroDriveSpeeds(optimized)
-                : optimized;
+        lastTranslationAuthority = 1.0;
+        kinematics.inverseKinematics(velocity.x(), velocity.y(), velocity.omega(), workingStates);
+        sanitizeStates(workingStates);
+        desaturateStates(workingStates);
+        copyInto(lastRawStates, workingStates);
+        copyInto(lastOptimizedStates, workingStates);
+        steerReadyForDrive = areModulesReadyForDrive(workingStates, currentAngles);
+        SwerveModuleState[] commandedStates = workingStates;
+        if (SwerveConfig.REQUIRE_STEER_READY_FOR_DRIVE && !steerReadyForDrive) {
+            copyZeroDriveSpeeds(gatedStates, workingStates);
+            commandedStates = gatedStates;
+        }
         for (int i = 0; i < 4; i++) {
             modules[i].update(commandedStates[i], dt);
         }
@@ -177,14 +194,14 @@ public class SwerveDrivetrain {
 
     private void applyXStance(double dt) {
         double[] lockAngles = SwerveConfig.LOCKED_STANCE_ANGLES_RAD;
-        SwerveModuleState[] xStates = new SwerveModuleState[4];
         for (int i = 0; i < 4; i++) {
             double angle = lockAngles[i];
-            xStates[i] = new SwerveModuleState(0.0, angle);
+            xStates[i].speedMetersPerSecond = 0.0;
+            xStates[i].angleRadians = angle;
             modules[i].update(angle, 0.0, dt);
         }
-        lastRawStates = copyStates(xStates);
-        lastOptimizedStates = copyStates(xStates);
+        copyInto(lastRawStates, xStates);
+        copyInto(lastOptimizedStates, xStates);
         steerReadyForDrive = true;
     }
 
@@ -236,11 +253,11 @@ public class SwerveDrivetrain {
     }
 
     public Vector getLastDriverTarget() {
-        return lastDriverTarget;
+        return new Vector(lastDriverTargetX, lastDriverTargetY, lastDriverTargetOmega);
     }
 
     public Vector getLastSmoothedVelocity() {
-        return lastSmoothedVelocity;
+        return new Vector(lastVelocityX, lastVelocityY, lastVelocityOmega);
     }
 
     public SwerveModuleState[] getLastRawStates() {
@@ -268,7 +285,8 @@ public class SwerveDrivetrain {
     }
 
     public void resetSmoother() {
-        smoother.reset();
+        // Teleop now follows the simpler Kooky-style direct command path.
+        // This method remains for compatibility with tests and bring-up tools.
     }
 
     private static SwerveModuleState[] copyStates(SwerveModuleState[] states) {
@@ -279,6 +297,13 @@ public class SwerveDrivetrain {
         return copy;
     }
 
+    private static void copyInto(SwerveModuleState[] destination, SwerveModuleState[] source) {
+        for (int i = 0; i < source.length; i++) {
+            destination[i].speedMetersPerSecond = source[i].speedMetersPerSecond;
+            destination[i].angleRadians = source[i].angleRadians;
+        }
+    }
+
     private static SwerveModuleState[] zeroStates() {
         return new SwerveModuleState[] {
                 new SwerveModuleState(),
@@ -286,6 +311,36 @@ public class SwerveDrivetrain {
                 new SwerveModuleState(),
                 new SwerveModuleState()
         };
+    }
+
+    private void sanitizeStates(SwerveModuleState[] states) {
+        for (SwerveModuleState state : states) {
+            if (Double.isNaN(state.speedMetersPerSecond) || Double.isInfinite(state.speedMetersPerSecond)) {
+                state.speedMetersPerSecond = 0.0;
+            }
+            if (Double.isNaN(state.angleRadians) || Double.isInfinite(state.angleRadians)) {
+                state.angleRadians = 0.0;
+            } else {
+                state.angleRadians = MathUtil.normalizeAngle(state.angleRadians);
+            }
+        }
+    }
+
+    private void desaturateStates(SwerveModuleState[] states) {
+        double maxFound = 0.0;
+        for (SwerveModuleState state : states) {
+            maxFound = Math.max(maxFound, Math.abs(state.speedMetersPerSecond));
+        }
+
+        double maxLinearSpeedMps = SwerveConfig.getMaxLinearSpeedMPS();
+        if (maxFound <= maxLinearSpeedMps || maxFound < 1e-9) {
+            return;
+        }
+
+        double scale = maxLinearSpeedMps / maxFound;
+        for (SwerveModuleState state : states) {
+            state.speedMetersPerSecond *= scale;
+        }
     }
 
     private boolean areModulesReadyForDrive(SwerveModuleState[] states, double[] currentAngles) {
@@ -302,41 +357,11 @@ public class SwerveDrivetrain {
         return true;
     }
 
-    private static SwerveModuleState[] zeroDriveSpeeds(SwerveModuleState[] states) {
-        SwerveModuleState[] gated = new SwerveModuleState[states.length];
+    private static void copyZeroDriveSpeeds(SwerveModuleState[] destination, SwerveModuleState[] states) {
         for (int i = 0; i < states.length; i++) {
-            gated[i] = new SwerveModuleState(0.0, states[i].angleRadians);
+            destination[i].speedMetersPerSecond = 0.0;
+            destination[i].angleRadians = states[i].angleRadians;
         }
-        return gated;
     }
 
-    private Vector applyFeasibleTranslationFilter(Vector velocity, double[] currentAngles) {
-        if (!SwerveConfig.FEASIBLE_TRANSLATION_FILTER_ENABLED) {
-            lastTranslationAuthority = 1.0;
-            return velocity;
-        }
-
-        double desiredTranslationMag = Math.hypot(velocity.x(), velocity.y());
-        if (desiredTranslationMag < 1e-6) {
-            lastTranslationAuthority = 1.0;
-            return velocity;
-        }
-
-        Vector feasibleVelocity = kinematics.projectToCurrentAngleFeasibleVelocity(
-                velocity,
-                currentAngles,
-                SwerveConfig.FEASIBLE_TRANSLATION_PENALTY);
-        Vector desiredDirection = new Vector(velocity.x(), velocity.y()).scale(1.0 / desiredTranslationMag);
-        double feasibleAlongDesired = feasibleVelocity.x() * desiredDirection.x() + feasibleVelocity.y() * desiredDirection.y();
-        double authority = MathUtil.clamp(
-                feasibleAlongDesired / desiredTranslationMag,
-                SwerveConfig.FEASIBLE_TRANSLATION_MIN_AUTHORITY,
-                1.0);
-
-        lastTranslationAuthority = authority;
-        return new Vector(
-                velocity.x() * authority,
-                velocity.y() * authority,
-                velocity.omega());
-    }
 }

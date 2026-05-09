@@ -48,6 +48,8 @@ This is where to look when:
 - field-centric driving is rotated incorrectly
 - observed robot motion and pose disagree badly
 
+> Deprecated: this document describes a superseded multi-layer architecture. The live teleop path is now intentionally slimmer and centered on `OpMode -> SwerveDrivetrain -> SwerveModule`.
+
 ### `SwerveController`
 
 Owns:

@@ -38,43 +38,50 @@ public class SwerveKinematics {
      * @return Array of four module states.
      */
     public SwerveModuleState[] inverseKinematics(Vector chassisSpeeds) {
-        double vx = chassisSpeeds.x();
-        double vy = chassisSpeeds.y();
-        double omega = chassisSpeeds.omega();
+        SwerveModuleState[] states = new SwerveModuleState[4];
+        inverseKinematics(chassisSpeeds.x(), chassisSpeeds.y(), chassisSpeeds.omega(), states);
+        return states;
+    }
+
+    public SwerveModuleState[] toModuleStates(double vx, double vy, double omega) {
+        SwerveModuleState[] states = new SwerveModuleState[4];
+        inverseKinematics(vx, vy, omega, states);
+        return states;
+    }
+
+    public void inverseKinematics(double vx, double vy, double omega, SwerveModuleState[] states) {
+        if (states == null || states.length != 4) {
+            throw new IllegalArgumentException("inverseKinematics requires a 4-element output array.");
+        }
 
         double dt = loopTimeSec;
         double angleRad = omega * dt;
-        Vector chassisTranslationalVelocity;
+        double chassisVx;
+        double chassisVy;
 
         if (Math.abs(angleRad) < 0.001) {
-            chassisTranslationalVelocity = new Vector(vx, vy);
+            chassisVx = vx;
+            chassisVy = vy;
         } else {
             double sin = Math.sin(angleRad);
             double cos = Math.cos(angleRad);
             double s = sin / angleRad;
             double c = (1.0 - cos) / angleRad;
-            // Second-order discretization
-            chassisTranslationalVelocity = new Vector(
-                    vx * s - vy * c,
-                    vx * c + vy * s);
+            chassisVx = vx * s - vy * c;
+            chassisVy = vx * c + vy * s;
         }
 
-        SwerveModuleState[] states = new SwerveModuleState[4];
         for (int i = 0; i < 4; i++) {
+            if (states[i] == null) {
+                states[i] = new SwerveModuleState();
+            }
+
             Vector offset = moduleOffsets[i];
-
-            // Module velocity vector = Robot velocity + cross(Rotation, Position)
-            // Cross product in 2D: (-omega * y, omega * x)
-            double moduleVx = chassisTranslationalVelocity.x() - omega * offset.y();
-            double moduleVy = chassisTranslationalVelocity.y() + omega * offset.x();
-
-            states[i] = SwerveModuleState.fromVector(moduleVx, moduleVy);
+            double moduleVx = chassisVx - omega * offset.y();
+            double moduleVy = chassisVy + omega * offset.x();
+            states[i].speedMetersPerSecond = Math.hypot(moduleVx, moduleVy);
+            states[i].angleRadians = Math.atan2(moduleVy, moduleVx);
         }
-        return states;
-    }
-
-    public SwerveModuleState[] toModuleStates(double vx, double vy, double omega) {
-        return inverseKinematics(new Vector(vx, vy, omega));
     }
 
     /**

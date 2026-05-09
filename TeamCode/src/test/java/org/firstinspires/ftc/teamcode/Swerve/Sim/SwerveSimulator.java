@@ -11,7 +11,6 @@ import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveModule;
-import org.firstinspires.ftc.teamcode.Swerve.Logic.Control.SwerveController;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 
@@ -22,16 +21,15 @@ class SwerveSimulator {
     private final MockSwerveModuleIO[] moduleIo;
     private final SwerveModule[] modules;
     private final SwerveDrivetrain drivetrain;
-    private final SwerveController controller;
     private final SwerveKinematics kinematics;
 
     private final BrowserGamepadState gamepadState = new BrowserGamepadState();
     private Vector pose = new Vector(0.0, 0.0, 0.0);
     private Vector actualVelocity = new Vector(0.0, 0.0, 0.0);
-    private boolean lastResetHeading;
     private String activeSnap = "none";
     private boolean directDriveEnabled;
     private Vector directDriveCommand = new Vector(0.0, 0.0, 0.0);
+    private double snapTargetRadians = 0.0;
 
     SwerveSimulator() {
         double halfLength = WHEEL_BASE_METERS / 2.0;
@@ -52,7 +50,6 @@ class SwerveSimulator {
         };
 
         drivetrain = new SwerveDrivetrain(modules, () -> 12.4, null);
-        controller = new SwerveController();
         kinematics = new SwerveKinematics();
     }
 
@@ -77,11 +74,13 @@ class SwerveSimulator {
 
     synchronized void step(double dtSeconds) {
         if (directDriveEnabled) {
+            drivetrain.refreshSensors();
             drivetrain.setAutonomousVelocity(directDriveCommand, dtSeconds);
 
             for (MockSwerveModuleIO io : moduleIo) {
                 io.step(dtSeconds);
             }
+            drivetrain.refreshSensors();
 
             actualVelocity = currentVelocityFromModules();
             Vector worldVelocity = new Vector(actualVelocity.x(), actualVelocity.y()).rotate(pose.omega());
@@ -98,19 +97,15 @@ class SwerveSimulator {
         double heading = pose.omega();
         double vx = -gamepadState.leftY;
         double vy = -gamepadState.leftX;
-        double turn = -gamepadState.rightX;
-
-        double cos = Math.cos(-heading);
-        double sin = Math.sin(-heading);
-        double rawTranslationX = vx * cos - vy * sin;
-        double rawTranslationY = vx * sin + vy * cos;
-
-        Vector chassisSpeeds = controller.update(rawTranslationX, rawTranslationY, turn, heading, dtSeconds);
-        drivetrain.setVelocity(chassisSpeeds, dtSeconds);
+        double turn = applyRotationIntent(heading, -gamepadState.rightX);
+        drivetrain.refreshSensors();
+        Vector robotCommand = createRobotRelativeCommand(vx, vy, turn, heading);
+        drivetrain.setVelocity(robotCommand, dtSeconds);
 
         for (MockSwerveModuleIO io : moduleIo) {
             io.step(dtSeconds);
         }
+        drivetrain.refreshSensors();
 
         actualVelocity = currentVelocityFromModules();
         Vector worldVelocity = new Vector(actualVelocity.x(), actualVelocity.y()).rotate(heading);
@@ -142,16 +137,33 @@ class SwerveSimulator {
         pose = new Vector(inchesToMeters(poseInches.x), inchesToMeters(poseInches.y), poseInches.heading);
         actualVelocity = new Vector(0.0, 0.0, 0.0);
         drivetrain.resetSmoother();
-        controller.resetHeading(poseInches.heading);
+        snapTargetRadians = poseInches.heading;
+    }
+
+    synchronized void resetPose() {
+        pose = new Vector(0.0, 0.0, 0.0);
+        actualVelocity = new Vector(0.0, 0.0, 0.0);
+        directDriveEnabled = false;
+        directDriveCommand = new Vector(0.0, 0.0, 0.0);
+        gamepadState.leftX = 0.0;
+        gamepadState.leftY = 0.0;
+        gamepadState.rightX = 0.0;
+        gamepadState.dpadUp = false;
+        gamepadState.dpadRight = false;
+        gamepadState.dpadDown = false;
+        gamepadState.dpadLeft = false;
+        gamepadState.resetHeading = false;
+        drivetrain.resetSmoother();
+        snapTargetRadians = 0.0;
     }
 
     synchronized Map<String, Object> snapshot() {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("pose", poseMap());
         state.put("drivetrainState", drivetrain.getState().name());
-        state.put("headingHold", controller.isMaintaining());
-        state.put("snapping", controller.isSnapping());
-        state.put("snapTargetRadians", controller.getTargetHeading());
+        state.put("headingHold", false);
+        state.put("snapping", !"none".equals(activeSnap));
+        state.put("snapTargetRadians", snapTargetRadians);
         state.put("activeSnap", activeSnap);
         state.put("gamepadConnected", gamepadState.connected);
         state.put("actualVelocity", velocityMap(actualVelocity));
@@ -161,16 +173,16 @@ class SwerveSimulator {
 
     private void applySnapInput() {
         if (gamepadState.dpadUp) {
-            controller.setSnapTarget(0.0);
+            snapTargetRadians = 0.0;
             activeSnap = "up";
         } else if (gamepadState.dpadRight) {
-            controller.setSnapTarget(-Math.PI / 2.0);
+            snapTargetRadians = -Math.PI / 2.0;
             activeSnap = "right";
         } else if (gamepadState.dpadDown) {
-            controller.setSnapTarget(Math.PI);
+            snapTargetRadians = Math.PI;
             activeSnap = "down";
         } else if (gamepadState.dpadLeft) {
-            controller.setSnapTarget(Math.PI / 2.0);
+            snapTargetRadians = Math.PI / 2.0;
             activeSnap = "left";
         } else {
             activeSnap = "none";
@@ -178,11 +190,42 @@ class SwerveSimulator {
     }
 
     private void applyHeadingReset() {
-        if (gamepadState.resetHeading && !lastResetHeading) {
+        if (gamepadState.resetHeading) {
             pose = new Vector(pose.x(), pose.y(), 0.0);
-            controller.resetHeading(0.0);
+            snapTargetRadians = 0.0;
         }
-        lastResetHeading = gamepadState.resetHeading;
+    }
+
+    private double applyRotationIntent(double heading, double manualTurn) {
+        if (Math.abs(manualTurn) >= SwerveConfig.INPUT_DEADBAND) {
+            return manualTurn;
+        }
+        if ("none".equals(activeSnap)) {
+            return 0.0;
+        }
+        double error = MathUtil.angleError(heading, snapTargetRadians);
+        double turn = error * 0.8;
+        return MathUtil.clamp(turn, -1.0, 1.0);
+    }
+
+    private Vector createRobotRelativeCommand(double fieldForward, double fieldStrafe, double turn, double heading) {
+        double translationMagnitude = Math.hypot(fieldForward, fieldStrafe);
+        if (translationMagnitude < SwerveConfig.INPUT_DEADBAND) {
+            fieldForward = 0.0;
+            fieldStrafe = 0.0;
+        } else {
+            double scaledMagnitude = (translationMagnitude - SwerveConfig.INPUT_DEADBAND)
+                    / (1.0 - SwerveConfig.INPUT_DEADBAND);
+            double ratio = scaledMagnitude / translationMagnitude;
+            fieldForward *= ratio;
+            fieldStrafe *= ratio;
+        }
+
+        double cos = Math.cos(-heading);
+        double sin = Math.sin(-heading);
+        double robotForward = fieldForward * cos - fieldStrafe * sin;
+        double robotStrafe = fieldForward * sin + fieldStrafe * cos;
+        return new Vector(robotForward, robotStrafe, turn);
     }
 
     private Map<String, Object> poseMap() {

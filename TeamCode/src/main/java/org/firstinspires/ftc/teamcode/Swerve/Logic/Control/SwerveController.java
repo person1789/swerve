@@ -10,6 +10,11 @@ import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
  * 
  * Parses controller inputs and outputs chassis-level velocity vectors.
  */
+/**
+ * @deprecated The active teleop path now drives the drivetrain directly from
+ * the opmode. This class remains only for legacy experiments.
+ */
+@Deprecated
 public class SwerveController {
 
     private final PIDController snapController;

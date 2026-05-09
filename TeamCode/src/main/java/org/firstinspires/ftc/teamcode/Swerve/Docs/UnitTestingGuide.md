@@ -109,7 +109,7 @@ What each dependency is for:
 
 This file provides shared dependencies for the Android FTC project. It is applied into `TeamCode/build.gradle`.
 
-Its main purpose is not unit testing; it primarily pulls in FTC SDK, AndroidX, dashboard, FTCLib, and Pedro Pathing libraries. It also contains a legacy `testImplementation 'junit:junit:4.13.2'`.
+Its main purpose is not unit testing; it primarily pulls in FTC SDK, AndroidX, dashboard, and FTCLib dependencies. It also contains a legacy `testImplementation 'junit:junit:4.13.2'`.
 
 That JUnit 4 dependency does not break JUnit 5, but the active local unit test setup for `TeamCode` is JUnit 5 because `TeamCode/build.gradle` calls `useJUnitPlatform()`.
 
@@ -406,3 +406,4 @@ Avoid editing `build.common.gradle` for ordinary TeamCode unit test work unless 
 ## Final Recommendation
 
 Treat the local unit suite as the first gate for every logic change in the swerve stack. If the change affects math, control, filtering, state transitions, or kinematic transformations, add or update a unit test before field-testing the robot. Use hardware and OpMode testing only for the parts that truly require the robot runtime.
+> Deprecated sections may still mention removed teleop helper layers such as `SwerveController`, `MotionSmoother`, or `SwerveAuditor`. The active runtime path is now slimmer than some older test documentation here.

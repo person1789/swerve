@@ -3,9 +3,6 @@ package org.firstinspires.ftc.teamcode.Swerve.Sim;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 import java.net.HttpURLConnection;
@@ -67,40 +64,11 @@ class SwerveSimulatorTest {
     }
 
     @Test
-    void sourceBackedTaggedAutoMovesInSimulation() {
-        Path sourceFile;
-        try {
-            sourceFile = Files.createTempFile("PedroGeneratedTestAuto", ".java");
-            Files.write(sourceFile, (
-                    "package org.firstinspires.ftc.teamcode.pedroPathing;\n" +
-                    "public class PedroGeneratedTestAuto {\n" +
-                    "  public static Object buildSimStartPose() {\n" +
-                    "    // @sim-start-start\n" +
-                    "    Pose startPose = PedroStartPose.custom(-60, -60, 0);\n" +
-                    "    // @sim-start-end\n" +
-                    "    return startPose;\n" +
-                    "  }\n" +
-                    "  public static Object buildSimPath(Object follower, Object startPose) {\n" +
-                    "    // @path-start\n" +
-                    "    PathChain route = PedroBlockRouteBuilder.build(\n" +
-                    "        follower,\n" +
-                    "        startPose,\n" +
-                    "        PedroBlockCommand.straight(-36, -60, 0, 1)\n" +
-                    "    );\n" +
-                    "    // @path-end\n" +
-                    "    return route;\n" +
-                    "  }\n" +
-                    "}\n").getBytes());
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
+    void simplePoseAutoMovesInSimulation() {
+        // Passes if the new Kooky-style pose-step auto moves the robot in sim from its commanded sequence.
         SwerveSimulator simulator = new SwerveSimulator();
         Pose startPose = simulator.getPoseInches();
-        SimPedroTaggedAuto auto = new SimPedroTaggedAuto(
-                "org.firstinspires.ftc.teamcode.pedroPathing.DoesNotExist",
-                "PedroGeneratedTestAuto",
-                sourceFile);
+        SimSimplePoseAuto auto = new SimSimplePoseAuto();
 
         auto.init(simulator);
         for (int i = 0; i < 240; i++) {
@@ -109,7 +77,32 @@ class SwerveSimulatorTest {
 
         Pose endPose = simulator.getPoseInches();
         assertTrue(Math.hypot(endPose.x - startPose.x, endPose.y - startPose.y) > 0.25,
-                "Expected source-backed sim auto to move the robot");
+                "Expected the Kooky-style pose-step auto to move the robot");
+    }
+
+    @Test
+    void resetPoseReturnsRobotToOriginAndClearsVelocity() {
+        // Passes if resetting the simulator zeroes pose and chassis velocity after prior motion.
+        SwerveSimulator simulator = new SwerveSimulator();
+        BrowserGamepadState input = new BrowserGamepadState();
+        input.leftY = -1.0;
+        input.connected = true;
+
+        simulator.updateInput(input);
+        for (int i = 0; i < 10; i++) {
+            simulator.step(0.02);
+        }
+
+        simulator.resetPose();
+
+        Pose pose = simulator.getPoseInches();
+        Pose velocity = simulator.getVelocityInches();
+        assertEquals(0.0, pose.x, 1e-9);
+        assertEquals(0.0, pose.y, 1e-9);
+        assertEquals(0.0, pose.heading, 1e-9);
+        assertEquals(0.0, velocity.x, 1e-9);
+        assertEquals(0.0, velocity.y, 1e-9);
+        assertEquals(0.0, velocity.heading, 1e-9);
     }
 
     @Test

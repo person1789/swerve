@@ -38,6 +38,12 @@ public class SwerveConfig {
         /** Number of recent loop samples used by the rolling-average dt estimator. */
         public static int LOOP_TIME_AVERAGE_WINDOW = 8;
 
+        /** Emit teleop telemetry every N loops to reduce hot-path overhead. */
+        public static int TELEOP_TELEMETRY_INTERVAL_LOOPS = 2;
+
+        /** Emit autonomous telemetry every N loops to reduce hot-path overhead. */
+        public static int AUTO_TELEMETRY_INTERVAL_LOOPS = 3;
+
         /**
          * Largest allowed ratio between a measured loop time and the current rolling
          * average before the sample is treated as an outlier and ignored.
@@ -231,72 +237,6 @@ public class SwerveConfig {
         }
 
         // ─────────────────────────────────────────────────────────────────────────
-        // Pedro follower tuning (legacy mirror values)
-        // Active FTC Dashboard tuning now lives in org.firstinspires.ftc.teamcode.pedroPathing.tuning.*
-        // PedroSwerveFactory reads those tuning classes directly.
-        public static double PEDRO_MASS = 10.65;
-        public static double PEDRO_FORWARD_ZERO_POWER_ACCELERATION = -40.0;
-        public static double PEDRO_LATERAL_ZERO_POWER_ACCELERATION = -40.0;
-        public static double PEDRO_CENTRIPETAL_SCALING = 0.0005;
-        public static boolean PEDRO_AUTOMATIC_HOLD_END = false;
-        public static double PEDRO_HOLD_POINT_TRANSLATIONAL_SCALING = 0.45;
-        public static double PEDRO_HOLD_POINT_HEADING_SCALING = 0.35;
-        public static double PEDRO_TURN_HEADING_ERROR_THRESHOLD_RAD = Math.toRadians(3.0);
-        public static int PEDRO_BEZIER_CURVE_SEARCH_LIMIT = 10;
-
-        public static boolean PEDRO_USE_TRANSLATIONAL_PID = true;
-        public static double PEDRO_TRANSLATIONAL_P = 0.10;
-        public static double PEDRO_TRANSLATIONAL_I = 0.0;
-        public static double PEDRO_TRANSLATIONAL_D = 0.01;
-        public static double PEDRO_TRANSLATIONAL_F = 0.0;
-        public static double PEDRO_TRANSLATIONAL_PID_SWITCH = 3.0;
-
-        public static boolean PEDRO_USE_SECONDARY_TRANSLATIONAL_PID = false;
-        public static double PEDRO_SECONDARY_TRANSLATIONAL_P = 0.04;
-        public static double PEDRO_SECONDARY_TRANSLATIONAL_I = 0.0;
-        public static double PEDRO_SECONDARY_TRANSLATIONAL_D = 0.002;
-        public static double PEDRO_SECONDARY_TRANSLATIONAL_F = 0.0;
-
-        public static boolean PEDRO_USE_HEADING_PID = true;
-        public static double PEDRO_HEADING_P = 1.2;
-        public static double PEDRO_HEADING_I = 0.0;
-        public static double PEDRO_HEADING_D = 0.03;
-        public static double PEDRO_HEADING_F = 0.0;
-        public static double PEDRO_HEADING_PID_SWITCH_RAD = Math.toRadians(15.0);
-
-        public static boolean PEDRO_USE_SECONDARY_HEADING_PID = false;
-        public static double PEDRO_SECONDARY_HEADING_P = 0.6;
-        public static double PEDRO_SECONDARY_HEADING_I = 0.0;
-        public static double PEDRO_SECONDARY_HEADING_D = 0.02;
-        public static double PEDRO_SECONDARY_HEADING_F = 0.0;
-
-        public static boolean PEDRO_USE_DRIVE_PID = true;
-        public static double PEDRO_DRIVE_P = 0.015;
-        public static double PEDRO_DRIVE_I = 0.0;
-        public static double PEDRO_DRIVE_D = 0.0005;
-        public static double PEDRO_DRIVE_F = 0.0;
-        public static double PEDRO_DRIVE_T = 0.0;
-        public static double PEDRO_DRIVE_PID_SWITCH = 2.0;
-
-        public static boolean PEDRO_USE_SECONDARY_DRIVE_PID = false;
-        public static double PEDRO_SECONDARY_DRIVE_P = 0.008;
-        public static double PEDRO_SECONDARY_DRIVE_I = 0.0;
-        public static double PEDRO_SECONDARY_DRIVE_D = 0.0003;
-        public static double PEDRO_SECONDARY_DRIVE_F = 0.0;
-        public static double PEDRO_SECONDARY_DRIVE_T = 0.0;
-
-        public static boolean PEDRO_USE_PREDICTIVE_BRAKING = false;
-        public static double PEDRO_BRAKING_LINEAR = 1.0;
-        public static double PEDRO_BRAKING_QUADRATIC_FRICTION = 0.0;
-        public static double PEDRO_BRAKING_P = 1.0;
-        public static double PEDRO_BRAKING_MAX_POWER = 1.0;
-
-        public static double PEDRO_DRIVE_KALMAN_MODEL_COVARIANCE = 1.0;
-        public static double PEDRO_DRIVE_KALMAN_DATA_COVARIANCE = 1.0;
-        public static double PEDRO_STUCK_VELOCITY = 1.0;
-        public static double PEDRO_STUCK_T_VALUE = 0.995;
-        public static double PEDRO_STUCK_TIMEOUT = 0.25;
-
         // 9. Limelight Vision Relocalization
         // ─────────────────────────────────────────────────────────────────────────
 

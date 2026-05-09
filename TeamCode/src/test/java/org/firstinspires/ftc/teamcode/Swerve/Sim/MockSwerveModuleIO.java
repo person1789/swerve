@@ -17,6 +17,10 @@ class MockSwerveModuleIO implements SwerveModuleIO {
     private double driveVelocityMetersPerSecond;
     private double driveCurrentAmps;
 
+    @Override
+    public void refreshInputs() {
+    }
+
     MockSwerveModuleIO(String name, double moduleX, double moduleY) {
         this.name = name;
         this.moduleX = moduleX;

@@ -7,6 +7,9 @@ import com.qualcomm.robotcore.hardware.DcMotor;
  */
 public interface SwerveModuleIO {
 
+    default void refreshInputs() {
+    }
+
     double getCurrentRotationRadians();
 
     double getDriveVelocityMetersPerSecond();

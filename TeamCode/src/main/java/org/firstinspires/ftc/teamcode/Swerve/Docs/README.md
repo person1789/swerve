@@ -16,7 +16,7 @@ If you are trying to get the robot driving, tuning, or diagnosed on real hardwar
 - `SwerveConfigGuide.md`
 - `ArchitectureGuide.md`
 - `PIDTuningGuide.md`
-- `PedroFollowerTuningGuide.md`
+- `KookyAutoTuningGuide.md`
 
 ### For local development and tests
 
@@ -68,7 +68,7 @@ Use `SwerveConfigGuide.md` and `ArchitectureGuide.md` to:
 
 ### Tuning
 
-Use `PIDTuningGuide.md` and `PedroFollowerTuningGuide.md` after the robot already behaves basically correctly in:
+Use `PIDTuningGuide.md` and `KookyAutoTuningGuide.md` after the robot already behaves basically correctly in:
 
 - `MainTeleOp`
 - `SwerveSystemCheck`

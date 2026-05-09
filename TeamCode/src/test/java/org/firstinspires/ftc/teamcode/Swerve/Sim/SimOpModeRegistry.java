@@ -29,7 +29,7 @@ public class SimOpModeRegistry {
         this.simulator = simulator;
         register("MainTeleOp", SimMainTeleOp::new);
         register("SwerveSystemCheck", SimSystemCheck::new);
-        registerTaggedPedroAutos();
+        register("SimplePoseAuto", SimSimplePoseAuto::new);
     }
 
     public void register(String name, Supplier<SimOpMode> supplier) {
@@ -87,80 +87,6 @@ public class SimOpModeRegistry {
             return activeOpMode.getTelemetry();
         }
         return new LinkedHashMap<>();
-    }
-
-    public synchronized List<String> reloadTaggedPedroAutos() {
-        String selectedName = activeOpModeName;
-        boolean shouldRestoreSelection = !selectedName.isEmpty();
-        stop();
-
-        List<String> preservedBuiltIns = new ArrayList<>();
-        preservedBuiltIns.add("MainTeleOp");
-        preservedBuiltIns.add("SwerveSystemCheck");
-
-        registry.keySet().removeIf(name -> !preservedBuiltIns.contains(name));
-        registerTaggedPedroAutos();
-
-        if (shouldRestoreSelection && registry.containsKey(selectedName)) {
-            activeOpModeName = selectedName;
-        } else if (!registry.containsKey(activeOpModeName)) {
-            activeOpModeName = "";
-        }
-
-        return getAvailableOpModes();
-    }
-
-    private void registerTaggedPedroAutos() {
-        Path pedroDir = resolvePedroDir();
-
-        if (!Files.isDirectory(pedroDir)) {
-            return;
-        }
-
-        try (java.util.stream.Stream<Path> stream = Files.list(pedroDir)) {
-            stream.filter(path -> path.getFileName().toString().endsWith(".java"))
-                    .forEach(this::registerTaggedPedroAutoFile);
-        } catch (IOException ignored) {
-        }
-    }
-
-    private void registerTaggedPedroAutoFile(Path file) {
-        try {
-            String source = new String(Files.readAllBytes(file), StandardCharsets.UTF_8);
-            if (!source.contains("@sim")) {
-                return;
-            }
-
-            String simpleName = file.getFileName().toString().replace(".java", "");
-            final String className = "org.firstinspires.ftc.teamcode.pedroPathing." + simpleName;
-            final String displayName = SimPedroTaggedAuto.readDisplayName(className, simpleName);
-
-            register(displayName, new Supplier<SimOpMode>() {
-                @Override
-                public SimOpMode get() {
-                    return new SimPedroTaggedAuto(className, displayName, file);
-                }
-            });
-        } catch (IOException ignored) {
-        }
-    }
-
-    private static Path resolvePedroDir() {
-        Path cwd = Paths.get("").toAbsolutePath().normalize();
-        Path teamCodeRoot = cwd.getFileName() != null && "TeamCode".equals(cwd.getFileName().toString())
-                ? cwd
-                : cwd.resolve("TeamCode");
-
-        return teamCodeRoot
-                .resolve("src")
-                .resolve("main")
-                .resolve("java")
-                .resolve("org")
-                .resolve("firstinspires")
-                .resolve("ftc")
-                .resolve("teamcode")
-                .resolve("pedroPathing")
-                .normalize();
     }
 
     private static boolean didInitFail(SimOpMode opMode) {

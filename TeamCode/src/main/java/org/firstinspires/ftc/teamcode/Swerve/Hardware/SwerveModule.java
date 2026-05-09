@@ -31,6 +31,9 @@ public class SwerveModule {
     private double lastTargetVelocityMps = 0.0;
     private double lastDrivePower = 0.0;
     private double lastSteeringPower = 0.0;
+    private double cachedRotationRadians = 0.0;
+    private double cachedVelocityMps = 0.0;
+    private double cachedCurrentAmps = 0.0;
 
     private final PIDController rotationController;
     private double motorScaling = 1.0;
@@ -56,6 +59,7 @@ public class SwerveModule {
 
         this.rotationController = new PIDController(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
         this.io.setCalibration(offset, inverse);
+        refreshSensors();
     }
 
     /**
@@ -67,9 +71,17 @@ public class SwerveModule {
      */
     public void update(double targetAngle, double driveSpeedMps, double dt) {
         double currentAngle = getCurrentRotation();
-        double error = MathUtil.angleError(currentAngle, targetAngle);
+        double optimizedAngle = MathUtil.normalizeAngle(targetAngle);
+        double optimizedSpeed = driveSpeedMps;
+        double error = MathUtil.angleError(currentAngle, optimizedAngle);
+        if (Math.abs(error) > SwerveConfig.FLIP_THRESHOLD) {
+            optimizedSpeed *= -1.0;
+            optimizedAngle = MathUtil.normalizeAngle(optimizedAngle + Math.PI);
+            error = MathUtil.angleError(currentAngle, optimizedAngle);
+        }
 
-        double drivePower = (driveSpeedMps / SwerveConfig.getMaxLinearSpeedMPS());
+        double driveAuthority = computeDriveAuthority(Math.abs(error));
+        double drivePower = (optimizedSpeed / SwerveConfig.getMaxLinearSpeedMPS()) * driveAuthority;
 
         rotationController.setPID(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
         rotationController.setSetpoint(0.0);
@@ -83,8 +95,8 @@ public class SwerveModule {
         }
 
         // Cache state for telemetry/debugging
-        lastTargetAngleRad = targetAngle;
-        lastTargetVelocityMps = driveSpeedMps;
+        lastTargetAngleRad = optimizedAngle;
+        lastTargetVelocityMps = optimizedSpeed;
         lastDrivePower = drivePower;
         lastSteeringPower = steeringPower;
 
@@ -100,7 +112,7 @@ public class SwerveModule {
      * Resolves the absolute module rotation using the analog encoder and offset.
      */
     public double getCurrentRotation() {
-        return io.getCurrentRotationRadians();
+        return cachedRotationRadians;
     }
 
     /**
@@ -109,7 +121,7 @@ public class SwerveModule {
      * RUN_WITHOUT_ENCODER mode.
      */
     public double getVelocityMps() {
-        return io.getDriveVelocityMetersPerSecond();
+        return cachedVelocityMps;
     }
 
     public static double driveTicksPerSecondToMetersPerSecond(double ticksPerSecond) {
@@ -121,7 +133,7 @@ public class SwerveModule {
      * Returns the instantaneous current draw of the drive motor.
      */
     public double getCurrentAmps() {
-        return io.getDriveCurrentAmps();
+        return cachedCurrentAmps;
     }
 
     /**
@@ -174,6 +186,13 @@ public class SwerveModule {
         io.setDriveMode(mode);
     }
 
+    public void refreshSensors() {
+        io.refreshInputs();
+        cachedRotationRadians = io.getCurrentRotationRadians();
+        cachedVelocityMps = io.getDriveVelocityMetersPerSecond();
+        cachedCurrentAmps = io.getDriveCurrentAmps();
+    }
+
     public void setMotorScaling(double scalar) {
         this.motorScaling = MathUtil.clamp(scalar, 0.0, 1.0);
     }
@@ -194,12 +213,37 @@ public class SwerveModule {
         return lastSteeringPower;
     }
 
+    private double computeDriveAuthority(double absErrorRad) {
+        double cosineScale = Math.max(
+                SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR,
+                Math.abs(Math.cos(absErrorRad)));
+        return cosineScale * steerDriveScale(absErrorRad);
+    }
+
+    private double steerDriveScale(double absErrorRad) {
+        if (absErrorRad <= SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD) {
+            return 1.0;
+        }
+        if (absErrorRad >= SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD) {
+            return SwerveConfig.STEER_DRIVE_MIN_AUTHORITY;
+        }
+
+        double range = SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD - SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD;
+        double normalized = (SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD - absErrorRad) / range;
+        double smooth = normalized * normalized * (3.0 - 2.0 * normalized);
+        return SwerveConfig.STEER_DRIVE_MIN_AUTHORITY
+                + (1.0 - SwerveConfig.STEER_DRIVE_MIN_AUTHORITY) * smooth;
+    }
+
     private static class FtcSwerveModuleIO implements SwerveModuleIO {
         private final DcMotorEx driveMotor;
         private final CRServo steerServo;
         private final AnalogInput encoder;
         private double offset;
         private boolean inverse;
+        private double cachedRotationRadians;
+        private double cachedVelocityMps;
+        private double cachedCurrentAmps;
 
         FtcSwerveModuleIO(DcMotorEx driveMotor, CRServo steerServo, AnalogInput encoder) {
             this.driveMotor = driveMotor;
@@ -209,21 +253,28 @@ public class SwerveModule {
         }
 
         @Override
-        public double getCurrentRotationRadians() {
+        public void refreshInputs() {
             double voltage = encoder.getVoltage();
             double angle = (voltage / 3.3) * 2.0 * Math.PI;
             double result = MathUtil.normalizeAngle(angle - offset);
-            return inverse ? -result : result;
+            cachedRotationRadians = inverse ? -result : result;
+            cachedVelocityMps = driveTicksPerSecondToMetersPerSecond(driveMotor.getVelocity());
+            cachedCurrentAmps = driveMotor.getCurrent(CurrentUnit.AMPS);
+        }
+
+        @Override
+        public double getCurrentRotationRadians() {
+            return cachedRotationRadians;
         }
 
         @Override
         public double getDriveVelocityMetersPerSecond() {
-            return driveTicksPerSecondToMetersPerSecond(driveMotor.getVelocity());
+            return cachedVelocityMps;
         }
 
         @Override
         public double getDriveCurrentAmps() {
-            return driveMotor.getCurrent(CurrentUnit.AMPS);
+            return cachedCurrentAmps;
         }
 
         @Override

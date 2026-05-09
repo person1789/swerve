@@ -323,6 +323,9 @@
         <div id="btn-left" class="button-pill">LEFT</div>
         <div id="btn-reset" class="button-pill">RESET</div>
       </div>
+      <div class="button-row">
+        <button id="resetPoseButton" class="button-pill" style="grid-column: span 5; cursor: pointer;">RESET POSE</button>
+      </div>
       <div class="stats" id="stats"></div>
       <h2>Modules</h2>
       <div id="moduleList" class="module-list"></div>
@@ -341,6 +344,7 @@
     const gamepadBanner = document.getElementById("gamepadBanner");
     const leftStickDot = document.getElementById("leftStickDot");
     const rightStickDot = document.getElementById("rightStickDot");
+    const resetPoseButton = document.getElementById("resetPoseButton");
     const pxPerMeter = 95;
     const keyboardState = {
       leftX: 0, leftY: 0, rightX: 0,
@@ -533,6 +537,13 @@
     }
 
     setInterval(refreshState, 50);
+    resetPoseButton.addEventListener("click", async () => {
+      try {
+        await fetch("/api/reset", { method: "POST" });
+        refreshState();
+      } catch (_) {
+      }
+    });
     window.addEventListener("keydown", (event) => setKeyState(event, true));
     window.addEventListener("keyup", (event) => setKeyState(event, false));
     window.addEventListener("gamepadconnected", () => renderGamepadStatus(true));

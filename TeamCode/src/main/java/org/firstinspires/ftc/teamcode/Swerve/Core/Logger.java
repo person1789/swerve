@@ -44,7 +44,7 @@ public class Logger {
         }
     }
 
-    public void updateLoggingLevel(boolean toggleButtonPressed) {
+    public boolean updateLoggingLevel(boolean toggleButtonPressed) {
         boolean togglePressed = toggleButtonPressed && !previousTogglePressed;
         previousTogglePressed = toggleButtonPressed;
 
@@ -57,7 +57,9 @@ public class Logger {
                 state = LogLevels.PRODUCTION;
             }
             telemetry.addData("CURRENT LOGGER STATE", state);
+            return true;
         }
+        return false;
     }
 
     public void print() {
@@ -78,5 +80,18 @@ public class Logger {
 
     public boolean DRIVER_DATA() {
         return state == LogLevels.DRIVER_DATA;
+    }
+
+    public boolean allows(LogLevels logLevel) {
+        switch (state) {
+            case DEBUG:
+                return logLevel != LogLevels.DRIVER_DATA;
+            case PRODUCTION:
+                return logLevel == LogLevels.PRODUCTION;
+            case DRIVER_DATA:
+                return logLevel == LogLevels.DRIVER_DATA;
+            default:
+                return false;
+        }
     }
 }

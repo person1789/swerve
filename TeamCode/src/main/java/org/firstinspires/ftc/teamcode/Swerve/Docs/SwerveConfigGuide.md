@@ -145,23 +145,20 @@ The current design intentionally does not rely on:
 
 That keeps control authority in one place and makes debugging simpler.
 
-## 8. Pedro autonomous tuning
+## 8. Simplified autonomous tuning
 
-The current unified Pedro path-following values now live in:
+The active autonomous stack uses the simplified pose-step controller only.
 
-- `SwerveConfig.java`
+Tune the current autonomous behavior through:
 
-That includes:
+- `KookyAutoController.java`
+- `SimpleAutoSequence.java`
+- `KookyAutoTuningGuide.md`
 
-- translational PID
-- heading PID
-- drive PID
-- centripetal scaling
-- predictive braking
-- mass and zero-power acceleration model values
+That keeps autonomous tuning focused on:
 
-Those values are intended to be tuned in FTC Dashboard.
-
-For the actual tuning order and what each value does, use:
-
-- `PedroFollowerTuningGuide.md`
+- field X correction
+- field Y correction
+- heading correction
+- command caps
+- finish tolerances

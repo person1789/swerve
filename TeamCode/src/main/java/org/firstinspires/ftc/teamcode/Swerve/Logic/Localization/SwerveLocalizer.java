@@ -18,13 +18,18 @@ import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 public class SwerveLocalizer {
     private final GoBildaPinpointDriver odo;
     private final IMU imu;
-    
+
     private Vector masterPose = new Vector(0, 0, 0); // [X, Y, Heading]
     private Vector rawPinpointPose = new Vector(Double.NaN, Double.NaN, Double.NaN);
     private boolean pinpointPreviouslyHealthy = false;
     private boolean usingPinpoint = false;
     private int consecutiveInvalidPinpointLoops = 0;
     private double headingOffset = 0.0;
+    private boolean cachedPinpointReady = false;
+    private double cachedPinpointXInches = Double.NaN;
+    private double cachedPinpointYInches = Double.NaN;
+    private double cachedPinpointHeadingRadians = Double.NaN;
+    private double cachedImuYawRadians = Double.NaN;
 
     public SwerveLocalizer(HWMap hwMap) {
         this.odo = hwMap.getOdo();
@@ -33,8 +38,24 @@ public class SwerveLocalizer {
         odo.setOffsets(SwerveConfig.ODO_X_OFFSET_MM, SwerveConfig.ODO_Y_OFFSET_MM, DistanceUnit.MM);
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
-        
+
+        refreshSensors();
         resetHeading();
+    }
+
+    public void refreshSensors() {
+        odo.update();
+
+        cachedPinpointReady = (odo.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY);
+        Pose2D pos = odo.getPosition();
+        cachedPinpointHeadingRadians = odo.getHeading(AngleUnit.RADIANS);
+        cachedPinpointXInches = pos != null ? pos.getX(DistanceUnit.INCH) : Double.NaN;
+        cachedPinpointYInches = pos != null ? pos.getY(DistanceUnit.INCH) : Double.NaN;
+        cachedImuYawRadians = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+        rawPinpointPose = new Vector(
+                cachedPinpointXInches,
+                cachedPinpointYInches,
+                cachedPinpointHeadingRadians);
     }
 
     /**
@@ -44,41 +65,32 @@ public class SwerveLocalizer {
      * @param dt               Loop time in seconds.
      */
     public void update(Vector observedVelocity, double dt) {
-        odo.update();
-
-        boolean pinpointDeviceReady = (odo.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY);
-        Pose2D pos = odo.getPosition();
-        double rawHeading = odo.getHeading(AngleUnit.RADIANS);
-        double rawX = pos != null ? pos.getX(DistanceUnit.INCH) : Double.NaN;
-        double rawY = pos != null ? pos.getY(DistanceUnit.INCH) : Double.NaN;
-        rawPinpointPose = new Vector(rawX, rawY, rawHeading);
-
-        boolean pinpointHealthy = pinpointDeviceReady
-                && isFinite(rawX)
-                && isFinite(rawY)
-                && isFinite(rawHeading);
+        boolean pinpointHealthy = cachedPinpointReady
+                && isFinite(cachedPinpointXInches)
+                && isFinite(cachedPinpointYInches)
+                && isFinite(cachedPinpointHeadingRadians);
 
         double heading;
         double x;
         double y;
         if (pinpointHealthy) {
-            heading = rawHeading;
-            x = rawX;
-            y = rawY;
+            heading = cachedPinpointHeadingRadians;
+            x = cachedPinpointXInches;
+            y = cachedPinpointYInches;
 
-            double imuYaw = getFiniteImuYawRadians();
+            double imuYaw = getFiniteCachedImuYawRadians();
             if (isFinite(imuYaw)) {
                 headingOffset = masterPose.omega() - imuYaw;
             }
         } else {
             if (pinpointPreviouslyHealthy) {
-                double imuYaw = getFiniteImuYawRadians();
+                double imuYaw = getFiniteCachedImuYawRadians();
                 if (isFinite(imuYaw)) {
                     headingOffset = masterPose.omega() - imuYaw;
                 }
             }
 
-            double imuYaw = getFiniteImuYawRadians();
+            double imuYaw = getFiniteCachedImuYawRadians();
             heading = isFinite(imuYaw) ? imuYaw + headingOffset : masterPose.omega();
 
             Vector safeObservedVelocity = sanitizeVelocity(observedVelocity);
@@ -114,19 +126,14 @@ public class SwerveLocalizer {
     }
 
     public void resetHeading() {
-        Pose2D currentPos = odo.getPosition();
         double x = masterPose.x();
         double y = masterPose.y();
 
-        if (currentPos != null) {
-            double currentX = currentPos.getX(DistanceUnit.INCH);
-            double currentY = currentPos.getY(DistanceUnit.INCH);
-            if (isFinite(currentX)) {
-                x = currentX;
-            }
-            if (isFinite(currentY)) {
-                y = currentY;
-            }
+        if (isFinite(cachedPinpointXInches)) {
+            x = cachedPinpointXInches;
+        }
+        if (isFinite(cachedPinpointYInches)) {
+            y = cachedPinpointYInches;
         }
 
         imu.resetYaw();
@@ -137,18 +144,27 @@ public class SwerveLocalizer {
         usingPinpoint = false;
         consecutiveInvalidPinpointLoops = 0;
         pinpointPreviouslyHealthy = false;
+        cachedImuYawRadians = 0.0;
+        cachedPinpointHeadingRadians = 0.0;
+        cachedPinpointXInches = x;
+        cachedPinpointYInches = y;
+        cachedPinpointReady = false;
     }
 
     public void setPose(Vector pose) {
         Vector safePose = sanitizePose(pose, masterPose);
         this.masterPose = safePose;
 
-        double imuYaw = getFiniteImuYawRadians();
+        double imuYaw = getFiniteCachedImuYawRadians();
         if (isFinite(imuYaw)) {
             headingOffset = safePose.omega() - imuYaw;
         }
 
         odo.setPosition(new Pose2D(DistanceUnit.INCH, safePose.x(), safePose.y(), AngleUnit.RADIANS, safePose.omega()));
+        cachedPinpointXInches = safePose.x();
+        cachedPinpointYInches = safePose.y();
+        cachedPinpointHeadingRadians = safePose.omega();
+        rawPinpointPose = safePose;
         // Note: IMU doesn't support setting an arbitrary yaw, only resetting to 0.
         // The masterPose will track the offset internally.
     }
@@ -204,9 +220,8 @@ public class SwerveLocalizer {
         return meters / 0.0254;
     }
 
-    private double getFiniteImuYawRadians() {
-        double yaw = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-        return isFinite(yaw) ? yaw : Double.NaN;
+    private double getFiniteCachedImuYawRadians() {
+        return isFinite(cachedImuYawRadians) ? cachedImuYawRadians : Double.NaN;
     }
 
     private Vector sanitizeVelocity(Vector observedVelocity) {

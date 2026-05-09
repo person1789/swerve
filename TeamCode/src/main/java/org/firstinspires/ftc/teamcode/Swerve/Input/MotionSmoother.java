@@ -10,6 +10,12 @@ import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
  * The sole authority for velocity processing.
  * Handles non-linear joystick scaling, responsive braking, and S-curve smoothing.
  */
+/**
+ * @deprecated The live teleop path no longer uses this helper. Prefer direct
+ * opmode-to-drivetrain commands unless you are working on legacy tests or
+ * archived behavior experiments.
+ */
+@Deprecated
 public class MotionSmoother {
     private static final double EPSILON = 1e-6;
 

@@ -3,42 +3,45 @@ package org.firstinspires.ftc.teamcode.OpModes;
 import com.acmerobotics.dashboard.FtcDashboard;
 import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.dashboard.telemetry.MultipleTelemetry;
-import com.arcrobotics.ftclib.gamepad.GamepadEx;
-import com.arcrobotics.ftclib.gamepad.GamepadKeys;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.teamcode.Swerve.Core.LoopTimeEstimator;
 import org.firstinspires.ftc.teamcode.Swerve.Core.Logger;
+import org.firstinspires.ftc.teamcode.Swerve.Core.PoseStorage;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Localization.SwerveLocalizer;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
+import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.Limelight.LimelightLocalizer;
-import org.firstinspires.ftc.teamcode.pedroPathing.PedroUnifiedSwerveStack;
 
 @Config
 @TeleOp
 public class MainTeleOp extends LinearOpMode {
-    private PedroUnifiedSwerveStack sharedStack;
-
-    // Declared null; only assigned when SwerveConfig.LIMELIGHT_ENABLED = true.
+    private HWMap hwMap;
+    private SwerveLocalizer localizer;
+    private SwerveDrivetrain drivetrain;
     private LimelightLocalizer limelightLocalizer = null;
-
     private Logger logger;
-    private GamepadEx gamepadE1;
-    private ElapsedTime timer = new ElapsedTime();
+    private final ElapsedTime timer = new ElapsedTime();
+    private final LoopTimeEstimator loopTimeEstimator = new LoopTimeEstimator();
     private boolean previousStartPressed;
+    private double lastDt = SwerveConfig.LOOP_TIME_SEC;
+    private int loopCounter = 0;
 
     @Override
     public void runOpMode() throws InterruptedException {
         if (SwerveConfig.DASHBOARD_ENABLED) {
             telemetry = new MultipleTelemetry(telemetry, FtcDashboard.getInstance().getTelemetry());
         }
-        gamepadE1 = new GamepadEx(gamepad1);
         logger = new Logger(telemetry);
-        sharedStack = new PedroUnifiedSwerveStack(hardwareMap, logger);
-        sharedStack.restorePoseFromStorage();
+        hwMap = new HWMap(hardwareMap);
+        localizer = new SwerveLocalizer(hwMap);
+        drivetrain = new SwerveDrivetrain(hwMap, logger);
+        restorePoseFromStorage();
 
         if (SwerveConfig.LIMELIGHT_ENABLED) {
             limelightLocalizer = new LimelightLocalizer(hardwareMap);
@@ -46,27 +49,22 @@ public class MainTeleOp extends LinearOpMode {
 
         waitForStart();
         timer.reset();
-        sharedStack.resetForStart();
+        loopTimeEstimator.reset();
+        drivetrain.resetSmoother();
         previousStartPressed = false;
 
         while (opModeIsActive()) {
-            double measuredDt = timer.seconds();
-            timer.reset();
-            double dt = sharedStack.beginTeleOpLoop(measuredDt);
-
-            // 1. Update Input Handling
-            logger.updateLoggingLevel(gamepadE1.getButton(GamepadKeys.Button.LEFT_BUMPER));
-            boolean startPressed = gamepadE1.getButton(GamepadKeys.Button.START);
+            double dt = beginLoop();
+            boolean loggingStateChanged = logger.updateLoggingLevel(gamepad1.left_bumper);
+            boolean startPressed = gamepad1.start;
             if (startPressed && !previousStartPressed) {
-                sharedStack.resetHeadingForTeleOp();
+                localizer.resetHeading();
+                drivetrain.resetSmoother();
             }
             previousStartPressed = startPressed;
-            SwerveLocalizer localizer = sharedStack.getLocalizer();
-            SwerveDrivetrain swerveDrivetrain = sharedStack.getDrivetrain();
 
             if (SwerveConfig.LIMELIGHT_ENABLED && limelightLocalizer != null) {
-                // omega() from the velocity observer is rad/s; convert for MT2 gate.
-                double angularVelDegS = Math.toDegrees(swerveDrivetrain.getActualVelocity().omega());
+                double angularVelDegS = Math.toDegrees(drivetrain.getActualVelocity().omega());
                 limelightLocalizer.update(Math.toDegrees(localizer.getHeading()), angularVelDegS);
                 if (limelightLocalizer.hasVisionUpdate()) {
                     localizer.applyVisionUpdate(
@@ -75,26 +73,73 @@ public class MainTeleOp extends LinearOpMode {
                 }
             }
 
-            Vector currentPose = localizer.getPose(); // [x, y, heading]
+            Vector currentPose = localizer.getPose();
             double heading = currentPose.omega();
-
-            // 3. Process Driver Intent (Field-Centric)
-            double rawVx = -gamepad1.left_stick_y;
-            double rawVy = -gamepad1.left_stick_x;
-            double rawTurn = -gamepad1.right_stick_x;
-
-            // 4. Run the shared teleop motion path on the common stack.
-            sharedStack.driveTeleOp(rawVx, rawVy, rawTurn);
-
-            // 6. Telemetry
-            logUpdate(heading, dt);
-            telemetry.update();
+            driveFromGamepad(heading, dt);
+            loopCounter++;
+            if (loggingStateChanged || shouldEmitTelemetry(loopCounter, SwerveConfig.TELEOP_TELEMETRY_INTERVAL_LOOPS)) {
+                logUpdate(heading, dt);
+                telemetry.update();
+            }
         }
     }
 
+    private double beginLoop() {
+        hwMap.clearBulkCache();
+        drivetrain.refreshSensors();
+        localizer.refreshSensors();
+        double measuredDt = timer.seconds();
+        timer.reset();
+        lastDt = loopTimeEstimator.update(measuredDt);
+        localizer.update(drivetrain.getActualVelocity(), lastDt);
+        return lastDt;
+    }
+
+    private void restorePoseFromStorage() {
+        Pose storedPose = PoseStorage.getCurrentPose();
+        if (storedPose != null) {
+            localizer.setPose(storedPose.toVector());
+            PoseStorage.clear();
+        }
+    }
+
+    private void driveFromGamepad(double heading, double dt) {
+        double fieldForward = -gamepad1.left_stick_y;
+        double fieldStrafe = -gamepad1.left_stick_x;
+        double turn = -gamepad1.right_stick_x;
+
+        double translationMagnitude = Math.hypot(fieldForward, fieldStrafe);
+        if (translationMagnitude < SwerveConfig.INPUT_DEADBAND) {
+            fieldForward = 0.0;
+            fieldStrafe = 0.0;
+        } else {
+            double scaledMagnitude = (translationMagnitude - SwerveConfig.INPUT_DEADBAND)
+                    / (1.0 - SwerveConfig.INPUT_DEADBAND);
+            double ratio = scaledMagnitude / translationMagnitude;
+            fieldForward *= ratio;
+            fieldStrafe *= ratio;
+        }
+
+        if (Math.abs(turn) < SwerveConfig.INPUT_DEADBAND) {
+            turn = 0.0;
+        }
+
+        double cos = Math.cos(-heading);
+        double sin = Math.sin(-heading);
+        double robotForward = fieldForward * cos - fieldStrafe * sin;
+        double robotStrafe = fieldForward * sin + fieldStrafe * cos;
+        drivetrain.setVelocity(robotForward, robotStrafe, turn, dt);
+    }
+
     private void logUpdate(double heading, double dt) {
-        SwerveLocalizer localizer = sharedStack.getLocalizer();
-        SwerveDrivetrain swerveDrivetrain = sharedStack.getDrivetrain();
+        if (!(logger.PRODUCTION() || logger.DEBUG() || logger.DRIVER_DATA())) {
+            return;
+        }
+
+        if (!logger.DEBUG() && !logger.PRODUCTION()) {
+            return;
+        }
+
         Vector rawPinpointPose = localizer.getRawPinpointPose();
         logger.log("Loop Time (ms)", dt * 1000.0, Logger.LogLevels.PRODUCTION);
         logger.log("Heading (deg)", Math.toDegrees(heading), Logger.LogLevels.PRODUCTION);
@@ -103,9 +148,8 @@ public class MainTeleOp extends LinearOpMode {
         logger.log("Pinpoint Raw Heading (deg)", Math.toDegrees(rawPinpointPose.omega()), Logger.LogLevels.PRODUCTION);
         logger.log("Pinpoint Used", localizer.isUsingPinpoint() ? 1.0 : 0.0, Logger.LogLevels.PRODUCTION);
         logger.log("Pinpoint Invalid Loops", localizer.getConsecutiveInvalidPinpointLoops(), Logger.LogLevels.PRODUCTION);
-        swerveDrivetrain.log();
+        drivetrain.log();
 
-        // Limelight telemetry
         if (SwerveConfig.LIMELIGHT_ENABLED && limelightLocalizer != null) {
             logger.log("LL Tag Count",  limelightLocalizer.getLastTagCount(),              Logger.LogLevels.PRODUCTION);
             logger.log("LL Has Update", limelightLocalizer.hasVisionUpdate() ? 1.0 : 0.0, Logger.LogLevels.PRODUCTION);
@@ -115,5 +159,9 @@ public class MainTeleOp extends LinearOpMode {
                 logger.log("LL Vision Y (in)", limelightLocalizer.getVisionPose().y(), Logger.LogLevels.PRODUCTION);
             }
         }
+    }
+
+    private boolean shouldEmitTelemetry(int currentLoop, int intervalLoops) {
+        return currentLoop % Math.max(1, intervalLoops) == 0;
     }
 }

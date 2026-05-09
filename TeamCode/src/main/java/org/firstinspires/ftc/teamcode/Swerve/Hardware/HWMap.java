@@ -37,6 +37,7 @@ public class HWMap {
     public AnalogInput BLE;
 
     private VoltageSensor voltageSensor;
+    private final List<LynxModule> allHubs;
 
     private final GoBildaPinpointDriver odo;
     public final IMU imu;
@@ -66,9 +67,9 @@ public class HWMap {
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 
-        List<LynxModule> allHubs = hardwareMap.getAll(LynxModule.class);
+        allHubs = hardwareMap.getAll(LynxModule.class);
         for (LynxModule hub : allHubs) {
-            hub.setBulkCachingMode(LynxModule.BulkCachingMode.AUTO);
+            hub.setBulkCachingMode(LynxModule.BulkCachingMode.MANUAL);
         }
     }
 
@@ -78,5 +79,11 @@ public class HWMap {
 
     public VoltageSensor getVoltageSensor() {
         return voltageSensor;
+    }
+
+    public void clearBulkCache() {
+        for (LynxModule hub : allHubs) {
+            hub.clearBulkCache();
+        }
     }
 }

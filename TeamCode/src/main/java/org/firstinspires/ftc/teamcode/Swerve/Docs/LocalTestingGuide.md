@@ -90,3 +90,4 @@ For `MainTeleOp`, the practical field test flow is:
 4. Tap `START` if you want to re-zero heading before driving.
 
 That is enough for teleop-only testing. You do not need to run autonomous first.
+> Deprecated: parts of this guide still refer to older helper-layer architecture. Use it only as a partial reference until the full swerve docs are rewritten around the slimmer teleop path.
