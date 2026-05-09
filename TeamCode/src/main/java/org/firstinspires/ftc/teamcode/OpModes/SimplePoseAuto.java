@@ -62,10 +62,9 @@ public class SimplePoseAuto extends LinearOpMode {
             timer.reset();
             localizer.update(drivetrain.getActualVelocity(), dt);
 
-            Vector currentPoseVector = localizer.getPose();
-            double currentX = currentPoseVector.x();
-            double currentY = currentPoseVector.y();
-            double currentHeading = currentPoseVector.omega();
+            double currentX = localizer.getPoseXInches();
+            double currentY = localizer.getPoseYInches();
+            double currentHeading = localizer.getHeading();
             sequence.update(currentX, currentY, currentHeading, dt, command);
             drivetrain.setVelocity(command[0], command[1], command[2], dt);
 

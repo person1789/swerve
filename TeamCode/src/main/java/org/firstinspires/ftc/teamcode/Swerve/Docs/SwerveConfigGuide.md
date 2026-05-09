@@ -54,59 +54,35 @@ The wheel motors run in `RUN_WITHOUT_ENCODER` on purpose. That means:
 
 That is the intended design right now.
 
-## 3. Motion shaping settings
+## 3. Motion response settings
 
-`MotionSmoother` is the main "feel" layer.
-
-It handles:
-
-- non-linear stick shaping
-- acceleration limiting
-- jerk limiting during ramp-up
-- faster snap-down response when the driver brakes or reverses
+The live teleop path is direct and intentionally simple.
 
 Primary tunables:
 
 - `MAX_LINEAR_ACCEL_IN_S2`
 - `MAX_LINEAR_JERK_IN_S3`
-- `INPUT_INTERCEPT`
-- `INPUT_SPLINE_POINT`
-- `INPUT_SLOPE`
+- `INPUT_DEADBAND`
 
 When to touch them:
 
 - If the robot feels too lazy off the line, look at accel and jerk.
-- If the robot feels twitchy around stick center, look at the input curve values.
+- If the robot twitches around stick center, look at deadband first.
 - If the robot feels unstable at high command changes, reduce aggressiveness before touching PID.
 
-## 4. Heading settings
+## 4. Steering settings
 
-`SwerveController` currently provides:
+The active runtime no longer uses a separate heading-hold or snap controller layer.
 
-- manual turn passthrough
-- delayed heading maintenance
-- heading snap support in the controller layer
+For driver feel, the important steering-side tunables are:
 
-Primary tunables:
-
-- `HEADING_P`, `HEADING_I`, `HEADING_D`
-- `SNAP_P`, `SNAP_I`, `SNAP_D`
-- `HEADING_LOCK_DELAY_S`
-
-Current default state:
-
-- `HEADING_P = 0.0`
-- `HEADING_D = 0.0`
-- `SNAP_P = 0.0`
-- `SNAP_D = 0.0`
-
-That is intentional. Heading maintain and snap are left effectively disabled until they are tuned on the real robot.
-
-Do not tune heading hold until:
-
-- module steering behaves correctly
-- odometry and hub orientation are correct
-- forward and strafe both make sense in `SwerveSystemCheck`
+- `STEER_P`
+- `STEER_I`
+- `STEER_D`
+- `STEER_READY_ANGLE_TOLERANCE_RAD`
+- `STEER_DRIVE_FULL_AUTHORITY_RAD`
+- `STEER_DRIVE_HARD_CUTOFF_RAD`
+- `STEER_DRIVE_MIN_AUTHORITY`
 
 ## 5. Kinematics and observer settings
 

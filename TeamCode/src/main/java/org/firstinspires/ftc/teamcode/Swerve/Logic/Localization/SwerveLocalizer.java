@@ -2,6 +2,7 @@ package org.firstinspires.ftc.teamcode.Swerve.Logic.Localization;
 
 import com.qualcomm.hardware.gobilda.GoBildaPinpointDriver;
 import com.qualcomm.robotcore.hardware.IMU;
+
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.DistanceUnit;
 import org.firstinspires.ftc.robotcore.external.navigation.Pose2D;
@@ -10,17 +11,21 @@ import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 
 /**
- * SwerveLocalizer
- * 
  * Multi-source fail-safe localization engine. Fuses absolute data from Pinpoint
- * with fallback orientation from IMU and relative dead-reckoning from the Velocity Observer.
+ * with fallback orientation from IMU and relative dead-reckoning from the
+ * velocity observer.
  */
 public class SwerveLocalizer {
     private final GoBildaPinpointDriver odo;
     private final IMU imu;
 
-    private Vector masterPose = new Vector(0, 0, 0); // [X, Y, Heading]
-    private Vector rawPinpointPose = new Vector(Double.NaN, Double.NaN, Double.NaN);
+    private double poseXInches = 0.0;
+    private double poseYInches = 0.0;
+    private double poseHeadingRadians = 0.0;
+    private double rawPinpointXInches = Double.NaN;
+    private double rawPinpointYInches = Double.NaN;
+    private double rawPinpointHeadingRadians = Double.NaN;
+
     private boolean pinpointPreviouslyHealthy = false;
     private boolean usingPinpoint = false;
     private int consecutiveInvalidPinpointLoops = 0;
@@ -34,7 +39,7 @@ public class SwerveLocalizer {
     public SwerveLocalizer(HWMap hwMap) {
         this.odo = hwMap.getOdo();
         this.imu = hwMap.imu;
-        
+
         odo.setOffsets(SwerveConfig.ODO_X_OFFSET_MM, SwerveConfig.ODO_Y_OFFSET_MM, DistanceUnit.MM);
         odo.setEncoderResolution(GoBildaPinpointDriver.GoBildaOdometryPods.goBILDA_4_BAR_POD);
         odo.setEncoderDirections(GoBildaPinpointDriver.EncoderDirection.FORWARD, GoBildaPinpointDriver.EncoderDirection.FORWARD);
@@ -47,23 +52,16 @@ public class SwerveLocalizer {
         odo.update();
 
         cachedPinpointReady = (odo.getDeviceStatus() == GoBildaPinpointDriver.DeviceStatus.READY);
-        Pose2D pos = odo.getPosition();
+        Pose2D position = odo.getPosition();
         cachedPinpointHeadingRadians = odo.getHeading(AngleUnit.RADIANS);
-        cachedPinpointXInches = pos != null ? pos.getX(DistanceUnit.INCH) : Double.NaN;
-        cachedPinpointYInches = pos != null ? pos.getY(DistanceUnit.INCH) : Double.NaN;
+        cachedPinpointXInches = position != null ? position.getX(DistanceUnit.INCH) : Double.NaN;
+        cachedPinpointYInches = position != null ? position.getY(DistanceUnit.INCH) : Double.NaN;
         cachedImuYawRadians = imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
-        rawPinpointPose = new Vector(
-                cachedPinpointXInches,
-                cachedPinpointYInches,
-                cachedPinpointHeadingRadians);
+        rawPinpointXInches = cachedPinpointXInches;
+        rawPinpointYInches = cachedPinpointYInches;
+        rawPinpointHeadingRadians = cachedPinpointHeadingRadians;
     }
 
-    /**
-     * Updates the global robot pose by fusing all available sensors.
-     * 
-     * @param observedVelocity Chassis-relative velocity from the wheel encoders (Observer).
-     * @param dt               Loop time in seconds.
-     */
     public void update(Vector observedVelocity, double dt) {
         boolean pinpointHealthy = cachedPinpointReady
                 && isFinite(cachedPinpointXInches)
@@ -80,41 +78,67 @@ public class SwerveLocalizer {
 
             double imuYaw = getFiniteCachedImuYawRadians();
             if (isFinite(imuYaw)) {
-                headingOffset = masterPose.omega() - imuYaw;
+                headingOffset = poseHeadingRadians - imuYaw;
             }
         } else {
             if (pinpointPreviouslyHealthy) {
                 double imuYaw = getFiniteCachedImuYawRadians();
                 if (isFinite(imuYaw)) {
-                    headingOffset = masterPose.omega() - imuYaw;
+                    headingOffset = poseHeadingRadians - imuYaw;
                 }
             }
 
             double imuYaw = getFiniteCachedImuYawRadians();
-            heading = isFinite(imuYaw) ? imuYaw + headingOffset : masterPose.omega();
+            heading = isFinite(imuYaw) ? imuYaw + headingOffset : poseHeadingRadians;
 
-            Vector safeObservedVelocity = sanitizeVelocity(observedVelocity);
-            Vector worldVelocity = safeObservedVelocity.rotate(masterPose.omega());
-            x = masterPose.x() + metersToInches(worldVelocity.x()) * dt;
-            y = masterPose.y() + metersToInches(worldVelocity.y()) * dt;
+            double observedVx = sanitizeVelocityComponent(observedVelocity.x());
+            double observedVy = sanitizeVelocityComponent(observedVelocity.y());
+            double cos = Math.cos(poseHeadingRadians);
+            double sin = Math.sin(poseHeadingRadians);
+            double worldVx = observedVx * cos - observedVy * sin;
+            double worldVy = observedVx * sin + observedVy * cos;
+            x = poseXInches + metersToInches(worldVx) * dt;
+            y = poseYInches + metersToInches(worldVy) * dt;
         }
 
-        masterPose = new Vector(x, y, heading);
+        poseXInches = x;
+        poseYInches = y;
+        poseHeadingRadians = heading;
         usingPinpoint = pinpointHealthy;
         consecutiveInvalidPinpointLoops = pinpointHealthy ? 0 : (consecutiveInvalidPinpointLoops + 1);
         pinpointPreviouslyHealthy = pinpointHealthy;
     }
 
     public Vector getPose() {
-        return masterPose;
+        return new Vector(poseXInches, poseYInches, poseHeadingRadians);
+    }
+
+    public double getPoseXInches() {
+        return poseXInches;
+    }
+
+    public double getPoseYInches() {
+        return poseYInches;
     }
 
     public double getHeading() {
-        return masterPose.omega();
+        return poseHeadingRadians;
     }
 
     public Vector getRawPinpointPose() {
-        return rawPinpointPose;
+        return new Vector(rawPinpointXInches, rawPinpointYInches, rawPinpointHeadingRadians);
+    }
+
+    public double getRawPinpointXInches() {
+        return rawPinpointXInches;
+    }
+
+    public double getRawPinpointYInches() {
+        return rawPinpointYInches;
+    }
+
+    public double getRawPinpointHeadingRadians() {
+        return rawPinpointHeadingRadians;
     }
 
     public boolean isUsingPinpoint() {
@@ -126,8 +150,8 @@ public class SwerveLocalizer {
     }
 
     public void resetHeading() {
-        double x = masterPose.x();
-        double y = masterPose.y();
+        double x = poseXInches;
+        double y = poseYInches;
 
         if (isFinite(cachedPinpointXInches)) {
             x = cachedPinpointXInches;
@@ -139,8 +163,12 @@ public class SwerveLocalizer {
         imu.resetYaw();
         odo.setPosition(new Pose2D(DistanceUnit.INCH, x, y, AngleUnit.RADIANS, 0.0));
         headingOffset = 0.0;
-        masterPose = new Vector(x, y, 0.0);
-        rawPinpointPose = new Vector(x, y, 0.0);
+        poseXInches = x;
+        poseYInches = y;
+        poseHeadingRadians = 0.0;
+        rawPinpointXInches = x;
+        rawPinpointYInches = y;
+        rawPinpointHeadingRadians = 0.0;
         usingPinpoint = false;
         consecutiveInvalidPinpointLoops = 0;
         pinpointPreviouslyHealthy = false;
@@ -152,68 +180,44 @@ public class SwerveLocalizer {
     }
 
     public void setPose(Vector pose) {
-        Vector safePose = sanitizePose(pose, masterPose);
-        this.masterPose = safePose;
+        double safeX = sanitizePoseComponent(pose.x(), poseXInches);
+        double safeY = sanitizePoseComponent(pose.y(), poseYInches);
+        double safeHeading = sanitizePoseComponent(pose.omega(), poseHeadingRadians);
+
+        poseXInches = safeX;
+        poseYInches = safeY;
+        poseHeadingRadians = safeHeading;
 
         double imuYaw = getFiniteCachedImuYawRadians();
         if (isFinite(imuYaw)) {
-            headingOffset = safePose.omega() - imuYaw;
+            headingOffset = safeHeading - imuYaw;
         }
 
-        odo.setPosition(new Pose2D(DistanceUnit.INCH, safePose.x(), safePose.y(), AngleUnit.RADIANS, safePose.omega()));
-        cachedPinpointXInches = safePose.x();
-        cachedPinpointYInches = safePose.y();
-        cachedPinpointHeadingRadians = safePose.omega();
-        rawPinpointPose = safePose;
-        // Note: IMU doesn't support setting an arbitrary yaw, only resetting to 0.
-        // The masterPose will track the offset internally.
+        odo.setPosition(new Pose2D(DistanceUnit.INCH, safeX, safeY, AngleUnit.RADIANS, safeHeading));
+        cachedPinpointXInches = safeX;
+        cachedPinpointYInches = safeY;
+        cachedPinpointHeadingRadians = safeHeading;
+        rawPinpointXInches = safeX;
+        rawPinpointYInches = safeY;
+        rawPinpointHeadingRadians = safeHeading;
     }
 
-    /**
-     * Applies a vision-based pose correction from LimelightLocalizer.
-     *
-     * Two correction modes:
-     *
-     * 1. HARD RESET — if the Euclidean distance between the vision pose and the
-     *    current masterPose exceeds {@code SwerveConfig.LIMELIGHT_HARD_RESET_THRESHOLD_IN},
-     *    the X/Y components are snapped directly to the vision estimate. This
-     *    recovers from large Pinpoint drift in one step.
-     *
-     * 2. SOFT BLEND — otherwise, masterPose is lerped toward the vision pose by
-     *    {@code trustFactor}, which scales with tag count (see LimelightLocalizer).
-     *    e.g. trustFactor = 0.10 → 10% vision, 90% odometry this cycle.
-     *
-     * Heading is NEVER sourced from vision. The omega() component of the
-     * masterPose is always preserved from the Pinpoint/IMU pipeline. The
-     * visionPose heading is carried along for logging purposes only.
-     *
-     * @param visionPose  Field-space pose from LimelightLocalizer (inches, radians).
-     * @param trustFactor Blending weight in [0.0, 1.0]. 0 = ignore, 1 = full snap.
-     */
     public void applyVisionUpdate(Vector visionPose, double trustFactor) {
-        if (visionPose == null || trustFactor <= 0.0) return;
-
-        // Compute Euclidean XY error to decide correction mode.
-        double errorX    = visionPose.x() - masterPose.x();
-        double errorY    = visionPose.y() - masterPose.y();
-        double errorDist = Math.sqrt(errorX * errorX + errorY * errorY);
-
-        // Work in 2D (X, Y only) so the lerp never touches the heading component.
-        Vector currentXY = new Vector(masterPose.x(), masterPose.y());
-        Vector visionXY  = new Vector(visionPose.x(),  visionPose.y());
-
-        Vector correctedXY;
-        if (errorDist > SwerveConfig.LIMELIGHT_HARD_RESET_THRESHOLD_IN) {
-            // Hard reset: snap directly to vision (no blending).
-            correctedXY = visionXY;
-        } else {
-            // Soft blend: lerp from current toward vision by trustFactor.
-            // currentXY.lerp(visionXY, alpha) = currentXY + alpha * (visionXY - currentXY)
-            correctedXY = currentXY.lerp(visionXY, trustFactor);
+        if (visionPose == null || trustFactor <= 0.0) {
+            return;
         }
 
-        // Heading always comes from Pinpoint/IMU — never from vision.
-        masterPose = new Vector(correctedXY.x(), correctedXY.y(), masterPose.omega());
+        double errorX = visionPose.x() - poseXInches;
+        double errorY = visionPose.y() - poseYInches;
+        double errorDist = Math.sqrt(errorX * errorX + errorY * errorY);
+
+        if (errorDist > SwerveConfig.LIMELIGHT_HARD_RESET_THRESHOLD_IN) {
+            poseXInches = visionPose.x();
+            poseYInches = visionPose.y();
+        } else {
+            poseXInches += trustFactor * (visionPose.x() - poseXInches);
+            poseYInches += trustFactor * (visionPose.y() - poseYInches);
+        }
     }
 
     private double metersToInches(double meters) {
@@ -224,18 +228,12 @@ public class SwerveLocalizer {
         return isFinite(cachedImuYawRadians) ? cachedImuYawRadians : Double.NaN;
     }
 
-    private Vector sanitizeVelocity(Vector observedVelocity) {
-        double vx = isFinite(observedVelocity.x()) ? observedVelocity.x() : 0.0;
-        double vy = isFinite(observedVelocity.y()) ? observedVelocity.y() : 0.0;
-        double omega = isFinite(observedVelocity.omega()) ? observedVelocity.omega() : 0.0;
-        return new Vector(vx, vy, omega);
+    private double sanitizeVelocityComponent(double value) {
+        return isFinite(value) ? value : 0.0;
     }
 
-    private Vector sanitizePose(Vector candidate, Vector fallback) {
-        double x = isFinite(candidate.x()) ? candidate.x() : fallback.x();
-        double y = isFinite(candidate.y()) ? candidate.y() : fallback.y();
-        double heading = isFinite(candidate.omega()) ? candidate.omega() : fallback.omega();
-        return new Vector(x, y, heading);
+    private double sanitizePoseComponent(double candidate, double fallback) {
+        return isFinite(candidate) ? candidate : fallback;
     }
 
     private boolean isFinite(double value) {

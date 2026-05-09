@@ -25,12 +25,11 @@ For this swerve codebase, the most valuable local unit test targets are:
 - `Pose`
 - `LowPassFilter`
 - `PIDController`
-- `MotionSmoother`
-- `SwerveController`
 - `SwerveModuleState`
 - `SwerveKinematics`
-- `SwerveAuditor`
 - `SwerveVelocityObserver`
+- `KookyAutoController`
+- `SimpleAutoSequence`
 
 The following are not good local JVM unit test targets without extra abstraction or heavy mocking:
 
@@ -151,8 +150,8 @@ Recommended convention:
 Examples in this repo:
 
 - `src/test/java/.../Core/MathUtilTest.java`
-- `src/test/java/.../Input/MotionSmootherTest.java`
 - `src/test/java/.../Logic/Kinematics/SwerveKinematicsAndAuditorTest.java`
+- `src/test/java/.../auto/KookyAutoControllerTest.java`
 
 ## How To Run Tests
 

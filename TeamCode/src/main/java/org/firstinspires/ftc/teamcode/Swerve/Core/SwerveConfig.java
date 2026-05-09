@@ -76,26 +76,12 @@ public class SwerveConfig {
         /** Extra braking authority used while redirecting between large translation angles. */
         public static double TRANSLATION_REDIRECT_DECEL_MULTIPLIER = 2.25;
 
-        /** Enable current-angle feasibility scaling for translation during steering transitions. */
-        public static boolean FEASIBLE_TRANSLATION_FILTER_ENABLED = true;
-
-        /** Penalty strength used when projecting desired chassis velocity onto current wheel geometry. */
-        public static double FEASIBLE_TRANSLATION_PENALTY = 18.0;
-
-        /** Minimum translation authority allowed while the feasible-translation filter is active. */
-        public static double FEASIBLE_TRANSLATION_MIN_AUTHORITY = 0.05;
-
         // ─────────────────────────────────────────────────────────────────────────
         // 4. Input Conditioning (Driver Feel)
         // ─────────────────────────────────────────────────────────────────────────
 
         /** Deadband threshold for driver inputs (component-wise). */
         public static double INPUT_DEADBAND = 0.05;
-
-        // Joystick Sensitivity Curve
-        public static double INPUT_INTERCEPT = 0.001;
-        public static double INPUT_SPLINE_POINT = 0.66;
-        public static double INPUT_SLOPE = 4.0;
 
         // ─────────────────────────────────────────────────────────────────────────
         // 5. Tuning (PID Gains)
@@ -105,24 +91,6 @@ public class SwerveConfig {
         public static double STEER_P = 0.325;
         public static double STEER_I = 0.0;
         public static double STEER_D = 0.01;
-
-        // Drive Motor PID (if using RUN_USING_ENCODER)
-        public static double DRIVE_P = 0.1;
-        public static double DRIVE_I = 0.0;
-        public static double DRIVE_D = 0.0;
-
-        // Heading Retention (Maintain Heading)
-        // Disabled by default until tuned on the real robot.
-        public static double HEADING_P = 0.0;
-        public static double HEADING_I = 0.0;
-        public static double HEADING_D = 0.0;
-        public static double HEADING_LOCK_DELAY_S = 0.1;
-
-        // Heading Snap (Intentional Target)
-        // Disabled by default until tuned on the real robot.
-        public static double SNAP_P = 0.0;
-        public static double SNAP_I = 0.0;
-        public static double SNAP_D = 0.0;
 
         // ─────────────────────────────────────────────────────────────────────────
         // 6. Hardware Specs & Calibration

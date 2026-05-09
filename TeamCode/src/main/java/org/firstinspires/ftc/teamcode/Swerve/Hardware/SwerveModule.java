@@ -150,6 +150,11 @@ public class SwerveModule {
         return new SwerveModuleState(getVelocityMps(), getCurrentRotation());
     }
 
+    public void copyCurrentStateInto(SwerveModuleState destination) {
+        destination.speedMetersPerSecond = getVelocityMps();
+        destination.angleRadians = getCurrentRotation();
+    }
+
     public void log(int index) {
         if (logger == null)
             return;

@@ -22,6 +22,14 @@ class SwerveSimulator {
     private final SwerveModule[] modules;
     private final SwerveDrivetrain drivetrain;
     private final SwerveKinematics kinematics;
+    private final SwerveModuleState[] moduleStateCache = {
+            new SwerveModuleState(),
+            new SwerveModuleState(),
+            new SwerveModuleState(),
+            new SwerveModuleState()
+    };
+    private final double[] chassisVelocity = new double[3];
+    private final double[] command = new double[3];
 
     private final BrowserGamepadState gamepadState = new BrowserGamepadState();
     private Vector pose = new Vector(0.0, 0.0, 0.0);
@@ -99,8 +107,8 @@ class SwerveSimulator {
         double vy = -gamepadState.leftX;
         double turn = applyRotationIntent(heading, -gamepadState.rightX);
         drivetrain.refreshSensors();
-        Vector robotCommand = createRobotRelativeCommand(vx, vy, turn, heading);
-        drivetrain.setVelocity(robotCommand, dtSeconds);
+        createRobotRelativeCommand(vx, vy, turn, heading, command);
+        drivetrain.setVelocity(command[0], command[1], command[2], dtSeconds);
 
         for (MockSwerveModuleIO io : moduleIo) {
             io.step(dtSeconds);
@@ -208,7 +216,7 @@ class SwerveSimulator {
         return MathUtil.clamp(turn, -1.0, 1.0);
     }
 
-    private Vector createRobotRelativeCommand(double fieldForward, double fieldStrafe, double turn, double heading) {
+    private void createRobotRelativeCommand(double fieldForward, double fieldStrafe, double turn, double heading, double[] commandOut) {
         double translationMagnitude = Math.hypot(fieldForward, fieldStrafe);
         if (translationMagnitude < SwerveConfig.INPUT_DEADBAND) {
             fieldForward = 0.0;
@@ -223,9 +231,9 @@ class SwerveSimulator {
 
         double cos = Math.cos(-heading);
         double sin = Math.sin(-heading);
-        double robotForward = fieldForward * cos - fieldStrafe * sin;
-        double robotStrafe = fieldForward * sin + fieldStrafe * cos;
-        return new Vector(robotForward, robotStrafe, turn);
+        commandOut[0] = fieldForward * cos - fieldStrafe * sin;
+        commandOut[1] = fieldForward * sin + fieldStrafe * cos;
+        commandOut[2] = turn;
     }
 
     private Map<String, Object> poseMap() {
@@ -247,11 +255,11 @@ class SwerveSimulator {
     }
 
     private Vector currentVelocityFromModules() {
-        SwerveModuleState[] currentStates = new SwerveModuleState[modules.length];
         for (int i = 0; i < modules.length; i++) {
-            currentStates[i] = modules[i].getCurrentState();
+            modules[i].copyCurrentStateInto(moduleStateCache[i]);
         }
-        return kinematics.forwardKinematics(currentStates);
+        kinematics.forwardKinematics(moduleStateCache, chassisVelocity);
+        return new Vector(chassisVelocity[0], chassisVelocity[1], chassisVelocity[2]);
     }
 
     private List<Map<String, Object>> moduleMaps() {

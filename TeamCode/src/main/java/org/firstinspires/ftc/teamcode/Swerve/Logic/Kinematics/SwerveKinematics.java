@@ -89,6 +89,12 @@ public class SwerveKinematics {
      * Used by the Velocity Observer for feedback fusion.
      */
     public Vector forwardKinematics(SwerveModuleState[] states) {
+        double[] velocity = new double[3];
+        forwardKinematics(states, velocity);
+        return new Vector(velocity[0], velocity[1], velocity[2]);
+    }
+
+    public void forwardKinematics(SwerveModuleState[] states, double[] velocityOut) {
         double vx = 0, vy = 0, omega = 0;
 
         for (int i = 0; i < 4; i++) {
@@ -101,7 +107,9 @@ public class SwerveKinematics {
             omega += (offset.x() * mvy - offset.y() * mvx) / (offset.x() * offset.x() + offset.y() * offset.y());
         }
 
-        return new Vector(vx / 4.0, vy / 4.0, omega / 4.0);
+        velocityOut[0] = vx / 4.0;
+        velocityOut[1] = vy / 4.0;
+        velocityOut[2] = omega / 4.0;
     }
 
     public Pose toChassisSpeeds(SwerveModuleState[] states) {
