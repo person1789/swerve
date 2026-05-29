@@ -1,18 +1,17 @@
 package org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.junit.jupiter.api.Test;
 
-class SwerveKinematicsAndAuditorTest {
+class SwerveKinematicsTest {
 
     @Test
     void pureTranslationProducesMatchingModuleStatesAndRoundTrips() {
-        // Passes if pure forward translation gives each module the same state and forward kinematics reconstructs the chassis command.
+        // Passes if pure forward translation gives all modules the same state and reconstructs the chassis command.
         SwerveKinematics kinematics = new SwerveKinematics();
 
         SwerveModuleState[] states = kinematics.inverseKinematics(new Vector(1.0, 0.0, 0.0));
@@ -29,7 +28,7 @@ class SwerveKinematicsAndAuditorTest {
 
     @Test
     void compatibilityAliasesUseSameUnderlyingKinematics() {
-        // Passes if the alias APIs return the same module states and chassis speeds as the primary APIs.
+        // Passes if alias APIs return the same module states and chassis speeds as the primary APIs.
         SwerveKinematics kinematics = new SwerveKinematics();
 
         SwerveModuleState[] states = kinematics.toModuleStates(0.0, 1.0, 0.0);
@@ -42,14 +41,15 @@ class SwerveKinematicsAndAuditorTest {
     }
 
     @Test
-    void feasibleProjectionReducesUnsupportedStrafeWhenAllModulesPointForward() {
+    void secondOrderKinematicsChangesTranslationDuringRotation() {
+        // Passes if nonzero omega and loop time trigger the second-order discretization path.
         SwerveKinematics kinematics = new SwerveKinematics();
+        kinematics.setLoopTimeSec(0.02);
 
-        Vector feasible = kinematics.projectToCurrentAngleFeasibleVelocity(
-                new Vector(0.0, 1.0, 0.0),
-                new double[] {0.0, 0.0, 0.0, 0.0},
-                12.0);
+        SwerveModuleState[] rotating = kinematics.toModuleStates(1.0, 0.0, 3.0);
+        kinematics.setLoopTimeSec(0.0);
+        SwerveModuleState[] firstOrder = kinematics.toModuleStates(1.0, 0.0, 3.0);
 
-        assertTrue(Math.abs(feasible.y()) < 0.25);
+        assertNotEquals(firstOrder[0].angleRadians, rotating[0].angleRadians, 1e-6);
     }
 }

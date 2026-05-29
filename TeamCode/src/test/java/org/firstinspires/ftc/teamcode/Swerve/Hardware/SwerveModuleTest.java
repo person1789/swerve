@@ -5,8 +5,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.qualcomm.robotcore.hardware.DcMotor;
 
-import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -16,10 +16,6 @@ class SwerveModuleTest {
     private final double originalGearRatio = SwerveConfig.DRIVE_GEAR_RATIO;
     private final double originalWheelRadius = SwerveConfig.WHEEL_RADIUS_METERS;
     private final double originalFlipThreshold = SwerveConfig.FLIP_THRESHOLD;
-    private final double originalFullAuthority = SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD;
-    private final double originalHardCutoff = SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD;
-    private final double originalMinAuthority = SwerveConfig.STEER_DRIVE_MIN_AUTHORITY;
-    private final double originalMinCosineFactor = SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR;
 
     @AfterEach
     void restoreConfig() {
@@ -27,14 +23,11 @@ class SwerveModuleTest {
         SwerveConfig.DRIVE_GEAR_RATIO = originalGearRatio;
         SwerveConfig.WHEEL_RADIUS_METERS = originalWheelRadius;
         SwerveConfig.FLIP_THRESHOLD = originalFlipThreshold;
-        SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = originalFullAuthority;
-        SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = originalHardCutoff;
-        SwerveConfig.STEER_DRIVE_MIN_AUTHORITY = originalMinAuthority;
-        SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR = originalMinCosineFactor;
     }
 
     @Test
     void driveTickConversionUsesConfiguredWheelRadius() {
+        // Passes if one wheel rev per second converts to wheel circumference per second.
         SwerveConfig.DRIVE_TICKS_PER_REV = 28.0;
         SwerveConfig.DRIVE_GEAR_RATIO = 1.0;
         SwerveConfig.WHEEL_RADIUS_METERS = 0.0245;
@@ -46,51 +39,44 @@ class SwerveModuleTest {
 
     @Test
     void moduleFlipsLargeSteeringErrorsInsteadOfTakingLongWayAround() {
-        // Passes if a near-180-degree request becomes negative drive power at the short steering angle.
-        TestModuleIO io = new TestModuleIO();
-        SwerveModule module = new SwerveModule(io, 0.0, false, null);
+        // Passes if a 180-degree target keeps the module angle near zero and reverses drive power.
+        TestModuleHardware hardware = new TestModuleHardware();
+        SwerveModule module = new SwerveModule(hardware, 0.0, false);
 
-        module.update(new SwerveModuleState(1.0, Math.PI), 0.02);
+        module.update(new SwerveModuleState(SwerveConfig.getMaxLinearSpeedMPS(), Math.PI), 0.02);
 
-        assertEquals(0.0, module.getLastTargetAngleRad(), 1e-9);
-        assertTrue(module.getLastTargetVelocityMps() < 0.0);
-        assertTrue(io.drivePower < 0.0);
+        assertEquals(0.0, module.getLastTargetAngleRadians(), 1e-9);
+        assertTrue(module.getLastDrivePower() < 0.0);
+        assertTrue(hardware.drivePower < 0.0);
     }
 
     @Test
-    void moduleReducesDriveAuthorityWhenSteeringErrorIsLarge() {
-        // Passes if a large steering error keeps some drive output but derates it below full authority.
-        SwerveConfig.STEER_DRIVE_FULL_AUTHORITY_RAD = Math.toRadians(5.0);
-        SwerveConfig.STEER_DRIVE_HARD_CUTOFF_RAD = Math.toRadians(35.0);
-        SwerveConfig.STEER_DRIVE_MIN_AUTHORITY = 0.12;
-        SwerveConfig.STEER_DRIVE_MIN_COSINE_FACTOR = 0.35;
+    void readAppliesOffsetAndInversion() {
+        // Passes if cached rotation reflects encoder offset and inversion after a single read.
+        TestModuleHardware hardware = new TestModuleHardware();
+        hardware.rotationRadians = Math.PI / 2.0;
+        SwerveModule module = new SwerveModule(hardware, Math.PI / 4.0, true);
 
-        TestModuleIO io = new TestModuleIO();
-        io.currentRotation = Math.toRadians(25.0);
-        SwerveModule module = new SwerveModule(io, 0.0, false, null);
+        module.read();
 
-        module.update(new SwerveModuleState(SwerveConfig.getMaxLinearSpeedMPS(), 0.0), 0.02);
-
-        assertTrue(Math.abs(io.drivePower) > 0.0);
-        assertTrue(Math.abs(io.drivePower) < 0.5);
+        assertEquals(-Math.PI / 4.0, module.getCurrentRotation(), 1e-9);
     }
 
-    private static class TestModuleIO implements SwerveModuleIO {
-        double currentRotation;
-        double drivePower;
+    private static class TestModuleHardware implements SwerveModule.HardwareAdapter {
+        private double rotationRadians;
+        private double drivePower;
 
         @Override
-        public double getCurrentRotationRadians() {
-            return currentRotation;
+        public void read() {
         }
 
         @Override
-        public double getDriveVelocityMetersPerSecond() {
-            return 0.0;
+        public double getRotationRadians() {
+            return rotationRadians;
         }
 
         @Override
-        public double getDriveCurrentAmps() {
+        public double getDriveVelocityTicksPerSecond() {
             return 0.0;
         }
 
