@@ -2,7 +2,6 @@ package org.firstinspires.ftc.teamcode.Swerve.Geometry;
 
 /**
  * Vector: A general-purpose N-dimensional vector.
- * The unified math engine for all swerve logic.
  */
 public class Vector {
     public final double[] components;

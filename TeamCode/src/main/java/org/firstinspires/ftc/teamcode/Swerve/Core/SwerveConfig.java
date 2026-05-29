@@ -10,13 +10,13 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 public class SwerveConfig {
 
         /** Full track width in inches, measured left wheel center to right wheel center. */
-        public static double TRACK_WIDTH_IN = 9.921;
+        public static double TRACK_WIDTH_IN = 9.63;
 
         /** Full wheelbase in inches, measured front wheel center to rear wheel center. */
-        public static double WHEEL_BASE_IN = 9.927;
+        public static double WHEEL_BASE_IN = 8.502;
 
         /** Physical top speed of the drivetrain in inches per second. */
-        public static double MAX_LINEAR_SPEED_IN_S = 72.0;
+        public static double MAX_LINEAR_SPEED_IN_S = 52.95;
 
         /** Physical top angular velocity in radians per second. */
         public static double MAX_ANGULAR_VELOCITY_RAD_S = 4.0;
@@ -38,20 +38,40 @@ public class SwerveConfig {
         /** Auto output clamps and completion tolerances. */
         public static double AUTO_MAX_TRANSLATION_POWER = 1.0;
         public static double AUTO_MAX_TURN_POWER = 0.5;
-        public static double AUTO_TRANSLATION_TOLERANCE_IN = 0.5;
-        public static double AUTO_HEADING_TOLERANCE_RAD = Math.toRadians(2.0);
-        public static double AUTO_SETTLE_DELAY_MS = 120.0;
+        public static double AUTO_TRANSLATION_DEADBAND = 0.01;
+        public static double AUTO_TRANSLATION_TOLERANCE_IN = 0.25;
+        public static double AUTO_HEADING_TOLERANCE_RAD = Math.toRadians(1.0);
+        public static double AUTO_SETTLE_DELAY_MS = 0.0;
+        public static double AUTO_MOVE_TIMEOUT_MS = 2500.0;
 
         /** Auto module steering gate. */
         public static double AUTO_AZIMUTH_TOLERANCE_RAD = Math.toRadians(8.0);
         public static double AUTO_AZIMUTH_TIMEOUT_MS = 350.0;
         public static boolean AUTO_ABORT_ON_AZIMUTH_TIMEOUT = true;
 
-        /** Pinpoint odometry pod offsets relative to robot center. */
+        /** Pinpoint odometry pod offsets relative to robot center, kept from this year's Decode code. */
         public static double ODO_X_OFFSET_MM = -127.6669;
         public static double ODO_Y_OFFSET_MM = -52.23;
 
-        /** Steering CRServo PID. Keep gains low enough that pods do not chatter. */
+        /** This year's Pedro branch module geometry, ordered FL, FR, BR, BL. */
+        public static double[] MODULE_X_IN = { 4.251, 4.251, -4.251, -4.251 };
+        public static double[] MODULE_Y_IN = { 4.815, -4.815, -4.815, 4.815 };
+
+        /** This year's drive-only auto poses from Decode GeneratedTraj. */
+        public static double AUTO_CLOSE_START_X_IN = 120.0;
+        public static double AUTO_CLOSE_START_Y_IN = 127.87;
+        public static double AUTO_CLOSE_START_HEADING_RAD = Math.toRadians(319.6);
+        public static double AUTO_CLOSE_SCORE_X_IN = 86.720;
+        public static double AUTO_CLOSE_SCORE_Y_IN = 90.0;
+        public static double AUTO_CLOSE_SCORE_HEADING_RAD = 0.0;
+        public static double AUTO_FAR_START_X_IN = 89.0;
+        public static double AUTO_FAR_START_Y_IN = 8.0;
+        public static double AUTO_FAR_START_HEADING_RAD = 0.0;
+        public static double AUTO_FAR_SCORE_X_IN = 105.0;
+        public static double AUTO_FAR_SCORE_Y_IN = 30.5;
+        public static double AUTO_FAR_SCORE_HEADING_RAD = 0.0;
+
+        /** Probably should be tuned some day. This controller receives radians, not Pedro's pod degrees. */
         public static double STEER_P = 0.325;
         public static double STEER_I = 0.0;
         public static double STEER_D = 0.01;

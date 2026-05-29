@@ -21,12 +21,12 @@ public class SwerveKinematics {
         this.halfL = (SwerveConfig.WHEEL_BASE_IN * 0.0254) / 2.0;
         this.loopTimeSec = SwerveConfig.LOOP_TIME_SEC;
 
-        // Module positions relative to robot center (FL, FR, RR, RL)
+        // Module positions relative to robot center (FL, FR, RR, RL).
         this.moduleOffsets = new Vector[] {
-                new Vector(halfL, halfW), // FL
-                new Vector(halfL, -halfW), // FR
-                new Vector(-halfL, -halfW), // RR
-                new Vector(-halfL, halfW) // RL
+                moduleOffset(0, halfL, halfW),
+                moduleOffset(1, halfL, -halfW),
+                moduleOffset(2, -halfL, -halfW),
+                moduleOffset(3, -halfL, halfW)
         };
     }
 
@@ -115,5 +115,15 @@ public class SwerveKinematics {
 
     public void setLoopTimeSec(double loopTimeSec) {
         this.loopTimeSec = loopTimeSec;
+    }
+
+    private static Vector moduleOffset(int index, double fallbackX, double fallbackY) {
+        if (SwerveConfig.MODULE_X_IN == null || SwerveConfig.MODULE_Y_IN == null
+                || SwerveConfig.MODULE_X_IN.length != 4 || SwerveConfig.MODULE_Y_IN.length != 4) {
+            return new Vector(fallbackX, fallbackY);
+        }
+        return new Vector(
+                SwerveConfig.MODULE_X_IN[index] * 0.0254,
+                SwerveConfig.MODULE_Y_IN[index] * 0.0254);
     }
 }

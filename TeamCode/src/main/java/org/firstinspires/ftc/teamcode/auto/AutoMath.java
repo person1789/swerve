@@ -72,6 +72,13 @@ final class AutoMath {
                 -SwerveConfig.AUTO_MAX_TURN_POWER,
                 SwerveConfig.AUTO_MAX_TURN_POWER);
 
+        if (Math.abs(xClamped) < SwerveConfig.AUTO_TRANSLATION_DEADBAND) {
+            xClamped = 0.0;
+        }
+        if (Math.abs(yClamped) < SwerveConfig.AUTO_TRANSLATION_DEADBAND) {
+            yClamped = 0.0;
+        }
+
         output[0] = -yClamped;
         output[1] = xClamped;
         output[2] = -headingClamped;

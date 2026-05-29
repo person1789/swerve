@@ -26,13 +26,20 @@ public class DriveScheduler {
 
     public DriveScheduler addMoveToPose(double xInches, double yInches, double headingRadians,
             boolean waitForAzimuth) {
+        return addMoveToPose(xInches, yInches, headingRadians, waitForAzimuth,
+                SwerveConfig.AUTO_SETTLE_DELAY_MS,
+                SwerveConfig.AUTO_MOVE_TIMEOUT_MS);
+    }
+
+    public DriveScheduler addMoveToPose(double xInches, double yInches, double headingRadians,
+            boolean waitForAzimuth, double settleDelayMs, double timeoutMs) {
         if (waitForAzimuth) {
             add(new WaitForAzimuthCommand(xInches, yInches, headingRadians,
                     SwerveConfig.AUTO_AZIMUTH_TOLERANCE_RAD,
                     SwerveConfig.AUTO_AZIMUTH_TIMEOUT_MS,
                     SwerveConfig.AUTO_ABORT_ON_AZIMUTH_TIMEOUT));
         }
-        return add(new MoveToPoseCommand(xInches, yInches, headingRadians));
+        return add(new MoveToPoseCommand(xInches, yInches, headingRadians, settleDelayMs, timeoutMs));
     }
 
     public void tick(DriveContext context, double dt) {

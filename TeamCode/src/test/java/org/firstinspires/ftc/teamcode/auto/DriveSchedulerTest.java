@@ -18,6 +18,8 @@ class DriveSchedulerTest {
     private final boolean originalAbortOnAzimuthTimeout = SwerveConfig.AUTO_ABORT_ON_AZIMUTH_TIMEOUT;
     private final double originalTranslationTolerance = SwerveConfig.AUTO_TRANSLATION_TOLERANCE_IN;
     private final double originalHeadingTolerance = SwerveConfig.AUTO_HEADING_TOLERANCE_RAD;
+    private final double originalTranslationDeadband = SwerveConfig.AUTO_TRANSLATION_DEADBAND;
+    private final double originalMoveTimeout = SwerveConfig.AUTO_MOVE_TIMEOUT_MS;
 
     @AfterEach
     void restoreConfig() {
@@ -26,6 +28,8 @@ class DriveSchedulerTest {
         SwerveConfig.AUTO_ABORT_ON_AZIMUTH_TIMEOUT = originalAbortOnAzimuthTimeout;
         SwerveConfig.AUTO_TRANSLATION_TOLERANCE_IN = originalTranslationTolerance;
         SwerveConfig.AUTO_HEADING_TOLERANCE_RAD = originalHeadingTolerance;
+        SwerveConfig.AUTO_TRANSLATION_DEADBAND = originalTranslationDeadband;
+        SwerveConfig.AUTO_MOVE_TIMEOUT_MS = originalMoveTimeout;
     }
 
     @Test
@@ -112,6 +116,19 @@ class DriveSchedulerTest {
         command.tick(context, 0.02);
 
         assertTrue(command.isFinished(context));
+    }
+
+    @Test
+    void kookyDeadbandZerosTinyTranslationPower() {
+        // Passes if Kooky-style pose math drops tiny translation commands to zero.
+        SwerveConfig.AUTO_TRANSLATION_DEADBAND = 0.01;
+        ManualPoseProvider pose = new ManualPoseProvider();
+        double[] output = new double[3];
+
+        AutoMath.calculateInitialPowers(pose, 0.1, 0.0, 0.0, output);
+
+        assertEquals(0.0, output[0], 1e-9);
+        assertEquals(0.0, output[1], 1e-9);
     }
 
     private static SwerveDrivetrain createDrivetrain(TestModuleHardware[] hardware) {

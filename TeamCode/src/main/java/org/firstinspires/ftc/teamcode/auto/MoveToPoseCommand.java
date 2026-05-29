@@ -24,7 +24,7 @@ public class MoveToPoseCommand implements DriveCommand {
     public MoveToPoseCommand(double targetXInches, double targetYInches, double targetHeadingRadians) {
         this(targetXInches, targetYInches, targetHeadingRadians,
                 SwerveConfig.AUTO_SETTLE_DELAY_MS,
-                3000.0);
+                SwerveConfig.AUTO_MOVE_TIMEOUT_MS);
     }
 
     public MoveToPoseCommand(double targetXInches, double targetYInches, double targetHeadingRadians,
