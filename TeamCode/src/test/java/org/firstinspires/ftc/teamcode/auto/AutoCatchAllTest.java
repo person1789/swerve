@@ -79,9 +79,6 @@ public class AutoCatchAllTest {
         double x = 0.0;
         double y = 0.0;
         double heading = 0.0;
-        double currentX = 0.0;
-        double currentY = 0.0;
-        double currentHeading = 0.0;
 
         @Override
         public void update() {}
@@ -94,14 +91,14 @@ public class AutoCatchAllTest {
 
         @Override
         public double getHeadingRadians() {
-            return currentHeading;
+            return heading;
         }
 
         @Override
         public void setPose(double xInches, double yInches, double headingRadians) {
-            this.currentX = xInches;
-            this.currentY = yInches;
-            this.currentHeading = headingRadians;
+            this.x = xInches;
+            this.y = yInches;
+            this.heading = headingRadians;
         }
 
         @Override
