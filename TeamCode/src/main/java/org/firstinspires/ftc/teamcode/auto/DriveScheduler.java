@@ -24,6 +24,10 @@ public class DriveScheduler {
         return this;
     }
 
+    public DriveScheduler addLimelightRelocalize(boolean rotateToFindTarget) {
+        return add(new LimelightRelocalizeCommand(rotateToFindTarget, 0.3));
+    }
+
     public DriveScheduler addMoveToPose(double xInches, double yInches, double headingRadians,
             boolean waitForAzimuth) {
         return addMoveToPose(xInches, yInches, headingRadians, waitForAzimuth,

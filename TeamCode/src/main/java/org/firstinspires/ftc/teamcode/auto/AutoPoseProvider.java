@@ -9,5 +9,7 @@ public interface AutoPoseProvider {
 
     double getHeadingRadians();
 
+    void setPose(double xInches, double yInches, double headingRadians);
+
     boolean isReady();
 }

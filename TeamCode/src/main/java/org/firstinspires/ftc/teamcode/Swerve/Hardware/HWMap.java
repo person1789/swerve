@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.hardware.DcMotorEx;
 import com.qualcomm.robotcore.hardware.HardwareMap;
 import com.qualcomm.robotcore.hardware.IMU;
 import com.qualcomm.robotcore.hardware.VoltageSensor;
+import com.qualcomm.hardware.limelightvision.Limelight3A;
 
 import java.util.List;
 
@@ -35,6 +36,7 @@ public class HWMap {
     public final IMU imu;
     public final GoBildaPinpointDriver odo;
     public final VoltageSensor voltageSensor;
+    public final Limelight3A limelight;
 
     private final List<LynxModule> allHubs;
 
@@ -56,6 +58,7 @@ public class HWMap {
 
         odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
+        limelight = hardwareMap.get(Limelight3A.class, "limelight");
 
         imu = hardwareMap.get(IMU.class, "imu");
         imu.initialize(new IMU.Parameters(new RevHubOrientationOnRobot(
