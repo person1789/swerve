@@ -41,6 +41,13 @@ public class SwerveConfig {
         public static double AUTO_HEADING_P = 0.6;
         public static double AUTO_HEADING_D = 0.3;
 
+        /** TeleOp Heading Lock PID gains. Can use Auto gains, but often need to be less aggressive. */
+        public static double TELEOP_HEADING_P = 0.6;
+        public static double TELEOP_HEADING_D = 0.3;
+        
+        /** Max angular velocity to engage TeleOp heading lock (prevents 'whipping' when you let go). */
+        public static double TELEOP_HEADING_MAX_ANGULAR_VELOCITY_RAD_S = 1.5;
+
         /** Auto output clamps and completion tolerances. */
         public static double AUTO_MAX_TRANSLATION_POWER = 1.0;
         public static double AUTO_MAX_TURN_POWER = 0.5;

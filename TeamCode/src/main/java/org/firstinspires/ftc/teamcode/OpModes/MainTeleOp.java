@@ -8,8 +8,10 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.Swerve.Core.PIDController;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SlewRateLimiter;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 
@@ -37,6 +39,10 @@ public class MainTeleOp extends LinearOpMode {
     
     private double teleopHeadingOffset = 0.0;
 
+    private PIDController teleopHeadingController;
+    private double targetHeadingRadians = 0.0;
+    private boolean isHeadingLocked = false;
+
     @Override
     public void runOpMode() throws InterruptedException {
         if (SwerveConfig.DASHBOARD_ENABLED) {
@@ -49,6 +55,9 @@ public class MainTeleOp extends LinearOpMode {
         forwardLimiter = new SlewRateLimiter(TRANSLATION_SLEW_RATE);
         strafeLimiter = new SlewRateLimiter(TRANSLATION_SLEW_RATE);
         turnLimiter = new SlewRateLimiter(TURN_SLEW_RATE);
+
+        teleopHeadingController = new PIDController(
+                SwerveConfig.TELEOP_HEADING_P, 0.0, SwerveConfig.TELEOP_HEADING_D);
 
         waitForStart();
         loopTimer.reset();
@@ -94,10 +103,37 @@ public class MainTeleOp extends LinearOpMode {
         double scaledStrafe = joystickScalar(rawStrafe, JOYSTICK_SCALAR);
         double scaledTurn = joystickScalar(rawTurn, JOYSTICK_SCALAR);
 
+        double turn;
+        if (Math.abs(rawTurn) > 0.0) {
+            // Driver is manually turning
+            isHeadingLocked = false;
+            targetHeadingRadians = headingRadians;
+            turn = turnLimiter.calculate(scaledTurn);
+        } else {
+            // Driver released turn stick - engage heading lock if settled
+            turnLimiter.calculate(0.0); // Keep limiter synced
+            double angularVelocity = hwMap.imu.getRobotAngularVelocity(AngleUnit.RADIANS).zRotationRate;
+            
+            if (!isHeadingLocked && Math.abs(angularVelocity) < SwerveConfig.TELEOP_HEADING_MAX_ANGULAR_VELOCITY_RAD_S) {
+                isHeadingLocked = true;
+                targetHeadingRadians = headingRadians;
+                teleopHeadingController.reset();
+            }
+
+            if (isHeadingLocked) {
+                double error = MathUtil.angleError(headingRadians, targetHeadingRadians);
+                teleopHeadingController.setPID(SwerveConfig.TELEOP_HEADING_P, 0.0, SwerveConfig.TELEOP_HEADING_D);
+                // The PID expects 'current' and 'target' or just an error.
+                // We use calculateFromError, where error = target - current.
+                turn = teleopHeadingController.calculateFromError(error, dt);
+            } else {
+                turn = 0.0;
+            }
+        }
+
         // Slew rate limiting: prevents instantaneous jumps in commanded power.
         double fieldForward = forwardLimiter.calculate(scaledForward);
         double fieldStrafe = strafeLimiter.calculate(scaledStrafe);
-        double turn = turnLimiter.calculate(scaledTurn);
 
         // Field-centric rotation
         double cos = Math.cos(-headingRadians);
