@@ -8,6 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
+import org.firstinspires.ftc.teamcode.Swerve.Core.SlewRateLimiter;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.HWMap;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
@@ -17,9 +18,22 @@ import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
 public class MainTeleOp extends LinearOpMode {
     private final ElapsedTime loopTimer = new ElapsedTime();
 
+    // Joystick scaling exponent. 1.0 = linear, 2.0 = squared, 3.0 = cubic.
+    // Higher values give finer control at low stick deflection.
+    public static double JOYSTICK_SCALAR = 2.0;
+
+    // Slew rate limit: maximum change in power per second.
+    // 3.0 means 0 to full power takes ~0.33 seconds.
+    public static double TRANSLATION_SLEW_RATE = 3.0;
+    public static double TURN_SLEW_RATE = 4.0;
+
     private HWMap hwMap;
     private SwerveDrivetrain drivetrain;
     private boolean previousStartPressed = false;
+
+    private SlewRateLimiter forwardLimiter;
+    private SlewRateLimiter strafeLimiter;
+    private SlewRateLimiter turnLimiter;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -29,6 +43,10 @@ public class MainTeleOp extends LinearOpMode {
 
         hwMap = new HWMap(hardwareMap);
         drivetrain = new SwerveDrivetrain(hwMap);
+
+        forwardLimiter = new SlewRateLimiter(TRANSLATION_SLEW_RATE);
+        strafeLimiter = new SlewRateLimiter(TRANSLATION_SLEW_RATE);
+        turnLimiter = new SlewRateLimiter(TURN_SLEW_RATE);
 
         waitForStart();
         loopTimer.reset();
@@ -54,10 +72,22 @@ public class MainTeleOp extends LinearOpMode {
     }
 
     private void driveFromGamepad(double headingRadians, double dt) {
-        double fieldForward = applyDeadband(-gamepad1.left_stick_y);
-        double fieldStrafe = applyDeadband(-gamepad1.left_stick_x);
-        double turn = applyDeadband(-gamepad1.right_stick_x);
+        double rawForward = applyDeadband(-gamepad1.left_stick_y);
+        double rawStrafe = applyDeadband(-gamepad1.left_stick_x);
+        double rawTurn = applyDeadband(-gamepad1.right_stick_x);
 
+        // Joystick scaling: raises the input to the configured power while preserving sign.
+        // This gives finer control at low stick deflections while still allowing full power.
+        double scaledForward = joystickScalar(rawForward, JOYSTICK_SCALAR);
+        double scaledStrafe = joystickScalar(rawStrafe, JOYSTICK_SCALAR);
+        double scaledTurn = joystickScalar(rawTurn, JOYSTICK_SCALAR);
+
+        // Slew rate limiting: prevents instantaneous jumps in commanded power.
+        double fieldForward = forwardLimiter.calculate(scaledForward);
+        double fieldStrafe = strafeLimiter.calculate(scaledStrafe);
+        double turn = turnLimiter.calculate(scaledTurn);
+
+        // Field-centric rotation
         double cos = Math.cos(-headingRadians);
         double sin = Math.sin(-headingRadians);
         double robotForward = fieldForward * cos - fieldStrafe * sin;
@@ -65,6 +95,16 @@ public class MainTeleOp extends LinearOpMode {
 
         drivetrain.set(robotForward, robotStrafe, turn, dt);
         drivetrain.write(dt);
+    }
+
+    /**
+     * Applies a power curve to the joystick input while preserving its sign.
+     * @param input Raw joystick value in [-1, 1].
+     * @param scalar Exponent for the curve.
+     * @return Scaled value in [-1, 1].
+     */
+    private static double joystickScalar(double input, double scalar) {
+        return Math.signum(input) * Math.pow(Math.abs(input), scalar);
     }
 
     private static double applyDeadband(double value) {

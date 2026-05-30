@@ -89,7 +89,9 @@ class DriveSchedulerTest {
         SwerveDrivetrain drivetrain = createDrivetrain(hardware);
         DriveContext context = new DriveContext(drivetrain, pose);
         DriveScheduler scheduler = new DriveScheduler(2)
-                .add(new WaitForAzimuthCommand(24.0, 0.0, 0.0, Math.toRadians(1.0), 10.0, true))
+                // Command a strafe (Y=24) instead of forward (X=24) so target angle is non-zero 
+                // and the dummy modules (which report 0.0) are forced to wait and timeout.
+                .add(new WaitForAzimuthCommand(0.0, 24.0, 0.0, Math.toRadians(1.0), 10.0, true))
                 .add(new CountingCommand("never"));
 
         scheduler.tick(context, 0.02);

@@ -60,27 +60,35 @@ final class AutoMath {
             double fieldYPower,
             double headingPower,
             double[] output) {
-        double xRotated = fieldXPower * Math.cos(robotHeading) - fieldYPower * Math.sin(robotHeading);
-        double yRotated = fieldXPower * Math.sin(robotHeading) + fieldYPower * Math.cos(robotHeading);
-        double xClamped = Range.clip(-xRotated,
+        
+        // Field-centric to Robot-centric rotation (rotate field vector by -robotHeading)
+        double cos = Math.cos(-robotHeading);
+        double sin = Math.sin(-robotHeading);
+        double robotForwardPower = fieldXPower * cos - fieldYPower * sin;
+        double robotStrafePower = fieldXPower * sin + fieldYPower * cos;
+
+        double forwardClamped = Range.clip(robotForwardPower,
                 -SwerveConfig.AUTO_MAX_TRANSLATION_POWER,
                 SwerveConfig.AUTO_MAX_TRANSLATION_POWER);
-        double yClamped = Range.clip(-yRotated,
+        double strafeClamped = Range.clip(robotStrafePower,
                 -SwerveConfig.AUTO_MAX_TRANSLATION_POWER,
                 SwerveConfig.AUTO_MAX_TRANSLATION_POWER);
-        double headingClamped = Range.clip(headingPower,
+        double turnClamped = Range.clip(headingPower,
                 -SwerveConfig.AUTO_MAX_TURN_POWER,
                 SwerveConfig.AUTO_MAX_TURN_POWER);
 
-        if (Math.abs(xClamped) < SwerveConfig.AUTO_TRANSLATION_DEADBAND) {
-            xClamped = 0.0;
+        if (Math.abs(forwardClamped) < SwerveConfig.AUTO_TRANSLATION_DEADBAND) {
+            forwardClamped = 0.0;
         }
-        if (Math.abs(yClamped) < SwerveConfig.AUTO_TRANSLATION_DEADBAND) {
-            yClamped = 0.0;
+        if (Math.abs(strafeClamped) < SwerveConfig.AUTO_TRANSLATION_DEADBAND) {
+            strafeClamped = 0.0;
         }
 
-        output[0] = -yClamped;
-        output[1] = xClamped;
-        output[2] = -headingClamped;
+        // output[0] = Forward (X)
+        // output[1] = Strafe (Y)
+        // output[2] = Turn (Omega)
+        output[0] = forwardClamped;
+        output[1] = strafeClamped;
+        output[2] = turnClamped;
     }
 }
