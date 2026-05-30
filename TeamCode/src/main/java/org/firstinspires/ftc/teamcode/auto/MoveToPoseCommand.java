@@ -64,7 +64,7 @@ public class MoveToPoseCommand implements DriveCommand {
 
     @Override
     public boolean isFinished(DriveContext context) {
-        return elapsedMs >= timeoutMs || settledMs >= settleDelayMs;
+        return elapsedMs >= timeoutMs || (insideTolerance(context) && settledMs >= settleDelayMs);
     }
 
     @Override

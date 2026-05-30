@@ -88,12 +88,14 @@ public class SwerveConfig {
         /** Time in ms with no driver input before the FSM enters locked stance. */
         public static double LOCK_DELAY_MS = 200.0;
 
-        /** Module lock angles in radians, ordered FL, FR, BR, BL. */
+        /** Module lock angles in radians, ordered FL, FR, BR, BL. 
+         * Calculated geometrically to point exactly towards the center of rotation.
+         */
         public static double[] LOCKED_STANCE_ANGLES_RAD = {
-                Math.toRadians(135.0),
-                Math.toRadians(45.0),
-                Math.toRadians(-45.0),
-                Math.toRadians(-135.0)
+                Math.atan2(MODULE_X_IN[0], -MODULE_Y_IN[0]),
+                Math.atan2(MODULE_X_IN[1], -MODULE_Y_IN[1]),
+                Math.atan2(MODULE_X_IN[2], -MODULE_Y_IN[2]),
+                Math.atan2(MODULE_X_IN[3], -MODULE_Y_IN[3])
         };
 
         /** Angle error threshold in radians before reversing drive direction. */

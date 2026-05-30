@@ -34,6 +34,8 @@ public class MainTeleOp extends LinearOpMode {
     private SlewRateLimiter forwardLimiter;
     private SlewRateLimiter strafeLimiter;
     private SlewRateLimiter turnLimiter;
+    
+    private double teleopHeadingOffset = 0.0;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -58,12 +60,22 @@ public class MainTeleOp extends LinearOpMode {
             double dt = Math.max(1e-3, loopTimer.seconds());
             loopTimer.reset();
 
+            hwMap.odo.update();
+            double currentHeading = hwMap.odo.getHeading(AngleUnit.RADIANS);
+            
+            // Fallback to IMU if Pinpoint isn't returning valid data
+            if (Double.isNaN(currentHeading)) {
+                currentHeading = hwMap.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS);
+            }
+
             if (gamepad1.start && !previousStartPressed) {
-                hwMap.imu.resetYaw();
+                // Mathematically sync "Forward" to the robot's current absolute orientation 
+                // without destroying the Pinpoint or IMU's absolute coordinate tracking.
+                teleopHeadingOffset = -currentHeading;
             }
             previousStartPressed = gamepad1.start;
 
-            driveFromGamepad(hwMap.imu.getRobotYawPitchRollAngles().getYaw(AngleUnit.RADIANS), dt);
+            driveFromGamepad(currentHeading + teleopHeadingOffset, dt);
 
             telemetry.addData("state", drivetrain.getState());
             telemetry.addData("loop ms", dt * 1000.0);
