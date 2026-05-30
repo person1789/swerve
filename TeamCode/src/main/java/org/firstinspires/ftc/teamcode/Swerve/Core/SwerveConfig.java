@@ -22,10 +22,10 @@ public class SwerveConfig {
         public static double MAX_ANGULAR_VELOCITY_RAD_S = 4.0;
 
         /** Base voltage the PID loops are tuned for. */
-        public static double NOMINAL_VOLTAGE = 13.0;
+        public static double NOMINAL_VOLTAGE = 12.4;
         
         /** True to enable dynamic battery voltage compensation for drive motors. */
-        public static boolean VOLTAGE_COMPENSATION_ENABLED = true;
+        public static boolean VOLTAGE_COMPENSATION_ENABLED = false;
 
         /** Nominal loop period used by second-order kinematics before measured dt is available. */
         public static double LOOP_TIME_SEC = 0.020;
@@ -42,31 +42,31 @@ public class SwerveConfig {
         public static double AUTO_HEADING_D = 0.3;
 
         /** TeleOp Heading Lock PID gains. Can use Auto gains, but often need to be less aggressive. */
-        public static double TELEOP_HEADING_P = 0.6;
-        public static double TELEOP_HEADING_D = 0.3;
+        public static double TELEOP_HEADING_P = 0.0;
+        public static double TELEOP_HEADING_D = 0.0;
         
-        /** Max angular velocity to engage TeleOp heading lock (prevents 'whipping' when you let go). */
+        /** Max angular velocity to allow engaging TeleOp heading lock */
         public static double TELEOP_HEADING_MAX_ANGULAR_VELOCITY_RAD_S = 1.5;
 
         /** Auto output clamps and completion tolerances. */
-        public static double AUTO_MAX_TRANSLATION_POWER = 1.0;
-        public static double AUTO_MAX_TURN_POWER = 0.5;
+        public static double AUTO_MAX_TRANSLATION_POWER = 0.6;
+        public static double AUTO_MAX_TURN_POWER = 0.3;
         public static double AUTO_TRANSLATION_DEADBAND = 0.01;
         public static double AUTO_TRANSLATION_TOLERANCE_IN = 0.25;
         public static double AUTO_HEADING_TOLERANCE_RAD = Math.toRadians(1.0);
-        public static double AUTO_SETTLE_DELAY_MS = 0.0;
+        public static double AUTO_SETTLE_DELAY_MS = 50;
         public static double AUTO_MOVE_TIMEOUT_MS = 2500.0;
 
         /** Auto module steering gate. */
         public static double AUTO_AZIMUTH_TOLERANCE_RAD = Math.toRadians(8.0);
-        public static double AUTO_AZIMUTH_TIMEOUT_MS = 350.0;
+        public static double AUTO_AZIMUTH_TIMEOUT_MS = 500.0;
         public static boolean AUTO_ABORT_ON_AZIMUTH_TIMEOUT = true;
 
-        /** Pinpoint odometry pod offsets relative to robot center, kept from this year's Decode code. */
+        /** Pinpoint odometry pod offsets relative to robot center. */
         public static double ODO_X_OFFSET_MM = -127.6669;
         public static double ODO_Y_OFFSET_MM = -52.23;
 
-        /** This year's Pedro branch module geometry, ordered FL, FR, BR, BL. */
+        /**  FL, FR, BR, BL. */
         public static double[] MODULE_X_IN = { 4.251, 4.251, -4.251, -4.251 };
         public static double[] MODULE_Y_IN = { 4.815, -4.815, -4.815, 4.815 };
 

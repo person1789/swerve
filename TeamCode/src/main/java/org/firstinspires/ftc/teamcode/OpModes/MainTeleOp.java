@@ -79,8 +79,6 @@ public class MainTeleOp extends LinearOpMode {
             }
 
             if (gamepad1.start && !previousStartPressed) {
-                // Mathematically sync "Forward" to the robot's current absolute orientation 
-                // without destroying the Pinpoint or IMU's absolute coordinate tracking.
                 teleopHeadingOffset = -currentHeading;
             }
             previousStartPressed = gamepad1.start;
