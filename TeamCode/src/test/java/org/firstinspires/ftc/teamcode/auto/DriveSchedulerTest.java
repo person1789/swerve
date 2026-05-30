@@ -20,6 +20,7 @@ class DriveSchedulerTest {
     private final double originalHeadingTolerance = SwerveConfig.AUTO_HEADING_TOLERANCE_RAD;
     private final double originalTranslationDeadband = SwerveConfig.AUTO_TRANSLATION_DEADBAND;
     private final double originalMoveTimeout = SwerveConfig.AUTO_MOVE_TIMEOUT_MS;
+    private final double originalAutoYP = SwerveConfig.AUTO_Y_P;
 
     @AfterEach
     void restoreConfig() {
@@ -30,6 +31,7 @@ class DriveSchedulerTest {
         SwerveConfig.AUTO_HEADING_TOLERANCE_RAD = originalHeadingTolerance;
         SwerveConfig.AUTO_TRANSLATION_DEADBAND = originalTranslationDeadband;
         SwerveConfig.AUTO_MOVE_TIMEOUT_MS = originalMoveTimeout;
+        SwerveConfig.AUTO_Y_P = originalAutoYP;
     }
 
     @Test
@@ -84,6 +86,8 @@ class DriveSchedulerTest {
     @Test
     void azimuthTimeoutRequestsAbortByDefault() {
         // Passes if a timed-out azimuth wait aborts the scheduler and commands zero drive.
+        SwerveConfig.AUTO_Y_P = 1.0; // Ensure Y power is non-zero so target angle is non-zero
+        
         TestModuleHardware[] hardware = createHardware();
         ManualPoseProvider pose = new ManualPoseProvider();
         SwerveDrivetrain drivetrain = createDrivetrain(hardware);

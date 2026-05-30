@@ -34,12 +34,12 @@ public class SwerveConfig {
         public static double INPUT_DEADBAND = 0.05;
 
         /** Auto PID gains, Kooky-style normalized drive output from inch/radian pose error. */
-        public static double AUTO_X_P = 0.04;
-        public static double AUTO_X_D = 0.05;
-        public static double AUTO_Y_P = 0.04;
-        public static double AUTO_Y_D = 0.05;
-        public static double AUTO_HEADING_P = 0.6;
-        public static double AUTO_HEADING_D = 0.3;
+        public static double AUTO_X_P = 0.00; //0.04
+        public static double AUTO_X_D = 0.00; //0.05
+        public static double AUTO_Y_P = 0.00; //0.04
+        public static double AUTO_Y_D = 0.00; //0.05
+        public static double AUTO_HEADING_P = 0.0; //0.6
+        public static double AUTO_HEADING_D = 0.0; //0.3
 
         /** TeleOp Heading Lock PID gains. Can use Auto gains, but often need to be less aggressive. */
         public static double TELEOP_HEADING_P = 0.0;

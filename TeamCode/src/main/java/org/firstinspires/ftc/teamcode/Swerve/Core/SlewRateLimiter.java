@@ -7,8 +7,8 @@ import com.qualcomm.robotcore.util.ElapsedTime;
  * Supports asymmetric rate limits for acceleration vs deceleration.
  */
 public class SlewRateLimiter {
-    private final double positiveRateLimit;
-    private final double negativeRateLimit;
+    private double positiveRateLimit;
+    private double negativeRateLimit;
     private final ElapsedTime timer;
     private double prevValue;
     private double prevTimeSeconds;
@@ -32,6 +32,21 @@ public class SlewRateLimiter {
      */
     public SlewRateLimiter(double rateLimit) {
         this(rateLimit, -rateLimit, 0.0);
+    }
+
+    /**
+     * Updates the rate limits dynamically.
+     */
+    public void setRateLimits(double positiveRateLimit, double negativeRateLimit) {
+        this.positiveRateLimit = positiveRateLimit;
+        this.negativeRateLimit = negativeRateLimit;
+    }
+
+    /**
+     * Updates the symmetric rate limit dynamically.
+     */
+    public void setRateLimit(double rateLimit) {
+        setRateLimits(rateLimit, -rateLimit);
     }
 
     /**

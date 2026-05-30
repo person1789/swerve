@@ -74,8 +74,10 @@ public class SwerveDrivetrain {
             currentVoltage = SwerveConfig.NOMINAL_VOLTAGE;
         }
 
-        for (SwerveModule module : modules) {
-            module.read();
+        for (int i = 0; i < modules.length; i++) {
+            modules[i].setOffset(SwerveConfig.OFFSETS[i]);
+            modules[i].setInversion(SwerveConfig.INVERSIONS[i]);
+            modules[i].read();
         }
     }
 

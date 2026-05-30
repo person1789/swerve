@@ -26,9 +26,7 @@ public class MoveToPoseCommand implements DriveCommand {
     private double settledMs = 0.0;
 
     public MoveToPoseCommand(double targetXInches, double targetYInches, double targetHeadingRadians) {
-        this(targetXInches, targetYInches, targetHeadingRadians,
-                SwerveConfig.AUTO_SETTLE_DELAY_MS,
-                SwerveConfig.AUTO_MOVE_TIMEOUT_MS);
+        this(targetXInches, targetYInches, targetHeadingRadians, -1.0, -1.0);
     }
 
     public MoveToPoseCommand(double targetXInches, double targetYInches, double targetHeadingRadians,
@@ -66,9 +64,17 @@ public class MoveToPoseCommand implements DriveCommand {
         }
     }
 
+    private double getTimeoutMs() {
+        return timeoutMs < 0 ? SwerveConfig.AUTO_MOVE_TIMEOUT_MS : timeoutMs;
+    }
+
+    private double getSettleDelayMs() {
+        return settleDelayMs < 0 ? SwerveConfig.AUTO_SETTLE_DELAY_MS : settleDelayMs;
+    }
+
     @Override
     public boolean isFinished(DriveContext context) {
-        return elapsedMs >= timeoutMs || (insideTolerance(context) && settledMs >= settleDelayMs);
+        return elapsedMs >= getTimeoutMs() || (insideTolerance(context) && settledMs >= getSettleDelayMs());
     }
 
     @Override

@@ -67,6 +67,10 @@ public class MainTeleOp extends LinearOpMode {
             hwMap.clearBulkCache();
             drivetrain.read();
 
+            forwardLimiter.setRateLimit(TRANSLATION_SLEW_RATE);
+            strafeLimiter.setRateLimit(TRANSLATION_SLEW_RATE);
+            turnLimiter.setRateLimit(TURN_SLEW_RATE);
+
             double dt = Math.max(1e-3, loopTimer.seconds());
             loopTimer.reset();
 
