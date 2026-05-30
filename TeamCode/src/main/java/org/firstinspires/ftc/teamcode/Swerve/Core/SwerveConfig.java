@@ -21,6 +21,12 @@ public class SwerveConfig {
         /** Physical top angular velocity in radians per second. */
         public static double MAX_ANGULAR_VELOCITY_RAD_S = 4.0;
 
+        /** Base voltage the PID loops are tuned for. */
+        public static double NOMINAL_VOLTAGE = 13.0;
+        
+        /** True to enable dynamic battery voltage compensation for drive motors. */
+        public static boolean VOLTAGE_COMPENSATION_ENABLED = true;
+
         /** Nominal loop period used by second-order kinematics before measured dt is available. */
         public static double LOOP_TIME_SEC = 0.020;
 

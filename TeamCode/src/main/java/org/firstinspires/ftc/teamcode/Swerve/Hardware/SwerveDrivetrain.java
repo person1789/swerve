@@ -7,6 +7,7 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Vector;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveKinematics;
 import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
+import com.qualcomm.robotcore.hardware.VoltageSensor;
 
 /**
  * Kooky-style drivetrain coordinator: read once, calculate once, command modules.
@@ -32,16 +33,23 @@ public class SwerveDrivetrain {
     private States state = States.DRIVING;
     private double lockTimerMs = 0.0;
 
+    private final VoltageSensor voltageSensor;
+    private double currentVoltage = SwerveConfig.NOMINAL_VOLTAGE;
+
     public SwerveDrivetrain(HWMap hwMap) {
         this(new SwerveModule[] {
                 new SwerveModule(hwMap.FLM, hwMap.FLS, hwMap.FLE, SwerveConfig.OFFSETS[0], SwerveConfig.INVERSIONS[0]),
                 new SwerveModule(hwMap.FRM, hwMap.FRS, hwMap.FRE, SwerveConfig.OFFSETS[1], SwerveConfig.INVERSIONS[1]),
                 new SwerveModule(hwMap.BRM, hwMap.BRS, hwMap.BRE, SwerveConfig.OFFSETS[2], SwerveConfig.INVERSIONS[2]),
                 new SwerveModule(hwMap.BLM, hwMap.BLS, hwMap.BLE, SwerveConfig.OFFSETS[3], SwerveConfig.INVERSIONS[3])
-        });
+        }, hwMap.voltageSensor);
     }
 
     public SwerveDrivetrain(SwerveModule[] modules) {
+        this(modules, null);
+    }
+
+    public SwerveDrivetrain(SwerveModule[] modules, VoltageSensor voltageSensor) {
         if (modules == null || modules.length != 4) {
             throw new IllegalArgumentException("SwerveDrivetrain requires exactly 4 modules.");
         }
@@ -55,9 +63,17 @@ public class SwerveDrivetrain {
         for (SwerveModule module : modules) {
             module.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
         }
+        this.voltageSensor = voltageSensor;
     }
 
     public void read() {
+        if (voltageSensor != null && SwerveConfig.VOLTAGE_COMPENSATION_ENABLED) {
+            currentVoltage = voltageSensor.getVoltage();
+            if (currentVoltage < 8.0) currentVoltage = 8.0; // Prevent massive unsafe scaling
+        } else {
+            currentVoltage = SwerveConfig.NOMINAL_VOLTAGE;
+        }
+
         for (SwerveModule module : modules) {
             module.read();
         }
@@ -102,8 +118,13 @@ public class SwerveDrivetrain {
     }
 
     public void write(double dt) {
+        double voltageScale = SwerveConfig.NOMINAL_VOLTAGE / currentVoltage;
+
         for (int i = 0; i < modules.length; i++) {
-            modules[i].update(states[i], dt);
+            SwerveModuleState scaledState = new SwerveModuleState();
+            scaledState.angleRadians = states[i].angleRadians;
+            scaledState.speedMetersPerSecond = states[i].speedMetersPerSecond * voltageScale;
+            modules[i].update(scaledState, dt);
         }
     }
 
