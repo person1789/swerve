@@ -18,6 +18,10 @@ public class MoveToPoseCommand implements DriveCommand {
     private final PIDController headingController =
             new PIDController(SwerveConfig.AUTO_HEADING_P, 0.0, SwerveConfig.AUTO_HEADING_D);
 
+    {
+        headingController.enableContinuousInput(-Math.PI, Math.PI);
+    }
+
     private double elapsedMs = 0.0;
     private double settledMs = 0.0;
 

@@ -58,6 +58,7 @@ public class MainTeleOp extends LinearOpMode {
 
         teleopHeadingController = new PIDController(
                 SwerveConfig.TELEOP_HEADING_P, 0.0, SwerveConfig.TELEOP_HEADING_D);
+        teleopHeadingController.enableContinuousInput(-Math.PI, Math.PI);
 
         waitForStart();
         loopTimer.reset();
@@ -121,11 +122,8 @@ public class MainTeleOp extends LinearOpMode {
             }
 
             if (isHeadingLocked) {
-                double error = MathUtil.angleError(headingRadians, targetHeadingRadians);
                 teleopHeadingController.setPID(SwerveConfig.TELEOP_HEADING_P, 0.0, SwerveConfig.TELEOP_HEADING_D);
-                // The PID expects 'current' and 'target' or just an error.
-                // We use calculateFromError, where error = target - current.
-                turn = teleopHeadingController.calculateFromError(error, dt);
+                turn = teleopHeadingController.calculate(headingRadians, targetHeadingRadians, dt);
             } else {
                 turn = 0.0;
             }

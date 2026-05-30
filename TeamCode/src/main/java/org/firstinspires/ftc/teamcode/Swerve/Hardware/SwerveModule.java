@@ -52,6 +52,7 @@ public class SwerveModule {
         this.hardware = hardware;
         this.offset = offset;
         this.inverse = inverse;
+        rotationController.enableContinuousInput(-Math.PI, Math.PI);
         read();
     }
 
@@ -77,11 +78,13 @@ public class SwerveModule {
         }
 
         rotationController.setPID(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
-        rotationController.setSetpoint(0.0);
-        double steerPower = Math.abs(error) < SwerveConfig.STEER_DEADBAND_RAD
-                ? 0.0
-                : Range.clip(rotationController.calculate(-error, Math.max(1e-3, dt)), -1.0, 1.0);
-        double drivePower = Range.clip(targetSpeedMpsToPower(optimizedSpeed), -1.0, 1.0);
+        
+        double steerPower = 0.0;
+        if (Math.abs(error) >= SwerveConfig.STEER_DEADBAND_RAD) {
+            steerPower = rotationController.calculate(currentRotationRadians, optimizedAngle, Math.max(1e-3, dt));
+        }
+
+        double drivePower = targetSpeedMpsToPower(optimizedSpeed);
 
         lastTargetAngleRadians = optimizedAngle;
         lastSteerErrorRadians = error;

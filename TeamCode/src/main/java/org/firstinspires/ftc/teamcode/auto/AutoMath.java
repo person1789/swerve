@@ -20,13 +20,9 @@ final class AutoMath {
             PIDController headingController,
             double dt,
             double[] output) {
-        double deltaX = targetX - pose.getXInches();
-        double deltaY = targetY - pose.getYInches();
-        double headingError = MathUtil.angleError(pose.getHeadingRadians(), targetHeading);
-
-        double xPower = xController.calculateFromError(deltaX, dt);
-        double yPower = yController.calculateFromError(deltaY, dt);
-        double headingPower = headingController.calculateFromError(headingError, dt);
+        double xPower = xController.calculate(pose.getXInches(), targetX, dt);
+        double yPower = yController.calculate(pose.getYInches(), targetY, dt);
+        double headingPower = headingController.calculate(pose.getHeadingRadians(), targetHeading, dt);
         rotateAndClamp(pose.getHeadingRadians(), xPower, yPower, headingPower, output);
     }
 
