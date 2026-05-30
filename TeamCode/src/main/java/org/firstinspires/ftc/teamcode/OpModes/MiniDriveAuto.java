@@ -35,7 +35,7 @@ public class MiniDriveAuto extends LinearOpMode {
         PinpointLocalizer localizer = new PinpointLocalizer(hwMap);
         AutoRoute route = AutoRoute.selected(CLOSE_ROUTE);
         route.seedPose(localizer);
-        DriveContext context = new DriveContext(drivetrain, localizer);
+        DriveContext context = new DriveContext(drivetrain, localizer, hwMap);
         DriveScheduler scheduler = route.buildScheduler(WAIT_FOR_AZIMUTH);
 
         loopTimer.reset();

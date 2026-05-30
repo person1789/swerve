@@ -36,7 +36,7 @@ class DriveSchedulerTest {
     void schedulerRunsQueuedCommandsInOrderAndEndsOnce() {
         // Passes if each command initializes, ticks, and ends once before the scheduler advances.
         ManualPoseProvider pose = new ManualPoseProvider();
-        DriveContext context = new DriveContext(createDrivetrain(createHardware()), pose);
+        DriveContext context = new DriveContext(createDrivetrain(createHardware()), pose, null);
         CountingCommand first = new CountingCommand("first");
         CountingCommand second = new CountingCommand("second");
         DriveScheduler scheduler = new DriveScheduler(2).add(first).add(second);
@@ -67,7 +67,7 @@ class DriveSchedulerTest {
         TestModuleHardware[] hardware = createHardware();
         ManualPoseProvider pose = new ManualPoseProvider();
         SwerveDrivetrain drivetrain = createDrivetrain(hardware);
-        DriveContext context = new DriveContext(drivetrain, pose);
+        DriveContext context = new DriveContext(drivetrain, pose, null);
         WaitForAzimuthCommand wait = new WaitForAzimuthCommand(24.0, 0.0, 0.0,
                 Math.toRadians(1.0), 1000.0, true);
 
@@ -87,7 +87,7 @@ class DriveSchedulerTest {
         TestModuleHardware[] hardware = createHardware();
         ManualPoseProvider pose = new ManualPoseProvider();
         SwerveDrivetrain drivetrain = createDrivetrain(hardware);
-        DriveContext context = new DriveContext(drivetrain, pose);
+        DriveContext context = new DriveContext(drivetrain, pose, null);
         DriveScheduler scheduler = new DriveScheduler(2)
                 // Command a strafe (Y=24) instead of forward (X=24) so target angle is non-zero 
                 // and the dummy modules (which report 0.0) are forced to wait and timeout.
@@ -109,7 +109,7 @@ class DriveSchedulerTest {
         SwerveConfig.AUTO_HEADING_TOLERANCE_RAD = Math.toRadians(2.0);
         ManualPoseProvider pose = new ManualPoseProvider();
         pose.x = 24.0;
-        DriveContext context = new DriveContext(createDrivetrain(createHardware()), pose);
+        DriveContext context = new DriveContext(createDrivetrain(createHardware()), pose, null);
         MoveToPoseCommand command = new MoveToPoseCommand(24.0, 0.0, 0.0, 40.0, 1000.0);
 
         command.init(context);
@@ -154,7 +154,7 @@ class DriveSchedulerTest {
     private static class ManualPoseProvider implements AutoPoseProvider {
         double x;
         double y;
-        double heading;
+        double h;
 
         @Override
         public void update() {
@@ -172,7 +172,14 @@ class DriveSchedulerTest {
 
         @Override
         public double getHeadingRadians() {
-            return heading;
+            return h;
+        }
+
+        @Override
+        public void setPose(double xInches, double yInches, double headingRadians) {
+            this.x = xInches;
+            this.y = yInches;
+            this.h = headingRadians;
         }
 
         @Override

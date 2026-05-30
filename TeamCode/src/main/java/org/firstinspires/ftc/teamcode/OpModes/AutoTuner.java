@@ -131,7 +131,7 @@ public class AutoTuner extends LinearOpMode {
             double targetX = goingOut ? TARGET_X_IN : 0.0;
             double targetY = goingOut ? TARGET_Y_IN : 0.0;
 
-            DriveContext context = new DriveContext(drivetrain, localizer);
+            DriveContext context = new DriveContext(drivetrain, localizer, hwMap);
             MoveToPoseCommand move = new MoveToPoseCommand(targetX, targetY, 0.0,
                 SwerveConfig.AUTO_SETTLE_DELAY_MS, SwerveConfig.AUTO_MOVE_TIMEOUT_MS);
             move.init(context);
@@ -200,7 +200,7 @@ public class AutoTuner extends LinearOpMode {
             double targetX = goingOut ? TARGET_X_IN : 0.0;
             double targetY = goingOut ? TARGET_Y_IN : 0.0;
 
-            DriveContext context = new DriveContext(drivetrain, localizer);
+            DriveContext context = new DriveContext(drivetrain, localizer, hwMap);
             MoveToPoseCommand move = new MoveToPoseCommand(targetX, targetY, 0.0,
                 SwerveConfig.AUTO_SETTLE_DELAY_MS, SwerveConfig.AUTO_MOVE_TIMEOUT_MS);
             move.init(context);
@@ -274,7 +274,7 @@ public class AutoTuner extends LinearOpMode {
                 ? Math.toRadians(ROTATE_ONLY_DEG)
                 : 0.0;
 
-            DriveContext context = new DriveContext(drivetrain, localizer);
+            DriveContext context = new DriveContext(drivetrain, localizer, hwMap);
             // Stay at origin, only rotate
             MoveToPoseCommand move = new MoveToPoseCommand(0.0, 0.0, targetHdg,
                 SwerveConfig.AUTO_SETTLE_DELAY_MS, SwerveConfig.AUTO_MOVE_TIMEOUT_MS);
@@ -333,7 +333,7 @@ public class AutoTuner extends LinearOpMode {
                                 PinpointLocalizer localizer, ElapsedTime timer) {
 
         while (opModeIsActive()) {
-            DriveContext context = new DriveContext(drivetrain, localizer);
+            DriveContext context = new DriveContext(drivetrain, localizer, hwMap);
             MoveToPoseCommand move = new MoveToPoseCommand(
                 TARGET_X_IN, TARGET_Y_IN, Math.toRadians(TARGET_HDG_DEG),
                 SwerveConfig.AUTO_SETTLE_DELAY_MS, SwerveConfig.AUTO_MOVE_TIMEOUT_MS);
@@ -390,7 +390,7 @@ public class AutoTuner extends LinearOpMode {
             sleep(PAUSE_BETWEEN_LEGS_MS);
 
             // Drive back to origin for next rep
-            DriveContext returnCtx = new DriveContext(drivetrain, localizer);
+            DriveContext returnCtx = new DriveContext(drivetrain, localizer, hwMap);
             MoveToPoseCommand returnMove = new MoveToPoseCommand(0, 0, 0,
                 SwerveConfig.AUTO_SETTLE_DELAY_MS, SwerveConfig.AUTO_MOVE_TIMEOUT_MS);
             returnMove.init(returnCtx);
@@ -431,7 +431,7 @@ public class AutoTuner extends LinearOpMode {
         SwerveConfig.AUTO_SETTLE_DELAY_MS = 200.0;
 
         while (opModeIsActive()) {
-            DriveContext context = new DriveContext(drivetrain, localizer);
+            DriveContext context = new DriveContext(drivetrain, localizer, hwMap);
             DriveScheduler scheduler = new DriveScheduler(3);
             scheduler.add(new WaitForAzimuthCommand(
                 TARGET_X_IN, TARGET_Y_IN,
@@ -494,7 +494,7 @@ public class AutoTuner extends LinearOpMode {
             sleep(PAUSE_BETWEEN_LEGS_MS);
 
             // Drive back to origin
-            DriveContext returnCtx = new DriveContext(drivetrain, localizer);
+            DriveContext returnCtx = new DriveContext(drivetrain, localizer, hwMap);
             MoveToPoseCommand returnMove = new MoveToPoseCommand(0, 0, 0,
                 200.0, 5000.0);
             returnMove.init(returnCtx);
@@ -521,7 +521,7 @@ public class AutoTuner extends LinearOpMode {
     private void runEightWayTest(HWMap hwMap, SwerveDrivetrain drivetrain,
                                PinpointLocalizer localizer, ElapsedTime timer) {
 
-        DriveContext context = new DriveContext(drivetrain, localizer);
+        DriveContext context = new DriveContext(drivetrain, localizer, hwMap);
         DriveScheduler scheduler = new DriveScheduler(25); // Supports up to 25 commands
 
         double radius = Math.max(Math.abs(TARGET_X_IN), 24.0); // Use TARGET_X_IN or 24" default

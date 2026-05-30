@@ -32,7 +32,7 @@ public class AutoCatchAllTest {
         });
 
         MockPoseProvider pose = new MockPoseProvider();
-        DriveContext context = new DriveContext(drivetrain, pose);
+        DriveContext context = new DriveContext(drivetrain, pose, null);
         
         // Command the robot to drive diagonally and turn simultaneously
         DriveScheduler scheduler = new DriveScheduler(2)
@@ -79,6 +79,9 @@ public class AutoCatchAllTest {
         double x = 0.0;
         double y = 0.0;
         double heading = 0.0;
+        double currentX = 0.0;
+        double currentY = 0.0;
+        double currentHeading = 0.0;
 
         @Override
         public void update() {}
@@ -90,7 +93,16 @@ public class AutoCatchAllTest {
         public double getYInches() { return y; }
 
         @Override
-        public double getHeadingRadians() { return heading; }
+        public double getHeadingRadians() {
+            return currentHeading;
+        }
+
+        @Override
+        public void setPose(double xInches, double yInches, double headingRadians) {
+            this.currentX = xInches;
+            this.currentY = yInches;
+            this.currentHeading = headingRadians;
+        }
 
         @Override
         public boolean isReady() { return true; }
