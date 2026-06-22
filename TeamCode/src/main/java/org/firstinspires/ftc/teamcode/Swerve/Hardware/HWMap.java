@@ -12,7 +12,7 @@ import com.qualcomm.hardware.lynx.LynxModule;
 
 import java.util.List;
 
-import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
+
 
 public class HWMap {
 
@@ -39,7 +39,7 @@ public class HWMap {
     private VoltageSensor voltageSensor;
 
     private final GoBildaPinpointDriver odo;
-    public final IMU imu;
+
 
     public HWMap(HardwareMap hardwareMap) {
         FLM = hardwareMap.get(DcMotorEx.class, "FLM");
@@ -59,10 +59,7 @@ public class HWMap {
 
         odo = hardwareMap.get(GoBildaPinpointDriver.class, "odo");
 
-        imu = hardwareMap.get(IMU.class, "imu");
-        IMU.Parameters parameters = new IMU.Parameters(new RevHubOrientationOnRobot(
-                SwerveConfig.HUB_LOGO_DIR, SwerveConfig.HUB_USB_DIR));
-        imu.initialize(parameters);
+
 
         voltageSensor = hardwareMap.voltageSensor.iterator().next();
 

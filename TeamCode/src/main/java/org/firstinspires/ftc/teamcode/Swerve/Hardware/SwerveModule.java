@@ -16,13 +16,16 @@ import static org.firstinspires.ftc.robotcore.external.navigation.AngleUnit.norm
 @Config
 public class SwerveModule {
 
-    public static double STEER_P = 0.0;
+    public static double STEER_P = 0.5;
     public static double STEER_I = 0.0;
     public static double STEER_D = 0.0;
     public static double K_STATIC = 0.0;
 
     public static double MAX_STEER_POWER = 1.0;
     public static double MAX_DRIVE_POWER = 1.0;
+
+    public static boolean MOTOR_FLIPPING = true;
+    private boolean wheelFlipped = false;
 
     private DcMotorEx driveMotor;
     private CRServo steerServo;
@@ -33,11 +36,14 @@ public class SwerveModule {
     private boolean inverse;
 
     private double targetAngle = 0.0;
-    private double currentAngle = 0.0;
 
     public double lastDrivePower = 0.0;
     public double lastSteeringPower = 0.0;
 
+    public void setManualSteerPower(double power) {
+        lastSteeringPower = power;
+        steerServo.setPower(power);
+    }
 
 
     public SwerveModule(DcMotorEx driveMotor, CRServo steerServo, AnalogInput encoder ) {
@@ -76,6 +82,14 @@ public class SwerveModule {
 
         double error = normalizeRadians(targetAngle - currentAngle);
 
+        if (MOTOR_FLIPPING && Math.abs(error) > Math.PI / 2.0) {
+            targetAngle = normalizeRadians(targetAngle - Math.PI);
+            wheelFlipped = true;
+        } else {
+            wheelFlipped = false;
+        }
+        error = normalizeRadians(targetAngle - currentAngle);
+
         double steeringPower = Range.clip(rotationController.calculate(0, error), -MAX_STEER_POWER, MAX_STEER_POWER);
 
         if (Double.isNaN(steeringPower)) {
@@ -100,10 +114,13 @@ public class SwerveModule {
     }
 
     public void setDrivePower(double power) {
+        if (wheelFlipped) {
+            power *= -1.0;
+        }
+
         lastDrivePower = power;
         driveMotor.setPower(power);
     }
-
     public void setTargetAngle(double targetAngle) {
         this.targetAngle = normalizeRadians(targetAngle);
     }
@@ -120,12 +137,11 @@ public class SwerveModule {
         driveMotor.setMode(runMode);
     }
 
-    public void setZeroPowerBehavior(DcMotor.ZeroPowerBehavior zeroPowerBehavior) {
-        driveMotor.setZeroPowerBehavior(zeroPowerBehavior);
-    }
 
     public void stop() {
         driveMotor.setPower(0.0);
         steerServo.setPower(0.0);
+        lastDrivePower = 0.0;
+        lastSteeringPower = 0.0;
     }
 }

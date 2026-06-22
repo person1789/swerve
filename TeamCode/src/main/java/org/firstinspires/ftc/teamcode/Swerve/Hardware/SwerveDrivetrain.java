@@ -16,9 +16,9 @@ public class SwerveDrivetrain {
     public SwerveModule frontLeftModule, backLeftModule, backRightModule, frontRightModule;
     public SwerveModule[] modules;
 
-    public static double TRACK_WIDTH = 0.0, WHEEL_BASE = 0.0;
+    public static double TRACK_WIDTH = 9.921, WHEEL_BASE = 9.927;
     private double R;
-    public static double frontLeftOffset = 5.1, frontRightOffset = 0.2, backLeftOffset = -1.2, backRightOffset = 1.3;
+    public static double frontLeftOffset = 2, frontRightOffset = 3.3, backLeftOffset = -1.9, backRightOffset = 2;
 
     double[] ws = new double[4];
     double[] wa = new double[4];
@@ -49,8 +49,8 @@ public class SwerveDrivetrain {
             ws = new double[]{0, 0, 0, 0};
             wa = new double[]{Math.PI / 4, -Math.PI / 4, Math.PI / 4, -Math.PI / 4};
         } else {
-            ws = new double[]{hypot(b, c), hypot(b, d), hypot(a, d), hypot(a, c)};
-            wa = new double[]{atan2(b, c), atan2(b, d), atan2(a, d), atan2(a, c)};
+            ws = new double[]{hypot(b, d), hypot(b, c), hypot(a, c), hypot(a, d)};
+            wa = new double[]{atan2(b, d), atan2(b, c), atan2(a, c), atan2(a, d)};
         }
 
         max = MathUtil.maxAbs(ws);
@@ -64,12 +64,24 @@ public class SwerveDrivetrain {
             m.setTargetAngle(MathUtil.normalizeAngle(wa[i]));
         }
     }
+    public void updateOffsets() {
+        frontLeftModule.setOffset(frontLeftOffset);
+        frontRightModule.setOffset(frontRightOffset);
+        backLeftModule.setOffset(backLeftOffset);
+        backRightModule.setOffset(backRightOffset);
+    }
+
 
     public void updateModules() {for (SwerveModule m : modules) m.update();}
-
+    public void stop() {
+        for (SwerveModule m : modules) {
+            m.stop();
+        }
+    }
     public void setLocked(boolean locked) {this.locked = locked;}
 
     public boolean isLocked() {
         return locked;
     }
+
 }

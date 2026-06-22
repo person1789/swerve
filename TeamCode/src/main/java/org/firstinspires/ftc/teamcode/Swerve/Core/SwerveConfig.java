@@ -5,8 +5,8 @@ import com.qualcomm.hardware.rev.RevHubOrientationOnRobot;
 
 /**
  * SwerveConfig
- * 
- * Central repository for all swerve-related constants. 
+ *
+ * Central repository for all swerve-related constants.
  * Categorized for ease of tuning via FTC Dashboard.
  */
 @Config
@@ -15,10 +15,10 @@ public class SwerveConfig {
     // =========================================================================
     // 1. Robot Geometry
     // =========================================================================
-    
+
     /** Full track width in inches (left-to-right wheel centres). */
     public static double TRACK_WIDTH_IN = 9.921;
-    
+
     /** Full wheelbase in inches (front-to-rear wheel centres). */
     public static double WHEEL_BASE_IN = 9.927;
 
@@ -28,10 +28,10 @@ public class SwerveConfig {
 
     /** Physical top speed of the drivetrain in inches/second. */
     public static double MAX_LINEAR_SPEED_IN_S = 72.0;
-    
+
     /** Max angular velocity in rad/s. */
     public static double MAX_ANGULAR_VELOCITY_RAD_S = 4.0;
-    
+
     /** Loop period in seconds (target 20ms). */
     public static double LOOP_TIME_SEC = 0.020;
 
@@ -53,7 +53,7 @@ public class SwerveConfig {
 
     /** Max linear acceleration in inches/second^2. */
     public static double MAX_LINEAR_ACCEL_IN_S2 = 72.0;
-    
+
     /** Max linear jerk in inches/second^3. Reaches max accel in about 0.2 seconds. */
     public static double MAX_LINEAR_JERK_IN_S3 = 360.0;
 
@@ -77,7 +77,7 @@ public class SwerveConfig {
     public static double STEER_P = 0.325;
     public static double STEER_I = 0.0;
     public static double STEER_D = 0.01;
-    
+
     // Drive Motor PID (if using RUN_USING_ENCODER)
     public static double DRIVE_P = 0.1;
     public static double DRIVE_I = 0.0;
@@ -118,7 +118,7 @@ public class SwerveConfig {
     public static boolean ENABLE_IDLE_X_STANCE = false;
 
     /** Hub Orientation for fallback IMU. */
-    public static RevHubOrientationOnRobot.LogoFacingDirection HUB_LOGO_DIR = 
+    public static RevHubOrientationOnRobot.LogoFacingDirection HUB_LOGO_DIR =
             RevHubOrientationOnRobot.LogoFacingDirection.LEFT;
     public static RevHubOrientationOnRobot.UsbFacingDirection HUB_USB_DIR =
             RevHubOrientationOnRobot.UsbFacingDirection.DOWN;
@@ -209,3 +209,6 @@ public class SwerveConfig {
      */
     public static double LIMELIGHT_HARD_RESET_THRESHOLD_IN = 18.0;
 }
+
+
+
