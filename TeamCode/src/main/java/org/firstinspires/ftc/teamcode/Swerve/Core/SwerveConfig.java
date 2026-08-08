@@ -54,13 +54,13 @@ public class SwerveConfig {
         public static double AUTO_TRANSLATION_DEADBAND = 0.01;
         public static double AUTO_TRANSLATION_TOLERANCE_IN = 0.25;
         public static double AUTO_HEADING_TOLERANCE_RAD = Math.toRadians(1.0);
-        public static double AUTO_SETTLE_DELAY_MS = 50;
+        public static double AUTO_SETTLE_DELAY_MS = 200;
         public static double AUTO_MOVE_TIMEOUT_MS = 2500.0;
 
         /** Auto module steering gate. */
         public static double AUTO_AZIMUTH_TOLERANCE_RAD = Math.toRadians(8.0);
         public static double AUTO_AZIMUTH_TIMEOUT_MS = 500.0;
-        public static boolean AUTO_ABORT_ON_AZIMUTH_TIMEOUT = true;
+        public static boolean AUTO_ABORT_ON_AZIMUTH_TIMEOUT = false;
 
         /** Pinpoint odometry pod offsets relative to robot center. */
         public static double ODO_X_OFFSET_MM = -127.6669;
@@ -88,12 +88,13 @@ public class SwerveConfig {
         public static double STEER_P = 0.325;
         public static double STEER_I = 0.0;
         public static double STEER_D = 0.01;
+        public static double STEER_K_STATIC = 0.03;
 
         /** Below this steering error, the CRServo is commanded to zero. */
         public static double STEER_DEADBAND_RAD = 0.02;
 
         /** Encoder zero-forward offsets in radians, ordered FL, FR, BR, BL. */
-        public static double[] OFFSETS = { 5.0, 0.2, -1.2, 1.3 };
+        public static double[] OFFSETS = { -1.14, 0.1, -1.1, 1.14 };
 
         /** Encoder inversion flags, ordered FL, FR, BR, BL. */
         public static boolean[] INVERSIONS = { false, false, false, false };

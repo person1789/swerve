@@ -3,7 +3,7 @@ package org.firstinspires.ftc.teamcode.auto;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
-import org.firstinspires.ftc.teamcode.Swerve.Core.PIDController;
+import com.arcrobotics.ftclib.controller.PIDFController;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 
 final class AutoMath {
@@ -15,14 +15,17 @@ final class AutoMath {
             double targetX,
             double targetY,
             double targetHeading,
-            PIDController xController,
-            PIDController yController,
-            PIDController headingController,
+            PIDFController xController,
+            PIDFController yController,
+            PIDFController headingController,
             double dt,
             double[] output) {
-        double xPower = xController.calculate(pose.getXInches(), targetX, dt);
-        double yPower = yController.calculate(pose.getYInches(), targetY, dt);
-        double headingPower = headingController.calculate(pose.getHeadingRadians(), targetHeading, dt);
+        double xPower = xController.calculate(pose.getXInches(), targetX);
+        double yPower = yController.calculate(pose.getYInches(), targetY);
+        
+        // Manual angle wrap for continuous input since FTCLib doesn't support it natively
+        double headingError = MathUtil.angleError(pose.getHeadingRadians(), targetHeading);
+        double headingPower = headingController.calculate(0.0, headingError);
         rotateAndClamp(pose.getHeadingRadians(), xPower, yPower, headingPower, output);
     }
 

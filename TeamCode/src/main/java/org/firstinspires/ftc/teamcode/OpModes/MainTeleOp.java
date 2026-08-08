@@ -8,7 +8,7 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.robotcore.external.navigation.AngleUnit;
-import org.firstinspires.ftc.teamcode.Swerve.Core.PIDController;
+import com.arcrobotics.ftclib.controller.PIDFController;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SlewRateLimiter;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
@@ -39,7 +39,7 @@ public class MainTeleOp extends LinearOpMode {
     
     private double teleopHeadingOffset = 0.0;
 
-    private PIDController teleopHeadingController;
+    private PIDFController teleopHeadingController;
     private double targetHeadingRadians = 0.0;
     private boolean isHeadingLocked = false;
 
@@ -56,9 +56,8 @@ public class MainTeleOp extends LinearOpMode {
         strafeLimiter = new SlewRateLimiter(TRANSLATION_SLEW_RATE);
         turnLimiter = new SlewRateLimiter(TURN_SLEW_RATE);
 
-        teleopHeadingController = new PIDController(
-                SwerveConfig.TELEOP_HEADING_P, 0.0, SwerveConfig.TELEOP_HEADING_D);
-        teleopHeadingController.enableContinuousInput(-Math.PI, Math.PI);
+        teleopHeadingController = new PIDFController(
+                SwerveConfig.TELEOP_HEADING_P, 0.0, SwerveConfig.TELEOP_HEADING_D, 0.0);
 
         waitForStart();
         loopTimer.reset();
@@ -124,8 +123,9 @@ public class MainTeleOp extends LinearOpMode {
             }
 
             if (isHeadingLocked) {
-                teleopHeadingController.setPID(SwerveConfig.TELEOP_HEADING_P, 0.0, SwerveConfig.TELEOP_HEADING_D);
-                turn = teleopHeadingController.calculate(headingRadians, targetHeadingRadians, dt);
+                teleopHeadingController.setPIDF(SwerveConfig.TELEOP_HEADING_P, 0.0, SwerveConfig.TELEOP_HEADING_D, 0.0);
+                double headingError = MathUtil.angleError(headingRadians, targetHeadingRadians);
+                turn = teleopHeadingController.calculate(0.0, headingError);
             } else {
                 turn = 0.0;
             }

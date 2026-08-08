@@ -1,193 +1,163 @@
 package org.firstinspires.ftc.teamcode.Swerve.Hardware;
 
+import com.arcrobotics.ftclib.controller.PIDFController;
 import com.qualcomm.robotcore.hardware.AnalogInput;
 import com.qualcomm.robotcore.hardware.CRServo;
+import com.qualcomm.robotcore.hardware.CRServoImplEx;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorEx;
+import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.hardware.PIDFCoefficients;
+import com.qualcomm.robotcore.hardware.PwmControl;
+import com.qualcomm.robotcore.hardware.configuration.typecontainers.MotorConfigurationType;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
-import org.firstinspires.ftc.teamcode.Swerve.Core.PIDController;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
-import org.firstinspires.ftc.teamcode.Swerve.Logic.Kinematics.SwerveModuleState;
 
-/**
- * Minimal Kooky-style swerve module: cache encoder once, flip if useful, command
- * the drive motor open-loop and the steering CRServo with one PID.
- */
+import java.util.Locale;
+
 public class SwerveModule {
+    public static double MAX_SERVO = 1, MAX_MOTOR = 1;
+    public static boolean MOTOR_FLIPPING = true;
 
-    public interface HardwareAdapter {
-        void read();
+    private DcMotorEx motor;
+    private CRServo servo;
+    private AbsoluteAnalogEncoder encoder;
+    private PIDFController rotationController;
 
-        double getRotationRadians();
+    public boolean wheelFlipped = false;
+    private double target = 0.0;
+    private double position = 0.0;
+    public double lastMotorPower = 0;
 
-        double getDriveVelocityTicksPerSecond();
+    public SwerveModule(DcMotorEx m, CRServo s, AbsoluteAnalogEncoder e) {
+        motor = m;
+        MotorConfigurationType motorConfigurationType = motor.getMotorType().clone();
+        motorConfigurationType.setAchieveableMaxRPMFraction(MAX_MOTOR);
+        motor.setMotorType(motorConfigurationType);
+        motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        void setDrivePower(double power);
+        servo = s;
+        if (servo instanceof CRServoImplEx) {
+            ((CRServoImplEx) servo).setPwmRange(new PwmControl.PwmRange(500, 2500, 5000));
+        }
 
-        void setSteerPower(double power);
-
-        void setDriveMode(DcMotor.RunMode mode);
+        encoder = e;
+        rotationController = new PIDFController(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D, 0);
+        motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+        motor.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
     }
 
-    private final HardwareAdapter hardware;
-    private final PIDController rotationController =
-            new PIDController(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
-
-    private double offset;
-    private boolean inverse;
-    private double currentRotationRadians = 0.0;
-    private double lastTargetAngleRadians = 0.0;
-    private double lastDrivePower = 0.0;
-    private double lastSteerPower = 0.0;
-    private double lastSteerErrorRadians = 0.0;
-
-    public SwerveModule(DcMotorEx driveMotor, CRServo steerServo, AnalogInput encoder,
-            double offset, boolean inverse) {
-        this(new FtcHardwareAdapter(driveMotor, steerServo, encoder), offset, inverse);
-    }
-
-    public SwerveModule(HardwareAdapter hardware, double offset, boolean inverse) {
-        this.hardware = hardware;
-        this.offset = offset;
-        this.inverse = inverse;
-        rotationController.enableContinuousInput(-Math.PI, Math.PI);
-        read();
+    public SwerveModule(HardwareMap hardwareMap, String mName, String sName, String eName) {
+        this(hardwareMap.get(DcMotorEx.class, mName),
+                hardwareMap.get(CRServo.class, sName),
+                new AbsoluteAnalogEncoder(hardwareMap.get(AnalogInput.class, eName)));
     }
 
     public void read() {
-        hardware.read();
-        double angle = MathUtil.normalizeAngle(hardware.getRotationRadians() - offset);
-        currentRotationRadians = inverse ? MathUtil.normalizeAngle(-angle) : angle;
+        position = encoder.getCurrentPosition();
     }
 
-    public void update(SwerveModuleState state, double dt) {
-        update(state.angleRadians, state.speedMetersPerSecond, dt);
-    }
+    public void update() {
+        rotationController.setPIDF(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D, 0);
+        double targetRot = getTargetRotation();
+        double currentRot = getModuleRotation();
 
-    public void update(double targetAngleRadians, double targetSpeedMps, double dt) {
-        double optimizedAngle = MathUtil.normalizeAngle(targetAngleRadians);
-        double optimizedSpeed = targetSpeedMps;
-        double error = MathUtil.angleError(currentRotationRadians, optimizedAngle);
-
-        if (Math.abs(error) > SwerveConfig.FLIP_THRESHOLD) {
-            optimizedAngle = MathUtil.normalizeAngle(optimizedAngle + Math.PI);
-            optimizedSpeed *= -1.0;
-            error = MathUtil.angleError(currentRotationRadians, optimizedAngle);
+        double error = MathUtil.normalizeAngle(targetRot - currentRot);
+        if (MOTOR_FLIPPING && Math.abs(error) > Math.PI / 2) {
+            targetRot = MathUtil.normalizeAngle(targetRot - Math.PI);
+            wheelFlipped = true;
+        } else {
+            wheelFlipped = false;
         }
 
-        rotationController.setPID(SwerveConfig.STEER_P, SwerveConfig.STEER_I, SwerveConfig.STEER_D);
-        
-        double steerPower = 0.0;
-        if (Math.abs(error) >= SwerveConfig.STEER_DEADBAND_RAD) {
-            steerPower = rotationController.calculate(currentRotationRadians, optimizedAngle, Math.max(1e-3, dt));
-        }
+        error = MathUtil.normalizeAngle(targetRot - currentRot);
 
-        double drivePower = targetSpeedMpsToPower(optimizedSpeed);
-
-        lastTargetAngleRadians = optimizedAngle;
-        lastSteerErrorRadians = error;
-        lastDrivePower = drivePower;
-        lastSteerPower = steerPower;
-        hardware.setSteerPower(steerPower);
-        hardware.setDrivePower(drivePower);
+        double power = Range.clip(rotationController.calculate(0, error), -MAX_SERVO, MAX_SERVO);
+        if (Double.isNaN(power)) power = 0;
+        servo.setPower(power + (Math.abs(error) > SwerveConfig.STEER_DEADBAND_RAD ? SwerveConfig.STEER_K_STATIC : 0) * Math.signum(power));
     }
 
+    public double getTargetRotation() {
+        return MathUtil.normalizeAngle(target - Math.PI);
+    }
+
+    public double getModuleRotation() {
+        return MathUtil.normalizeAngle(position - Math.PI);
+    }
+
+    public void setMotorPower(double power) {
+        if (wheelFlipped) power *= -1;
+        lastMotorPower = power;
+        motor.setPower(power);
+    }
+
+    public void setTargetRotation(double target) {
+        this.target = MathUtil.normalizeAngle(target);
+    }
+
+    public String getTelemetry(String name) {
+        return String.format(Locale.ENGLISH, "%s: Motor Flipped: %b \ncurrent position %.2f target position %.2f flip modifer = %d motor power = %.2f", 
+            name, wheelFlipped, getModuleRotation(), getTargetRotation(), flipModifier(), lastMotorPower);
+    }
+
+    public int flipModifier() {
+        return wheelFlipped ? -1 : 1;
+    }
+
+    public void setMode(DcMotor.RunMode runMode) {
+        motor.setMode(runMode);
+    }
+
+    public void setZeroPowerBehavior(DcMotor.ZeroPowerBehavior zeroPowerBehavior) {
+        motor.setZeroPowerBehavior(zeroPowerBehavior);
+    }
+
+    public void setPIDFCoefficients(DcMotor.RunMode runMode, PIDFCoefficients coefficients) {
+        motor.setPIDFCoefficients(runMode, coefficients);
+    }
+
+    public double getServoPower() {
+        return servo.getPower();
+    }
+
+    public double getWheelPosition() {
+        return encoderTicksToInches(motor.getCurrentPosition());
+    }
+
+    public double getWheelVelocity() {
+        return encoderTicksToInches(motor.getVelocity());
+    }
+
+    public double encoderTicksToInches(double ticks) {
+        return SwerveConfig.WHEEL_RADIUS_METERS * 39.37 * 2 * Math.PI * (1.0/SwerveConfig.DRIVE_GEAR_RATIO) * ticks / SwerveConfig.DRIVE_TICKS_PER_REV;
+    }
+
+    // Compatibility methods for AutoTuner and SingleModuleTuner
     public double getCurrentRotation() {
-        return currentRotationRadians;
-    }
-
-    public double getVelocityMps() {
-        return driveTicksPerSecondToMetersPerSecond(hardware.getDriveVelocityTicksPerSecond());
-    }
-
-    public double getLastTargetAngleRadians() {
-        return lastTargetAngleRadians;
-    }
-
-    public double getLastDrivePower() {
-        return lastDrivePower;
-    }
-
-    public double getLastSteerPower() {
-        return lastSteerPower;
+        return getModuleRotation();
     }
 
     public double getSteerErrorRadians() {
-        return lastSteerErrorRadians;
+        return MathUtil.angleError(getModuleRotation(), getTargetRotation());
     }
 
-    public boolean isAzimuthReady(double toleranceRad) {
-        return Math.abs(lastSteerErrorRadians) <= Math.abs(toleranceRad);
+    public double getVelocityMps() {
+        return getWheelVelocity() * 0.0254;
     }
 
-    public void setMode(DcMotor.RunMode mode) {
-        hardware.setDriveMode(mode);
+    public double getLastSteerPower() {
+        return getServoPower();
     }
 
-    public void setOffset(double offset) {
-        this.offset = offset;
+    public double getLastDrivePower() {
+        return lastMotorPower;
     }
 
-    public void setInversion(boolean inverse) {
-        this.inverse = inverse;
-    }
-
-    public static double driveTicksPerSecondToMetersPerSecond(double ticksPerSecond) {
-        double wheelRps = (ticksPerSecond / SwerveConfig.DRIVE_TICKS_PER_REV) / SwerveConfig.DRIVE_GEAR_RATIO;
-        return wheelRps * (2.0 * Math.PI * SwerveConfig.WHEEL_RADIUS_METERS);
-    }
-
-    private static double targetSpeedMpsToPower(double speedMetersPerSecond) {
-        double maxSpeed = SwerveConfig.getMaxLinearSpeedMPS();
-        if (maxSpeed < 1e-9) {
-            return 0.0;
-        }
-        return speedMetersPerSecond / maxSpeed;
-    }
-
-    private static class FtcHardwareAdapter implements HardwareAdapter {
-        private final DcMotorEx driveMotor;
-        private final CRServo steerServo;
-        private final AnalogInput encoder;
-        private double rotationRadians;
-
-        FtcHardwareAdapter(DcMotorEx driveMotor, CRServo steerServo, AnalogInput encoder) {
-            this.driveMotor = driveMotor;
-            this.steerServo = steerServo;
-            this.encoder = encoder;
-            this.driveMotor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
-        }
-
-        @Override
-        public void read() {
-            rotationRadians = MathUtil.normalizeAngle((encoder.getVoltage() / 3.3) * 2.0 * Math.PI);
-        }
-
-        @Override
-        public double getRotationRadians() {
-            return rotationRadians;
-        }
-
-        @Override
-        public double getDriveVelocityTicksPerSecond() {
-            return driveMotor.getVelocity();
-        }
-
-        @Override
-        public void setDrivePower(double power) {
-            driveMotor.setPower(power);
-        }
-
-        @Override
-        public void setSteerPower(double power) {
-            steerServo.setPower(power);
-        }
-
-        @Override
-        public void setDriveMode(DcMotor.RunMode mode) {
-            driveMotor.setMode(mode);
-        }
+    public void update(double targetAngleRadians, double targetDrivePower, double dt) {
+        setTargetRotation(targetAngleRadians);
+        setMotorPower(targetDrivePower);
+        update();
     }
 }

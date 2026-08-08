@@ -20,8 +20,8 @@ import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
  */
 public class SwerveModuleState {
 
-    /** Desired drive wheel speed in metres per second. */
-    public double speedMetersPerSecond;
+    /** Desired drive motor power [-1, 1]. */
+    public double drivePower;
 
     /**
      * Desired steering angle in radians, normalized to (-π, π].
@@ -33,18 +33,18 @@ public class SwerveModuleState {
      * Create a zeroed state (module stopped, pointing forward).
      */
     public SwerveModuleState() {
-        this.speedMetersPerSecond = 0.0;
+        this.drivePower = 0.0;
         this.angleRadians = 0.0;
     }
 
     /**
      * Create a state with the given speed and angle.
      *
-     * @param speedMetersPerSecond drive speed in m/s
+     * @param drivePower drive power [-1, 1]
      * @param angleRadians         steering angle in radians (will be normalized)
      */
-    public SwerveModuleState(double speedMetersPerSecond, double angleRadians) {
-        this.speedMetersPerSecond = speedMetersPerSecond;
+    public SwerveModuleState(double drivePower, double angleRadians) {
+        this.drivePower = drivePower;
         this.angleRadians = MathUtil.normalizeAngle(angleRadians);
     }
 
@@ -63,23 +63,23 @@ public class SwerveModuleState {
      * @return corresponding SwerveModuleState
      */
     public static SwerveModuleState fromVector(double vx, double vy) {
-        double speed = Math.hypot(vx, vy);
+        double power = Math.hypot(vx, vy);
         double angle = Math.atan2(vy, vx);
-        return new SwerveModuleState(speed, angle);
+        return new SwerveModuleState(power, angle);
     }
 
     /**
      * Return a deep copy of this state.
      */
     public SwerveModuleState copy() {
-        return new SwerveModuleState(speedMetersPerSecond, angleRadians);
+        return new SwerveModuleState(drivePower, angleRadians);
     }
 
     @Override
     public String toString() {
         return String.format(
-                "SwerveModuleState{speed=%.3f m/s, angle=%.2f°}",
-                speedMetersPerSecond,
+                "SwerveModuleState{power=%.3f, angle=%.2f°}",
+                drivePower,
                 Math.toDegrees(angleRadians));
     }
 }

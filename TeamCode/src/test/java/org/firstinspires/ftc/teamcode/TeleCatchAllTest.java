@@ -58,7 +58,7 @@ public class TeleCatchAllTest {
         SwerveModuleState[] states = kinematics.inverseKinematics(new Vector(x, rawY, rawOmega));
         
         for (SwerveModuleState state : states) {
-            assertEquals(0.0, state.speedMetersPerSecond, 1e-9);
+            assertEquals(0.0, state.drivePower, 1e-9);
         }
     }
 

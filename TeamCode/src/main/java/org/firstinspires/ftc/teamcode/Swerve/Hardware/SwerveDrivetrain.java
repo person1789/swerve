@@ -38,10 +38,10 @@ public class SwerveDrivetrain {
 
     public SwerveDrivetrain(HWMap hwMap) {
         this(new SwerveModule[] {
-                new SwerveModule(hwMap.FLM, hwMap.FLS, hwMap.FLE, SwerveConfig.OFFSETS[0], SwerveConfig.INVERSIONS[0]),
-                new SwerveModule(hwMap.FRM, hwMap.FRS, hwMap.FRE, SwerveConfig.OFFSETS[1], SwerveConfig.INVERSIONS[1]),
-                new SwerveModule(hwMap.BRM, hwMap.BRS, hwMap.BRE, SwerveConfig.OFFSETS[2], SwerveConfig.INVERSIONS[2]),
-                new SwerveModule(hwMap.BLM, hwMap.BLS, hwMap.BLE, SwerveConfig.OFFSETS[3], SwerveConfig.INVERSIONS[3])
+                new SwerveModule(hwMap.FLM, hwMap.FLS, new AbsoluteAnalogEncoder(hwMap.FLE).zero(SwerveConfig.OFFSETS[0]).setInverted(SwerveConfig.INVERSIONS[0])),
+                new SwerveModule(hwMap.FRM, hwMap.FRS, new AbsoluteAnalogEncoder(hwMap.FRE).zero(SwerveConfig.OFFSETS[1]).setInverted(SwerveConfig.INVERSIONS[1])),
+                new SwerveModule(hwMap.BRM, hwMap.BRS, new AbsoluteAnalogEncoder(hwMap.BRE).zero(SwerveConfig.OFFSETS[2]).setInverted(SwerveConfig.INVERSIONS[2])),
+                new SwerveModule(hwMap.BLM, hwMap.BLS, new AbsoluteAnalogEncoder(hwMap.BLE).zero(SwerveConfig.OFFSETS[3]).setInverted(SwerveConfig.INVERSIONS[3]))
         }, hwMap.voltageSensor);
     }
 
@@ -75,8 +75,6 @@ public class SwerveDrivetrain {
         }
 
         for (int i = 0; i < modules.length; i++) {
-            modules[i].setOffset(SwerveConfig.OFFSETS[i]);
-            modules[i].setInversion(SwerveConfig.INVERSIONS[i]);
             modules[i].read();
         }
     }
@@ -123,23 +121,26 @@ public class SwerveDrivetrain {
         double voltageScale = SwerveConfig.NOMINAL_VOLTAGE / currentVoltage;
 
         for (int i = 0; i < modules.length; i++) {
-            SwerveModuleState scaledState = new SwerveModuleState();
-            scaledState.angleRadians = states[i].angleRadians;
-            scaledState.speedMetersPerSecond = states[i].speedMetersPerSecond * voltageScale;
-            modules[i].update(scaledState, dt);
+            modules[i].setTargetRotation(states[i].angleRadians);
+            
+            double drivePower = states[i].drivePower * voltageScale;
+            modules[i].setMotorPower(drivePower);
+            
+            modules[i].update();
         }
     }
 
     public void pointModulesForCommand(double x, double y, double omega, double dt) {
         drive(x, y, omega, dt);
         for (SwerveModuleState state : states) {
-            state.speedMetersPerSecond = 0.0;
+            state.drivePower = 0.0;
         }
     }
 
     public boolean areModulesAzimuthReady(double toleranceRad) {
         for (SwerveModule module : modules) {
-            if (!module.isAzimuthReady(toleranceRad)) {
+            double error = MathUtil.angleError(module.getModuleRotation(), module.getTargetRotation());
+            if (Math.abs(error) > Math.abs(toleranceRad)) {
                 return false;
             }
         }
@@ -153,7 +154,7 @@ public class SwerveDrivetrain {
     SwerveModuleState[] getCommandedStates() {
         SwerveModuleState[] copy = zeroStates();
         for (int i = 0; i < states.length; i++) {
-            copy[i].speedMetersPerSecond = states[i].speedMetersPerSecond;
+            copy[i].drivePower = states[i].drivePower;
             copy[i].angleRadians = states[i].angleRadians;
         }
         return copy;
@@ -172,15 +173,15 @@ public class SwerveDrivetrain {
 
     private void lock() {
         for (int i = 0; i < states.length; i++) {
-            states[i].speedMetersPerSecond = 0.0;
+            states[i].drivePower = 0.0;
             states[i].angleRadians = MathUtil.normalizeAngle(SwerveConfig.LOCKED_STANCE_ANGLES_RAD[i]);
         }
     }
 
     private static void sanitize(SwerveModuleState[] states) {
         for (SwerveModuleState state : states) {
-            if (!Double.isFinite(state.speedMetersPerSecond)) {
-                state.speedMetersPerSecond = 0.0;
+            if (!Double.isFinite(state.drivePower)) {
+                state.drivePower = 0.0;
             }
             if (!Double.isFinite(state.angleRadians)) {
                 state.angleRadians = 0.0;
@@ -193,17 +194,16 @@ public class SwerveDrivetrain {
     private static void desaturate(SwerveModuleState[] states) {
         double max = 0.0;
         for (SwerveModuleState state : states) {
-            max = Math.max(max, Math.abs(state.speedMetersPerSecond));
+            max = Math.max(max, Math.abs(state.drivePower));
         }
 
-        double maxAllowed = SwerveConfig.getMaxLinearSpeedMPS();
-        if (max <= maxAllowed || max < 1e-9) {
+        if (max <= 1.0 || max < 1e-9) {
             return;
         }
 
-        double scale = maxAllowed / max;
+        double scale = 1.0 / max;
         for (SwerveModuleState state : states) {
-            state.speedMetersPerSecond *= scale;
+            state.drivePower *= scale;
         }
     }
 

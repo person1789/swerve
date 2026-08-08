@@ -1,6 +1,6 @@
 package org.firstinspires.ftc.teamcode.auto;
 
-import org.firstinspires.ftc.teamcode.Swerve.Core.PIDController;
+import com.arcrobotics.ftclib.controller.PIDFController;
 import org.firstinspires.ftc.teamcode.Swerve.Core.SwerveConfig;
 
 public class MoveToPoseCommand implements DriveCommand {
@@ -11,16 +11,12 @@ public class MoveToPoseCommand implements DriveCommand {
     private final double timeoutMs;
     private final double[] command = new double[3];
 
-    private final PIDController xController =
-            new PIDController(SwerveConfig.AUTO_X_P, 0.0, SwerveConfig.AUTO_X_D);
-    private final PIDController yController =
-            new PIDController(SwerveConfig.AUTO_Y_P, 0.0, SwerveConfig.AUTO_Y_D);
-    private final PIDController headingController =
-            new PIDController(SwerveConfig.AUTO_HEADING_P, 0.0, SwerveConfig.AUTO_HEADING_D);
-
-    {
-        headingController.enableContinuousInput(-Math.PI, Math.PI);
-    }
+    private final PIDFController xController =
+            new PIDFController(SwerveConfig.AUTO_X_P, 0.0, SwerveConfig.AUTO_X_D, 0.0);
+    private final PIDFController yController =
+            new PIDFController(SwerveConfig.AUTO_Y_P, 0.0, SwerveConfig.AUTO_Y_D, 0.0);
+    private final PIDFController headingController =
+            new PIDFController(SwerveConfig.AUTO_HEADING_P, 0.0, SwerveConfig.AUTO_HEADING_D, 0.0);
 
     private double elapsedMs = 0.0;
     private double settledMs = 0.0;
@@ -50,9 +46,9 @@ public class MoveToPoseCommand implements DriveCommand {
     @Override
     public void tick(DriveContext context, double dt) {
         elapsedMs += dt * 1000.0;
-        xController.setPID(SwerveConfig.AUTO_X_P, 0.0, SwerveConfig.AUTO_X_D);
-        yController.setPID(SwerveConfig.AUTO_Y_P, 0.0, SwerveConfig.AUTO_Y_D);
-        headingController.setPID(SwerveConfig.AUTO_HEADING_P, 0.0, SwerveConfig.AUTO_HEADING_D);
+        xController.setPIDF(SwerveConfig.AUTO_X_P, 0.0, SwerveConfig.AUTO_X_D, 0.0);
+        yController.setPIDF(SwerveConfig.AUTO_Y_P, 0.0, SwerveConfig.AUTO_Y_D, 0.0);
+        headingController.setPIDF(SwerveConfig.AUTO_HEADING_P, 0.0, SwerveConfig.AUTO_HEADING_D, 0.0);
         AutoMath.calculateKookyPowers(context.pose, targetXInches, targetYInches, targetHeadingRadians,
                 xController, yController, headingController, dt, command);
         context.drivetrain.set(command[0], command[1], command[2], dt);

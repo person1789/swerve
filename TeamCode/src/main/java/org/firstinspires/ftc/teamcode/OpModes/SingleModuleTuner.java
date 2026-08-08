@@ -20,7 +20,7 @@ public class SingleModuleTuner extends LinearOpMode {
 
     public static int TUNING_MODULE_INDEX = 0; // 0=FL, 1=FR, 2=BR, 3=BL
     public static double TARGET_ANGLE_DEGREES = 0.0;
-    public static double TARGET_SPEED_MPS = 0.0;
+    public static double TARGET_DRIVE_POWER = 0.0;
     public static double Loop_Time_Buffer_MS = 20.0;
     public static boolean SAVE_ON_STOP = false;
 
@@ -49,7 +49,7 @@ public class SingleModuleTuner extends LinearOpMode {
                 for (int i = 0; i < drivetrain.modules.length; i++) {
                     SwerveModule module = drivetrain.modules[i];
                     if (i == safeIndex) {
-                        module.update(Math.toRadians(TARGET_ANGLE_DEGREES), TARGET_SPEED_MPS, dt);
+                        module.update(Math.toRadians(TARGET_ANGLE_DEGREES), TARGET_DRIVE_POWER, dt);
 
                         telemetry.addData("--- TUNING MODULE", getModuleName(safeIndex) + " (" + safeIndex + ") ---");
                         telemetry.addData("Current Angle (Deg)", Math.toDegrees(module.getCurrentRotation()));

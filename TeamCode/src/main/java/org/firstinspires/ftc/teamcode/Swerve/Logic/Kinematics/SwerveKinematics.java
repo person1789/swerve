@@ -79,7 +79,8 @@ public class SwerveKinematics {
             Vector offset = moduleOffsets[i];
             double moduleVx = chassisVx - omega * offset.y();
             double moduleVy = chassisVy + omega * offset.x();
-            states[i].speedMetersPerSecond = Math.hypot(moduleVx, moduleVy);
+            double speedMps = Math.hypot(moduleVx, moduleVy);
+            states[i].drivePower = speedMps / SwerveConfig.getMaxLinearSpeedMPS();
             states[i].angleRadians = Math.atan2(moduleVy, moduleVx);
         }
     }
@@ -96,8 +97,8 @@ public class SwerveKinematics {
 
         for (int i = 0; i < 4; i++) {
             Vector offset = moduleOffsets[i];
-            double mvx = states[i].speedMetersPerSecond * Math.cos(states[i].angleRadians);
-            double mvy = states[i].speedMetersPerSecond * Math.sin(states[i].angleRadians);
+            double mvx = states[i].drivePower * SwerveConfig.getMaxLinearSpeedMPS() * Math.cos(states[i].angleRadians);
+            double mvy = states[i].drivePower * SwerveConfig.getMaxLinearSpeedMPS() * Math.sin(states[i].angleRadians);
 
             vx += mvx;
             vy += mvy;

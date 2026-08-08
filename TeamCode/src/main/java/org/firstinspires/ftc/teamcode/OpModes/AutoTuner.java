@@ -22,6 +22,8 @@ import org.firstinspires.ftc.teamcode.auto.WaitForAzimuthCommand;
 @Config
 @Autonomous(name = "Auto Tuner")
 public class AutoTuner extends LinearOpMode {
+    public SwerveDrivetrain testDrivetrain;
+    public SwerveDrivetrain getTestDrivetrain() { return testDrivetrain; }
 
     // ── Select which constant group to tune ──────────────────────────────────
     // TRANSLATION_P  : tunes AUTO_X_P / AUTO_Y_P
@@ -61,6 +63,7 @@ public class AutoTuner extends LinearOpMode {
 
         HWMap hwMap = new HWMap(hardwareMap);
         SwerveDrivetrain drivetrain = new SwerveDrivetrain(hwMap);
+        this.testDrivetrain = drivetrain;
         PinpointLocalizer localizer  = new PinpointLocalizer(hwMap);
         localizer.setPose(0, 0, 0);
 
@@ -115,28 +118,26 @@ public class AutoTuner extends LinearOpMode {
     private void runTranslationP(HWMap hwMap, SwerveDrivetrain drivetrain,
                                   PinpointLocalizer localizer, ElapsedTime timer) {
 
+        localizer.setPose(0,0,0);
+
         // Force D to zero so only P is acting
         double savedXD = SwerveConfig.AUTO_X_D;
         double savedYD = SwerveConfig.AUTO_Y_D;
         SwerveConfig.AUTO_X_D = 0.0;
         SwerveConfig.AUTO_Y_D = 0.0;
 
-        // Give it enough time to settle — we're watching P, not timeout
-        SwerveConfig.AUTO_MOVE_TIMEOUT_MS = 5000.0;
-        SwerveConfig.AUTO_SETTLE_DELAY_MS = 200.0;
-
         boolean goingOut = true;
 
         while (opModeIsActive()) {
-            double targetX = goingOut ? TARGET_X_IN : 0.0;
-            double targetY = goingOut ? TARGET_Y_IN : 0.0;
+            double targetX = goingOut ? TARGET_X_IN : localizer.getXInches()-TARGET_X_IN;
+            double targetY = goingOut ? TARGET_Y_IN : localizer.getYInches()-TARGET_Y_IN;
 
             DriveContext context = new DriveContext(drivetrain, localizer, hwMap);
-            MoveToPoseCommand move = new MoveToPoseCommand(targetX, targetY, 0.0,
+            DriveScheduler scheduler = new DriveScheduler(2);
+            scheduler.addMoveToPose(targetX, targetY, 0.0, true, 
                 SwerveConfig.AUTO_SETTLE_DELAY_MS, SwerveConfig.AUTO_MOVE_TIMEOUT_MS);
-            move.init(context);
 
-            while (opModeIsActive() && !move.isFinished(context)) {
+            while (opModeIsActive() && !scheduler.isFinished()) {
                 hwMap.clearBulkCache();
                 drivetrain.read();
                 localizer.update();
@@ -145,7 +146,7 @@ public class AutoTuner extends LinearOpMode {
 
                 handleReset(localizer);
 
-                move.tick(context, dt);
+                scheduler.tick(context, dt);
                 drivetrain.write(dt);
 
                 double xErr = targetX - localizer.getXInches();
@@ -164,11 +165,12 @@ public class AutoTuner extends LinearOpMode {
                 telemetry.addData("yError_in", "%.2f", yErr);
                 telemetry.addData("rawXPow (P*err)", "%.3f", rawXPow);
                 telemetry.addData("rawYPow (P*err)", "%.3f", rawYPow);
+                telemetry.addData("cmd", scheduler.getCurrentCommandName());
+                telemetry.addData("azimuthReady", drivetrain.areModulesAzimuthReady(SwerveConfig.AUTO_AZIMUTH_TOLERANCE_RAD));
                 telemetry.addData("leg", goingOut ? "outbound" : "return");
                 telemetry.update();
             }
 
-            move.end(context, false);
             goingOut = !goingOut;
             sleep(PAUSE_BETWEEN_LEGS_MS); // brief pause between legs
         }
@@ -201,14 +203,14 @@ public class AutoTuner extends LinearOpMode {
             double targetY = goingOut ? TARGET_Y_IN : 0.0;
 
             DriveContext context = new DriveContext(drivetrain, localizer, hwMap);
-            MoveToPoseCommand move = new MoveToPoseCommand(targetX, targetY, 0.0,
+            DriveScheduler scheduler = new DriveScheduler(2);
+            scheduler.addMoveToPose(targetX, targetY, 0.0, true, 
                 SwerveConfig.AUTO_SETTLE_DELAY_MS, SwerveConfig.AUTO_MOVE_TIMEOUT_MS);
-            move.init(context);
 
             double peakOvershootX = 0.0;
             double peakOvershootY = 0.0;
 
-            while (opModeIsActive() && !move.isFinished(context)) {
+            while (opModeIsActive() && !scheduler.isFinished()) {
                 hwMap.clearBulkCache();
                 drivetrain.read();
                 localizer.update();
@@ -217,7 +219,7 @@ public class AutoTuner extends LinearOpMode {
 
                 handleReset(localizer);
 
-                move.tick(context, dt);
+                scheduler.tick(context, dt);
                 drivetrain.write(dt);
 
                 double xErr = targetX - localizer.getXInches();
@@ -238,11 +240,12 @@ public class AutoTuner extends LinearOpMode {
                 telemetry.addData("yError_in", "%.2f", yErr);
                 telemetry.addData("peakOvershootX_in", "%.2f", peakOvershootX);
                 telemetry.addData("peakOvershootY_in", "%.2f", peakOvershootY);
+                telemetry.addData("cmd", scheduler.getCurrentCommandName());
+                telemetry.addData("azimuthReady", drivetrain.areModulesAzimuthReady(SwerveConfig.AUTO_AZIMUTH_TOLERANCE_RAD));
                 telemetry.addData("leg", goingOut ? "outbound" : "return");
                 telemetry.update();
             }
 
-            move.end(context, false);
             goingOut = !goingOut;
             sleep(PAUSE_BETWEEN_LEGS_MS);
         }
@@ -272,7 +275,7 @@ public class AutoTuner extends LinearOpMode {
         while (opModeIsActive()) {
             double targetHdg = goingOut
                 ? Math.toRadians(ROTATE_ONLY_DEG)
-                : 0.0;
+                : -Math.toRadians(ROTATE_ONLY_DEG);
 
             DriveContext context = new DriveContext(drivetrain, localizer, hwMap);
             // Stay at origin, only rotate
