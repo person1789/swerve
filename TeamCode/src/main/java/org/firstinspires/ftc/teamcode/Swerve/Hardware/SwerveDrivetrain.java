@@ -2,10 +2,14 @@ package org.firstinspires.ftc.teamcode.Swerve.Hardware;
 
 import static java.lang.Math.atan2;
 import static java.lang.Math.hypot;
+import static java.lang.Math.cos;
+import static java.lang.Math.sin;
+
 
 import com.acmerobotics.dashboard.config.Config;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.HardwareMap;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.Swerve.Core.MathUtil;
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
@@ -22,9 +26,16 @@ public class SwerveDrivetrain {
 
     double[] ws = new double[4];
     double[] wa = new double[4];
-    double max = 0.0;
+    double[] ws_accel = new double[4];
+    double[] wa_veloc = new double[4];
 
-    private boolean locked = false;
+    private final double[] lastWs = new double[4];
+    private final double[] lastWa = new double[4];
+    private final ElapsedTime kinematicsTimer = new ElapsedTime();
+    private boolean hasLastState = false;
+
+   private double max = 0.0;
+   private boolean locked = false;
 
     public SwerveDrivetrain(HardwareMap hardwareMap) {
         frontLeftModule = new SwerveModule(hardwareMap, "FLM", "FLS", "FLE", frontLeftOffset, false);
@@ -38,6 +49,10 @@ public class SwerveDrivetrain {
     }
 
     public void set(Pose pose) {
+
+        double dt = kinematicsTimer.seconds();
+        kinematicsTimer.reset();
+
         double x = pose.x, y = pose.y, head = pose.heading;
 
         double a = x - head * (WHEEL_BASE / R),
@@ -54,6 +69,7 @@ public class SwerveDrivetrain {
         }
 
         max = MathUtil.maxAbs(ws);
+
     }
 
     public void write() {

@@ -1,20 +1,29 @@
 package org.firstinspires.ftc.teamcode.OpModes;
 
+
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.util.Range;
 
 import org.firstinspires.ftc.teamcode.Swerve.Geometry.Pose;
 import org.firstinspires.ftc.teamcode.Swerve.Hardware.SwerveDrivetrain;
+import org.firstinspires.ftc.teamcode.Swerve.Hardware.SlewRateLimiter;
 
 @TeleOp
 public class DT extends LinearOpMode {
 
     private SwerveDrivetrain drivetrain;
+    private SlewRateLimiter xLimiter;
+    private SlewRateLimiter yLimiter;
+    private SlewRateLimiter turnLimiter;
 
     @Override
     public void runOpMode() throws InterruptedException {
         drivetrain = new SwerveDrivetrain(hardwareMap);
+
+        xLimiter = new SlewRateLimiter(4.0);
+        yLimiter = new SlewRateLimiter(4.0);
+        turnLimiter = new SlewRateLimiter(4.0);
 
         waitForStart();
 
@@ -31,6 +40,9 @@ public class DT extends LinearOpMode {
             y = Range.clip(y, -1.0, 1.0);
             turn = Range.clip(turn, -1.0, 1.0);
 
+            x = xLimiter.calculate(x);
+            y = yLimiter.calculate(y);
+            turn = turnLimiter.calculate(turn);
 
             boolean noInput =
                     Math.abs(x) < 0.05 &&
